@@ -22,7 +22,7 @@ Der Pi braucht etwas mehr Strom (ca. 1 W im Leerlauf). Dafür ist das Gerät ein
 
 | Teil | Empfehlung | Preis ca. |
 |---|---|---|
-| Rechner | **Raspberry Pi Zero 2 W** mit gelöteter Stiftleiste (Zero 2 WH) | 20 € |
+| Rechner | **Raspberry Pi 3 Model A+** (Standard im Gehäuse) oder **Raspberry Pi Zero 2 WH** (dann `pi_model = "zero2"` in `soundlampe.scad`). Kein Pi 4/5: zu groß, zu warm, zu viel Strom | 25–35 € |
 | DAC + Verstärker | **Raspberry Pi DigiAMP+** (2 × 35 W, 12–24 V, versorgt auch den Pi) | 30 € |
 | Netzteil | 19 V / 3,42 A (Laptop-Typ, Hohlstecker 5,5 × 2,5) oder 24 V / 2,5 A | 15 € |
 | Einbaubuchse | DC-Einbaubuchse 5,5 × 2,1/2,5 mm, Loch 11 mm | 2 € |
@@ -51,7 +51,7 @@ Warum so: Ein guter 4"-Breitbänder in einer geschlossenen Kammer von ca. 2,6 l 
 |---|---|---|
 | Lampenstiel | **Messingrohr 20 mm**, 150 mm lang (oder gedruckt: `stem.stl`) | 6 € |
 | Gewindeeinsätze | M3 Heat-Set-Inserts, ca. 30 Stück | 5 € |
-| Schrauben | M3 × 8/10/12 (Linsenkopf), M2,5 × 6 für die Platinen, 2 × M2,5-Abstandsbolzen 11 mm | 5 € |
+| Schrauben | M3 × 8/10/12 (Linsenkopf), M2,5 × 6 für die Platinen, 4 × M2,5-Abstandsbolzen 11 mm (Pi Zero: 2 ×) | 5 € |
 | Füße | 3 Gummifüße Ø 12 mm, selbstklebend | 2 € |
 | Filament | ca. 600 g PETG (Fuß, dunkel) + ca. 150 g transluzentes PLA/PETG (Schirm, Elfenbein/Natur) | 25 € |
 
@@ -62,7 +62,7 @@ Warum so: Ein guter 4"-Breitbänder in einer geschlossenen Kammer von ca. 2,6 l 
 ```
  19 V Netzteil ──► DC-Buchse (hinten unten)
                      │
-                     ├──► DigiAMP+ Eingang (12–24 V) ──► versorgt den Pi Zero 2 W über die Stiftleiste
+                     ├──► DigiAMP+ Eingang (12–24 V) ──► versorgt den Pi über die Stiftleiste
                      │         └─ Lautsprecher-Ausgang L ──► Breitbänder ND105-4  (R bleibt frei)
                      │
                      └──► Step-down auf 5,1 V ──┬─► LED-Strip +5V / GND

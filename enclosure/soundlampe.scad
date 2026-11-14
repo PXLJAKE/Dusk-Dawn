@@ -4,7 +4,7 @@
 // Parts: assembly, base_shell, divider, top_lid, bottom_plate, stem, led_core,
 //        core_cap, spider, shade, knob
 //
-// Base: 2 compartments. Below: electronics (Pi Zero 2 W + DigiAMP+, LED buck).
+// Base: 2 compartments. Below: electronics (Pi 3 A+ or Pi Zero 2 W + DigiAMP+, LED buck).
 // Above: sealed ~2.6 l speaker chamber with a 4" full-range driver firing to
 // the front and a passive radiator firing to the back, behind vertical grille slats.
 // Top: brass or printed stem, LED core wrapped with an SK6812 strip,
@@ -43,6 +43,8 @@ dc_jack_d   = 11;     // panel DC jack (5.5/2.1 mm)
 hat_origin  = [-32.5, -28];   // lower left corner of the DigiAMP+ (65 x 56.5 mm HAT)
 hat_holes   = [[3.5,3.5],[61.5,3.5],[3.5,52.5],[61.5,52.5]];  // M2.5
 zero_holes  = [[3.5,29.5],[61.5,29.5],[3.5,52.5],[61.5,52.5]]; // Pi Zero below the HAT, header rows aligned
+pi_model    = "3a";   // "3a" = Raspberry Pi 3 Model A+ (same 65 x 56 footprint as the HAT), "zero2" = Pi Zero 2 W
+pi_holes    = pi_model == "3a" ? hat_holes : zero_holes;
 zero_z      = 5;      // Pi Zero board height above the plate
 hat_z       = 17.6;   // DigiAMP+ height (Pi Zero + 11 mm M2.5 spacers)
 knob_offset = [0, -52];   // encoder position on the lid (front), used when knob_pos = "top"
@@ -189,13 +191,14 @@ module bottom_plate() {
       // Pi Zero 2 W on short standoffs; the DigiAMP+ sits on 11 mm spacers above it
       // (shared header-side holes) and on two tall standoffs on the other side
       translate(hat_origin) {
-        for (p = zero_holes) translate([p[0], p[1], 0]) cylinder(d = 6, h = zero_z, $fn = 24);
-        for (p = [hat_holes[0], hat_holes[1]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = hat_z, $fn = 24);
+        for (p = pi_holes) translate([p[0], p[1], 0]) cylinder(d = 6, h = zero_z, $fn = 24);
+        // Pi Zero: two tall standoffs carry the free side of the HAT. Pi 3A+: the HAT sits on 4 spacers.
+        if (pi_model != "3a") for (p = [hat_holes[0], hat_holes[1]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = hat_z, $fn = 24);
       }
       // standoffs for the 5 V buck converter (mini MP1584 / LM2596 board)
       translate([-20, -60, 0]) for (p = [[0,0],[30,0]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = 6, $fn = 24);
     }
-    translate([hat_origin[0], hat_origin[1], -eps]) for (p = concat(zero_holes, hat_holes)) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 30, $fn = 16);
+    translate([hat_origin[0], hat_origin[1], -eps]) for (p = concat(pi_holes, hat_holes)) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 30, $fn = 16);
     translate([-20, -60, -eps]) for (p = [[0,0],[30,0]]) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 10, $fn = 16);
     // vent slots
     for (x = [-60:8:60]) translate([x - 1.5, 45, -eps]) cube([3, 30, 4]);
@@ -341,7 +344,12 @@ module dummy_pr() {
 }
 module dummy_electronics() {
   translate([hat_origin[0], hat_origin[1], 0]) {
-    color("#1f7a3c") translate([0, 26, zero_z]) cube([65, 30, 1.6]);                 // Pi Zero 2 W
+    if (pi_model == "3a") {
+      color("#1f7a3c") translate([0, 0, zero_z]) cube([65, 56, 1.6]);                // Pi 3 Model A+
+      color("#bbb") translate([-1, 18, zero_z + 1.6]) cube([17, 14, 8]);              // USB-A
+      color("#999") translate([24, 46, zero_z + 1.6]) cube([14, 14, 13]);             // SoC + shield
+    } else
+      color("#1f7a3c") translate([0, 26, zero_z]) cube([65, 30, 1.6]);               // Pi Zero 2 W
     color("#222") translate([3.5 + 29 - 25.4, 26 + 30 - 5, zero_z + 1.6]) cube([51, 5, 9]); // header
     color("#2a4b8d") translate([0, 0, hat_z]) cube([65, 56.5, 1.6]);                 // DigiAMP+
     color("#111") translate([8, 8, hat_z + 1.6]) cube([14, 14, 10]);                 // inductors/caps
