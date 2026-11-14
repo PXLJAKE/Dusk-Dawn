@@ -46,6 +46,7 @@ from .const import (
 )
 from .diy import DiyLamp
 from .lights import LightController
+from .native import engine_kind
 from .scheduler import Scheduler
 from .state import find_preset, merge_stored, normalize_alarm, normalize_auto
 from .stream import SpotStream
@@ -132,6 +133,7 @@ class SpotRuntime:
             "lights": self.lights,
             "presence": self.presence,
             "diy_device": self.config[CONF_DIY_DEVICE],
+            "engine": engine_kind(self.engine),
             "state": self.snapshot(),
         }
 

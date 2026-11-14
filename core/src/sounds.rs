@@ -1,10 +1,15 @@
 //! The continuous sound generators (noise colours, fan, rain, leaves, stream,
-//! wind, waves, fire). Mono ports of the classes in `device/sleepgen/dsp.py`.
+//! wind, waves, fire), rendered as one mono channel.
 //!
-//! The reference renders stereo; here every layer is rendered as one channel
-//! with the same per-channel loudness (TARGET_RMS), because the engine output
-//! is mono anyway. Grain panning therefore disappears, everything else (grain
-//! banks, rates, filters, envelopes, calibration) is the same.
+//! White, pink and brown noise, fan, rain, wind, waves and fire are exact
+//! ports of the original generators (`device/sleepgen/dsp.py` at commit
+//! 73c0381): same filters, same random structure, same envelopes. The
+//! reference renders two independent channels; here one channel is rendered
+//! at the same per-channel loudness (TARGET_RMS), because the engine output is
+//! mono. Leaves and stream are newer grain-based designs.
+//!
+//! Audio-rate noise uses [`Rng::noise`] (unit-variance, spectrally white)
+//! instead of Gaussian samples; after the filters the two are identical.
 
 use crate::dsp::*;
 use crate::rng::Rng;
@@ -195,58 +200,32 @@ fn mean(x: &[f64]) -> f64 {
 }
 
 // ------------------------------------------------------------------ rain
-/// Rain: a soft bed, the patter on surfaces, and clearly audible single drops.
+/// Steady rain bed plus individual drops hitting surfaces (`Rain` in the
+/// original dsp.py): pink noise band-limited to 500..7000 Hz, plus sparse
+/// Pareto-weighted impulses through a 2.8 kHz band-pass, all under a slowly
+/// wandering intensity.
 pub struct Rain {
-    sr: f64,
+    rng: Rng,
     pink: Pink,
     hp: Biquad,
     lp: Biquad,
-    patter: Grains,
-    drops: Grains,
-    big: Grains,
+    drops: Biquad,
+    p: f64,
     intensity: SmoothRandom,
-    env: [f64; MAX_BLOCK],
 }
 
 impl Rain {
+    pub const DROPS_PER_S: f64 = 900.0;
+
     pub fn new(mut rng: Rng, sr: f64) -> Calibrated<Rain> {
-        let patter = (0..48)
-            .map(|_| {
-                let tau = rng.uniform(0.0003, 0.0012);
-                let f = rng.uniform(2500.0, 7000.0);
-                tick(&mut rng, sr, tau, f, 1.5)
-            })
-            .collect();
-        let drops = (0..64)
-            .map(|_| {
-                let (f, d, r) = (
-                    rng.uniform(1400.0, 4200.0),
-                    rng.uniform(0.012, 0.035),
-                    rng.uniform(0.25, 0.9),
-                );
-                plip(&mut rng, sr, f, d, r, 0.15)
-            })
-            .collect();
-        let big = (0..24)
-            .map(|_| {
-                let (f, d, r) = (
-                    rng.uniform(700.0, 1500.0),
-                    rng.uniform(0.03, 0.06),
-                    rng.uniform(0.4, 1.2),
-                );
-                plip(&mut rng, sr, f, d, r, 0.3)
-            })
-            .collect();
         let r = Rain {
-            sr,
             pink: Pink::new(rng.fork()),
-            hp: Biquad::new(Kind::Hp, 600.0, sr, 0.707),
-            lp: Biquad::new(Kind::Lp, 6500.0, sr, 0.707),
-            patter: Grains::new(rng.fork(), patter),
-            drops: Grains::new(rng.fork(), drops),
-            big: Grains::new(rng.fork(), big),
-            intensity: SmoothRandom::new(rng.fork(), 0.7, 1.15, 6.0, sr),
-            env: [0.0; MAX_BLOCK],
+            hp: Biquad::new(Kind::Hp, 500.0, sr, 0.707),
+            lp: Biquad::new(Kind::Lp, 7000.0, sr, 0.707),
+            drops: Biquad::new(Kind::Bp, 2800.0, sr, 0.9),
+            p: Self::DROPS_PER_S / sr,
+            intensity: SmoothRandom::new(rng.fork(), 0.75, 1.15, 6.0, sr),
+            rng,
         };
         Calibrated::new(r, sr, CALIBRATE_S)
     }
@@ -254,19 +233,15 @@ impl Rain {
 
 impl Raw for Rain {
     fn raw(&mut self, out: &mut [f64]) {
-        let n = out.len();
-        let env = &mut self.env[..n];
-        self.intensity.fill(env);
-        let e = mean(env);
-        for v in out.iter_mut() {
-            *v = self.lp.process(self.hp.process(self.pink.sample())) * 0.9;
-        }
-        let sr = self.sr;
-        self.patter.render(out, 1400.0 / sr * e, (0.05, 0.25), 0.0, 0.35);
-        self.drops.render(out, 22.0 / sr * e, (0.15, 0.5), 2.5, 0.55);
-        self.big.render(out, 2.5 / sr, (0.4, 0.9), 0.0, 0.6);
-        for (v, e) in out.iter_mut().zip(env.iter()) {
-            *v *= e;
+        for o in out.iter_mut() {
+            let bed = self.lp.process(self.hp.process(self.pink.sample()));
+            let hit = if self.rng.random() < self.p {
+                self.rng.pareto(3.0).min(3.0)
+            } else {
+                0.0
+            };
+            let drop = self.drops.process(hit);
+            *o = (bed * 1.6 + drop * 0.35) * self.intensity.next_value();
         }
     }
 }
@@ -423,264 +398,128 @@ impl Source for Wind {
 }
 
 // ------------------------------------------------------------------ waves
-/// One wave: swells, curls over, breaks with a bright crash, then washes out.
-#[derive(Clone, Copy, Default)]
-struct Wave {
-    start: u64,
-    len: u64,
-    rise: f64,
-    rise_idx: u64,
-    size: f64,
-    crash_gain: f64,
-    spread: f64, // 1 + |pan|: the louder stereo channel of the reference
-    // decay factors per sample (after the break)
-    d_sw: f64,
-    d_cr: f64,
-    d_w1: f64,
-    d_w2: f64,
-    // running exponentials
-    e_sw: f64,
-    e_cr: f64,
-    e_w1: f64,
-    e_w2: f64,
-    tau_sw: f64,
-    tau_cr: f64,
-    tau_w2: f64,
-}
-
-/// Ocean surf. Each wave swells, breaks with a bright crash and then washes
-/// out as fizzing foam while the next one builds. Waves overlap and vary in size.
+/// Ocean waves: swells that build, break and wash back out (`Waves` in the
+/// original dsp.py). Pink + brown noise through a low-pass whose cutoff
+/// follows the wave envelope (updated every 256 samples), times the envelope.
+///
+/// The reference pans the surf slightly between its two channels with
+/// `1 -/+ pan`; the mono sum of both channels cancels that exactly, so it is
+/// left out here.
 pub struct Waves {
     sr: f64,
     rng: Rng,
     pink: Pink,
     brown: Brown,
-    wpink: Pink,
     lp: Biquad,
-    bed_lp: Biquad,
-    hp: Biquad,
-    crash_lp: Biquad,
-    foam: Grains,
-    pos: u64,
-    next_start: u64,
-    waves: [Wave; 6],
-    nwaves: usize,
     ctrl: usize,
-    sw: [f64; MAX_BLOCK],
-    cr: [f64; MAX_BLOCK],
-    cmax: [f64; MAX_BLOCK],
-    wa: [f64; MAX_BLOCK],
-    wmax: [f64; MAX_BLOCK],
+    // current wave: rise, fall, then a gap at the floor level
+    seg: u8, // 0 rise, 1 fall, 2 gap
+    i: usize,
+    len: [usize; 3],
+    peak: f64,
+    fall_decay: f64, // exp(-3.5 / fall_len), applied per sample
+    fall_exp: f64,
 }
+
+const WAVE_FLOOR: f64 = 0.12;
 
 impl Waves {
     pub fn new(mut rng: Rng, sr: f64) -> Calibrated<Waves> {
-        let foam = (0..64)
-            .map(|_| {
-                let (f, d, r) = (
-                    rng.uniform(2000.0, 6500.0),
-                    rng.uniform(0.003, 0.012),
-                    rng.uniform(0.5, 2.5),
-                );
-                plip(&mut rng, sr, f, d, r, 0.4)
-            })
-            .collect();
-        let w = Waves {
+        let mut w = Waves {
             sr,
             pink: Pink::new(rng.fork()),
             brown: Brown::new(rng.fork(), sr),
-            wpink: Pink::new(rng.fork()),
-            lp: Biquad::new(Kind::Lp, 380.0, sr, 0.6),
-            bed_lp: Biquad::new(Kind::Lp, 650.0, sr, 0.6),
-            hp: Biquad::new(Kind::Hp, 1800.0, sr, 0.707),
-            crash_lp: Biquad::new(Kind::Lp, 500.0, sr, 0.6),
-            foam: Grains::new(rng.fork(), foam),
-            pos: 0,
-            next_start: 0,
-            waves: [Wave::default(); 6],
-            nwaves: 0,
+            lp: Biquad::new(Kind::Lp, 300.0, sr, 0.6),
             ctrl: 0,
-            sw: [0.0; MAX_BLOCK],
-            cr: [0.0; MAX_BLOCK],
-            cmax: [0.0; MAX_BLOCK],
-            wa: [0.0; MAX_BLOCK],
-            wmax: [0.0; MAX_BLOCK],
+            seg: 0,
+            i: 0,
+            len: [0; 3],
+            peak: 0.0,
+            fall_decay: 0.0,
+            fall_exp: 1.0,
             rng,
         };
+        w.new_wave();
         Calibrated::new(w, sr, 2.0 * CALIBRATE_S)
     }
 
-    fn new_wave(&mut self, start: u64) {
+    fn new_wave(&mut self) {
         let (rng, sr) = (&mut self.rng, self.sr);
-        let rise = rng.uniform(2.8, 4.5);
-        let fall = rng.uniform(6.0, 9.0);
-        let size = rng.uniform(0.55, 1.0);
-        let len = ((rise + fall) * sr) as u64;
-        let tau_cr = rng.uniform(0.9, 1.6);
-        let pan = rng.uniform(-0.45, 0.45);
-        let crash_gain = rng.uniform(0.6, 1.0);
-        let tau_sw = fall / 2.2;
-        let tau_w2 = fall / 2.5;
-        let wave = Wave {
-            start,
-            len,
-            rise,
-            rise_idx: (rise * sr).ceil() as u64,
-            size,
-            crash_gain,
-            spread: 1.0 + pan.abs(),
-            d_sw: (-1.0 / (tau_sw * sr)).exp(),
-            d_cr: (-1.0 / (tau_cr * sr)).exp(),
-            d_w1: (-1.0 / (0.7 * sr)).exp(),
-            d_w2: (-1.0 / (tau_w2 * sr)).exp(),
-            tau_sw,
-            tau_cr,
-            tau_w2,
-            ..Default::default()
-        };
-        if self.nwaves < self.waves.len() {
-            self.waves[self.nwaves] = wave;
-            self.nwaves += 1;
-        }
+        let rise = rng.uniform(2.5, 4.0);
+        let fall = rng.uniform(4.0, 7.0);
+        let gap = rng.uniform(0.0, 1.5);
+        self.peak = rng.uniform(0.6, 1.0);
+        self.len = [(rise * sr) as usize, (fall * sr) as usize, (gap * sr) as usize];
+        self.fall_decay = (-3.5 / self.len[1].max(1) as f64).exp();
+        self.seg = 0;
+        self.i = 0;
     }
 
-    fn envelopes(&mut self, n: usize) {
-        let sr = self.sr;
-        while self.next_start < self.pos + n as u64 {
-            let s = self.next_start;
-            self.new_wave(s);
-            self.next_start += (self.rng.uniform(5.0, 9.5) * sr) as u64;
-        }
-        self.sw[..n].fill(0.0);
-        self.cr[..n].fill(0.0);
-        self.cmax[..n].fill(0.0);
-        self.wa[..n].fill(0.0);
-        self.wmax[..n].fill(0.0);
-        let taper_len = 1.5 * sr;
-        for w in self.waves[..self.nwaves].iter_mut() {
-            let a = self.pos.max(w.start);
-            let b = (self.pos + n as u64).min(w.start + w.len);
-            for abs in a..b {
-                let i = abs - w.start;
-                let d = (abs - self.pos) as usize;
-                let t = i as f64 / sr;
-                let taper = ((w.len - i) as f64 / taper_len).min(1.0) * w.size;
-                let (sw, cr, wa);
-                if i < w.rise_idx {
-                    let x = t / w.rise;
-                    sw = x * x;
-                    let curl = ((t - (w.rise - 1.3)) / 1.3).clamp(0.0, 1.0);
-                    cr = curl * curl * curl.sqrt();
-                    wa = 0.0;
-                } else {
-                    if i == w.rise_idx {
-                        let tc = t - w.rise;
-                        w.e_sw = (-tc / w.tau_sw).exp();
-                        w.e_cr = (-tc / w.tau_cr).exp();
-                        w.e_w1 = (-tc / 0.7).exp();
-                        w.e_w2 = (-tc / w.tau_w2).exp();
-                    } else {
-                        w.e_sw *= w.d_sw;
-                        w.e_cr *= w.d_cr;
-                        w.e_w1 *= w.d_w1;
-                        w.e_w2 *= w.d_w2;
-                    }
-                    sw = w.e_sw;
-                    cr = w.e_cr;
-                    wa = (1.0 - w.e_w1) * w.e_w2;
-                }
-                self.sw[d] += sw * taper;
-                let c = cr * taper * w.crash_gain;
-                self.cr[d] += c;
-                self.cmax[d] += c * w.spread;
-                self.wa[d] += wa * taper;
-                self.wmax[d] += wa * taper * w.spread; // louder channel: drives the foam rate
+    /// Next envelope value (the reference's `_envelope`).
+    #[inline]
+    fn env(&mut self) -> f64 {
+        while self.i >= self.len[self.seg as usize] {
+            self.i = 0;
+            if self.seg == 2 {
+                self.new_wave();
+            } else {
+                self.seg += 1;
+                self.fall_exp = 1.0;
             }
         }
-        // drop finished waves
-        let end = self.pos + n as u64;
-        let mut k = 0;
-        for j in 0..self.nwaves {
-            if self.waves[j].start + self.waves[j].len > end {
-                self.waves[k] = self.waves[j];
-                k += 1;
+        let k = self.i;
+        self.i += 1;
+        let span = self.peak - WAVE_FLOOR;
+        match self.seg {
+            0 => WAVE_FLOOR + span * (k as f64 / self.len[0] as f64).powf(2.2),
+            1 => {
+                let t = k as f64 / self.len[1] as f64;
+                let v = WAVE_FLOOR + span * self.fall_exp * (1.0 - t);
+                self.fall_exp *= self.fall_decay;
+                v
             }
+            _ => WAVE_FLOOR,
         }
-        self.nwaves = k;
-        self.pos = end;
     }
 }
 
 impl Raw for Waves {
     fn raw(&mut self, out: &mut [f64]) {
-        let n = out.len();
-        let sr = self.sr;
-        self.envelopes(n);
-        let mut wsum = 0.0;
-        #[allow(clippy::needless_range_loop)]
-        for i in 0..n {
+        for o in out.iter_mut() {
+            let e = self.env();
             if self.ctrl == 0 {
-                let e = self.cmax[i].min(1.0);
-                self.crash_lp.set(Kind::Lp, 500.0 + 7000.0 * e.powf(0.8), sr, 0.6);
+                self.lp.set(Kind::Lp, 300.0 + 3500.0 * e.powf(1.5), self.sr, 0.6);
                 self.ctrl = CTRL_BLOCK;
             }
             self.ctrl -= 1;
-            let body = self.lp.process(self.brown.sample());
-            let bed = self.bed_lp.process(self.wpink.sample());
-            let crash = self.crash_lp.process(self.pink.sample());
-            let hiss = self.hp.process(self.rng.noise());
-            wsum += self.wmax[i];
-            out[i] = bed * 0.35 + body * self.sw[i] * 1.4 + crash * self.cr[i] * 1.6 + hiss * self.wa[i] * 0.18;
+            let x = self.pink.sample() * 0.7 + self.brown.sample() * 0.6;
+            *o = self.lp.process(x) * e * 3.2;
         }
-        let wmax = wsum / n.max(1) as f64;
-        self.foam.render(out, 900.0 / sr * wmax, (0.05, 0.3), 0.0, 0.5);
     }
 }
 
 // ------------------------------------------------------------------ fire
-/// Fireplace: low roar, soft hiss, and clearly audible crackles and pops.
+/// Crackling fireplace: low roar plus random crackles and pops (`Fire` in the
+/// original dsp.py). Brown noise below 500 Hz, plus random-sign impulses at a
+/// wandering rate of 2..40 per second through a 1.8 kHz high-pass.
 pub struct Fire {
     sr: f64,
+    rng: Rng,
     brown: Brown,
     lp: Biquad,
-    pink: Pink,
     hp: Biquad,
-    ticks: Grains,
-    clusters: Grains,
-    pops: Grains,
     activity: SmoothRandom,
 }
 
 impl Fire {
     pub fn new(mut rng: Rng, sr: f64) -> Calibrated<Fire> {
-        let ticks = (0..48)
-            .map(|_| {
-                let (tau, f) = (rng.uniform(0.0002, 0.0012), rng.uniform(1800.0, 6500.0));
-                tick(&mut rng, sr, tau, f, 0.9)
-            })
-            .collect();
-        let clusters = (0..32)
-            .map(|_| {
-                let (k, span) = (rng.integers(3, 12) as usize, rng.uniform(0.03, 0.18));
-                cluster(&mut rng, sr, k, span, 1500.0, 6000.0)
-            })
-            .collect();
-        let pops = (0..16)
-            .map(|_| {
-                let (tau, f) = (rng.uniform(0.003, 0.012), rng.uniform(500.0, 1400.0));
-                tick(&mut rng, sr, tau, f, 1.4)
-            })
-            .collect();
         let f = Fire {
             sr,
             brown: Brown::new(rng.fork(), sr),
-            lp: Biquad::new(Kind::Lp, 420.0, sr, 0.707),
-            pink: Pink::new(rng.fork()),
-            hp: Biquad::new(Kind::Hp, 3000.0, sr, 0.707),
-            ticks: Grains::new(rng.fork(), ticks),
-            clusters: Grains::new(rng.fork(), clusters),
-            pops: Grains::new(rng.fork(), pops),
-            activity: SmoothRandom::new(rng.fork(), 0.3, 1.0, 2.0, sr),
+            lp: Biquad::new(Kind::Lp, 500.0, sr, 0.707),
+            hp: Biquad::new(Kind::Hp, 1800.0, sr, 0.707),
+            activity: SmoothRandom::new(rng.fork(), 2.0, 40.0, 1.5, sr),
+            rng,
         };
         Calibrated::new(f, sr, CALIBRATE_S)
     }
@@ -688,18 +527,16 @@ impl Fire {
 
 impl Raw for Fire {
     fn raw(&mut self, out: &mut [f64]) {
-        let mut asum = 0.0;
+        let inv_sr = 1.0 / self.sr;
         for o in out.iter_mut() {
-            let act = self.activity.next_value();
-            asum += act;
             let roar = self.lp.process(self.brown.sample());
-            let hiss = self.hp.process(self.pink.sample());
-            *o = roar * 0.55 + hiss * 0.08 * act;
+            let rate = self.activity.next_value() * inv_sr;
+            let hit = if self.rng.random() < rate {
+                self.rng.uniform(-1.0, 1.0) * (self.rng.pareto(2.5).min(3.0) + 0.2)
+            } else {
+                0.0
+            };
+            *o = roar * 0.8 + self.hp.process(hit) * 0.5;
         }
-        let act = asum / out.len().max(1) as f64;
-        let sr = self.sr;
-        self.ticks.render(out, 45.0 / sr * act, (0.1, 0.5), 2.5, 0.45);
-        self.clusters.render(out, 2.2 / sr * act, (0.3, 0.9), 0.0, 0.55);
-        self.pops.render(out, 0.35 / sr, (0.6, 1.0), 0.0, 0.7);
     }
 }

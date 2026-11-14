@@ -1,5 +1,5 @@
 //! DSP building blocks: filters, slowly wandering control values, grain
-//! scattering and the grain kernels (drops, ticks, crackles, leaf grains).
+//! scattering and the grain kernels (drops, ticks, leaf grains).
 //!
 //! Ported from `device/sleepgen/dsp.py`. Everything here works on mono `f64`
 //! blocks of at most [`MAX_BLOCK`] samples and never allocates while rendering.
@@ -332,23 +332,6 @@ pub fn tick(rng: &mut Rng, sr: f64, tau: f64, f0: f64, q: f64) -> Vec<f64> {
     normalize(k)
 }
 
-/// Several crackles in quick succession: the 'tsk-tsk-tsk' of burning wood.
-pub fn cluster(rng: &mut Rng, sr: f64, n_ticks: usize, span: f64, f_lo: f64, f_hi: f64) -> Vec<f64> {
-    let m = (span * sr) as usize + (0.02 * sr) as usize;
-    let mut out = vec![0.0; m];
-    for _ in 0..n_ticks {
-        let tau = rng.uniform(0.0002, 0.0015);
-        let f = rng.uniform(f_lo, f_hi);
-        let k = tick(rng, sr, tau, f, 0.9);
-        let p = ((rng.uniform(0.0, span) * sr) as usize).min(m);
-        let g = rng.uniform(0.3, 1.0);
-        for (o, kv) in out[p..].iter_mut().zip(k.iter()) {
-            *o += kv * g;
-        }
-    }
-    normalize(out)
-}
-
 /// Leaf grain: soft-edged, band-limited noise snippet.
 pub fn leaf_grain(rng: &mut Rng, sr: f64, dur: f64, f0: f64, q: f64) -> Vec<f64> {
     let m = ((dur * sr) as usize).max(16);
@@ -407,7 +390,6 @@ mod tests {
         for k in [
             plip(&mut r, 44100.0, 2000.0, 0.02, 0.5, 0.15),
             tick(&mut r, 44100.0, 0.001, 3000.0, 1.2),
-            cluster(&mut r, 44100.0, 5, 0.1, 1500.0, 6000.0),
             leaf_grain(&mut r, 44100.0, 0.02, 3000.0, 1.0),
         ] {
             let peak = k.iter().fold(0.0f64, |m, v| m.max(v.abs()));

@@ -1,19 +1,19 @@
 """Procedural sound generators – pure-Python/numpy port of ``device/sleepgen/dsp.py``.
 
-Differences to the device version, all made so the fallback runs inside Home
-Assistant without scipy and stays cheap enough for real time:
+Home Assistant ships numpy but not scipy, so the IIR filters of the device
+version (``scipy.signal.lfilter``) are replaced by :class:`IIR` and
+:class:`TVBiquad`: the same difference equations, evaluated exactly but
+block-wise with numpy (zero-state response as a matrix product with the
+impulse response, plus the carried-over filter state). The noise generators,
+rain, wind, waves, fire and thunder therefore follow the reference sample for
+sample in structure, filters, rates and levels.
 
-* Output is mono (the stream is mono), grains are no longer panned.
-* Long noise beds (pink, brown, filtered rain bed, ...) are synthesised once as
-  periodic noise directly in the frequency domain with the magnitude response
-  of the original filter chain. A ~24 s loop of shaped noise has no seam
-  (it is periodic by construction) and costs one array slice per block.
-* The two time-varying filters of the original (wind band-pass, wave crash
-  low-pass) are approximated by equal-power crossfades between fixed beds.
-* Short grain kernels use an exact causal biquad (plain Python loop, run once).
+Differences to the device version:
 
-Levels and the overall character (calibration to the same RMS, grain rates and
-gains, envelopes) follow the reference implementation.
+* Output is mono (the stream is mono); stereo panning is dropped.
+* Leaves and stream use :class:`Bed`, a seamless loop of noise shaped in the
+  frequency domain, and short grain kernels; birds are built like the device
+  version, with an FFT low-pass for distant birds.
 """
 
 from __future__ import annotations
@@ -33,7 +33,11 @@ Mag = Callable[[np.ndarray], np.ndarray]
 
 # ------------------------------------------------------------------ filter helpers
 def _biquad(kind: str, f0: float, sr: int, q: float = 0.707) -> tuple[list[float], list[float]]:
-    """RBJ cookbook biquad coefficients (normalised, a[0] == 1)."""
+    """RBJ cookbook biquad coefficients (normalised, a[0] == 1).
+
+    With ``q = 1/sqrt(2)`` the low/high-pass equals a 2nd-order Butterworth
+    (``scipy.signal.butter(2, ...)``): both use the pre-warped bilinear transform.
+    """
     w0 = 2 * math.pi * min(f0, sr * 0.45) / sr
     alpha = math.sin(w0) / (2 * q)
     cw = math.cos(w0)
@@ -47,6 +51,9 @@ def _biquad(kind: str, f0: float, sr: int, q: float = 0.707) -> tuple[list[float
         raise ValueError(kind)
     a = [1 + alpha, -2 * cw, 1 - alpha]
     return [v / a[0] for v in b], [v / a[0] for v in a]
+
+
+BUTTER_Q = 1 / math.sqrt(2)
 
 
 def biquad_mag(kind: str, f0: float, sr: int, q: float = 0.707) -> Mag:
@@ -64,25 +71,6 @@ def biquad_mag(kind: str, f0: float, sr: int, q: float = 0.707) -> Mag:
 
 def butter_lp_mag(fc: float, order: int = 2) -> Mag:
     return lambda f: 1.0 / np.sqrt(1.0 + (f / fc) ** (2 * order))
-
-
-def butter_hp_mag(fc: float, order: int = 2) -> Mag:
-    return lambda f: 1.0 / np.sqrt(1.0 + (fc / np.maximum(f, 1e-3)) ** (2 * order))
-
-
-def butter_bp_mag(lo: float, hi: float, order: int = 2) -> Mag:
-    f0sq, bw = lo * hi, hi - lo
-
-    def mag(f: np.ndarray) -> np.ndarray:
-        f = np.maximum(f, 1e-3)
-        return 1.0 / np.sqrt(1.0 + ((f * f - f0sq) / (f * bw)) ** (2 * order))
-
-    return mag
-
-
-def leaky_mag(pole: float, sr: int) -> Mag:
-    """|1 / (1 - pole z^-1)|: the leaky integrator used for brown noise."""
-    return lambda f: 1.0 / np.abs(1.0 - pole * np.exp(-2j * np.pi * f / sr))
 
 
 def pink_mag(f: np.ndarray) -> np.ndarray:
@@ -118,25 +106,111 @@ def _peak_norm(x: np.ndarray) -> np.ndarray:
     return x / (np.max(np.abs(x)) or 1.0)
 
 
+class _Stateful:
+    """Direct-form-I state shared by the block IIR filters.
+
+    A block of ``L`` samples is filtered exactly as ``y = h * u`` where ``u`` is
+    the FIR (numerator) part of the input and ``h`` the impulse response of the
+    all-pole part, truncated to ``L`` samples. The last outputs of the previous
+    block enter ``u`` as an excitation of the first ``order`` samples, which
+    reproduces the recursion ``y[n] = u[n] - a1 y[n-1] - ...`` without a
+    per-sample Python loop.
+    """
+
+    def __init__(self, order: int):
+        self.order = order
+        self.xh = np.zeros(order)  # last inputs, most recent last
+        self.yh = np.zeros(order)  # last outputs, most recent last
+
+    def _excite(self, x: np.ndarray, b: np.ndarray, a: np.ndarray) -> np.ndarray:
+        n_ord, size = self.order, len(x)
+        xp = np.concatenate([self.xh, x])
+        u = b[0] * x
+        for k in range(1, n_ord + 1):
+            u += b[k] * xp[n_ord - k : n_ord - k + size]
+        yh = self.yh
+        for m in range(min(n_ord, size)):
+            u[m] -= sum(a[k] * yh[n_ord + m - k] for k in range(m + 1, n_ord + 1))
+        self.xh = xp[-n_ord:].copy() if n_ord else self.xh
+        return u
+
+    def _keep(self, y: np.ndarray) -> None:
+        if self.order:
+            self.yh = np.concatenate([self.yh, y])[-self.order :].copy()
+
+
+class IIR(_Stateful):
+    """Streaming time-invariant IIR filter of any order (``lfilter(b, a)``)."""
+
+    CHUNK = 512
+
+    def __init__(self, b, a):
+        b = np.asarray(b, float)
+        a = np.asarray(a, float)
+        b, a = b / a[0], a / a[0]
+        order = max(len(a), len(b)) - 1
+        super().__init__(order)
+        self.b = np.pad(b, (0, order + 1 - len(b)))
+        self.a = np.pad(a, (0, order + 1 - len(a)))
+        g = np.zeros(self.CHUNK)  # impulse response of 1 / A(z)
+        hist = [0.0] * order
+        for i in range(self.CHUNK):
+            v = (1.0 if i == 0 else 0.0) - sum(self.a[k] * hist[-k] for k in range(1, order + 1))
+            g[i] = v
+            hist = (hist + [v])[-order:] if order else hist
+        idx = np.arange(self.CHUNK)
+        lag = idx[:, None] - idx[None, :]
+        self.toeplitz = np.where(lag >= 0, g[np.clip(lag, 0, None)], 0.0)
+
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        out = np.empty(len(x))
+        for s in range(0, len(x), self.CHUNK):
+            seg = x[s : s + self.CHUNK]
+            size = len(seg)
+            u = self._excite(seg, self.b, self.a)
+            y = self.toeplitz[:size, :size] @ u
+            self._keep(y)
+            out[s : s + size] = y
+        return out
+
+
+class TVBiquad(_Stateful):
+    """Biquad whose coefficients may change from block to block (state carried)."""
+
+    def __init__(self):
+        super().__init__(2)
+
+    def __call__(self, x: np.ndarray, b, a) -> np.ndarray:
+        b = np.asarray(b, float)
+        a = np.asarray(a, float)
+        size = len(x)
+        u = self._excite(x, b, a)
+        # impulse response of 1 / (1 + a1 z^-1 + a2 z^-2) from its poles
+        disc = complex(a[1] * a[1] - 4 * a[2])
+        p1 = (-a[1] + disc**0.5) / 2
+        p2 = (-a[1] - disc**0.5) / 2
+        k = np.arange(1, size + 1)
+        if abs(p1 - p2) < 1e-9:
+            g = (k * p1 ** (k - 1)).real
+        else:
+            g = ((p1**k - p2**k) / (p1 - p2)).real
+        y = np.convolve(u, g)[:size]
+        self._keep(y)
+        return y
+
+
 # ------------------------------------------------------------------ building blocks
 class Bed:
-    """A seamless loop of shaped noise, read block by block."""
+    """A seamless loop of pink noise, shaped in the frequency domain, read block by block."""
 
-    def __init__(self, rng: np.random.Generator, sr: int, base: str, *mags: Mag, length: int = LOOP):
+    def __init__(self, rng: np.random.Generator, sr: int, *mags: Mag, length: int = LOOP):
         f = np.fft.rfftfreq(length, 1 / sr)
         spec = rng.standard_normal(len(f)) + 1j * rng.standard_normal(len(f))
-        if base == "pink":
-            shape, rms = pink_mag(f), TARGET_RMS
-        elif base == "brown":
-            shape = leaky_mag(0.997, sr)(f) * biquad_mag("hp", 20, sr)(f)
-            rms = TARGET_RMS
-        else:  # white noise with unit variance, like ``rng.standard_normal``
-            shape, rms = np.ones_like(f), 1.0
-        spec *= shape
+        spec *= pink_mag(f)
         spec[0] = 0.0
         # normalise the *unfiltered* base so the filters keep their relative level
         base_rms = math.sqrt(2 * float(np.sum(np.abs(spec) ** 2))) / length
-        spec *= rms / (base_rms or 1.0)
+        spec *= TARGET_RMS / (base_rms or 1.0)
         for m in mags:
             spec *= m(f)
         self.data = np.fft.irfft(spec, length).astype(np.float32)
@@ -244,17 +318,6 @@ def _tick(rng, sr, tau, f0, q=1.2, dur=None):
     return _peak_norm(iir(*_biquad("bp", f0, sr, q), x))
 
 
-def _cluster(rng, sr, n_ticks, span, f_lo, f_hi):
-    """Several crackles in quick succession: the 'tsk-tsk-tsk' of burning wood."""
-    m = int(span * sr) + int(0.02 * sr)
-    out = np.zeros(m)
-    for _ in range(n_ticks):
-        k = _tick(rng, sr, rng.uniform(0.0002, 0.0015), rng.uniform(f_lo, f_hi), 0.9)
-        p = int(rng.uniform(0, span) * sr)
-        out[p : p + len(k)] += k[: m - p] * rng.uniform(0.3, 1.0)
-    return _peak_norm(out)
-
-
 def _grain(rng, sr, dur, f0, q):
     """Leaf grain: soft-edged noise snippet, band-limited."""
     m = max(16, int(dur * sr))
@@ -275,6 +338,9 @@ class Generator:
     def render(self, n: int) -> np.ndarray:  # pragma: no cover - interface
         raise NotImplementedError
 
+    def white(self, n: int) -> np.ndarray:
+        return self.rng.standard_normal(n)
+
 
 class _Calibrated(Generator):
     """Generator whose raw output is scaled to TARGET_RMS once at start-up."""
@@ -294,80 +360,6 @@ class _Calibrated(Generator):
         return self._raw(n) * self._gain
 
 
-class WhiteNoise(Generator):
-    name = "white"
-
-    def render(self, n):
-        return self.rng.standard_normal(n) * TARGET_RMS
-
-
-class PinkNoise(Generator):
-    name = "pink"
-
-    def __init__(self, sr, seed=None):
-        super().__init__(sr, seed)
-        self.bed = Bed(self.rng, sr, "pink")
-
-    def render(self, n):
-        return self.bed.render(n)
-
-
-class BrownNoise(Generator):
-    name = "brown"
-
-    def __init__(self, sr, seed=None):
-        super().__init__(sr, seed)
-        self.bed = Bed(self.rng, sr, "brown")
-
-    def render(self, n):
-        return self.bed.render(n)
-
-
-class Fan(Generator):
-    """Steady air noise with a faint rotating hum."""
-
-    name = "fan"
-
-    def __init__(self, sr, seed=None):
-        super().__init__(sr, seed)
-        self.bed = Bed(self.rng, sr, "pink", biquad_mag("lp", 1400, sr, 0.6))
-        self.phase = 0
-
-    def render(self, n):
-        t = (self.phase + np.arange(n)) / self.sr
-        self.phase += n
-        wobble = 1.0 + 0.04 * np.sin(2 * np.pi * 7.3 * t)
-        hum = 0.012 * np.sin(2 * np.pi * 98 * t) * (1 + 0.3 * np.sin(2 * np.pi * 0.2 * t))
-        return self.bed.render(n) * wobble * 1.25 + hum
-
-
-class Rain(_Calibrated):
-    """Rain: a soft bed, the patter on surfaces, and clearly audible single drops."""
-
-    name = "rain"
-
-    def __init__(self, sr, seed=None):
-        super().__init__(sr, seed)
-        rng = self.rng
-        self.bed = Bed(rng, sr, "pink", biquad_mag("hp", 600, sr), biquad_mag("lp", 6500, sr))
-        self.patter = Grains(rng, [_tick(rng, sr, rng.uniform(0.0003, 0.0012), rng.uniform(2500, 7000), 1.5)
-                                   for _ in range(48)])
-        self.drops = Grains(rng, [_plip(rng, sr, rng.uniform(1400, 4200), rng.uniform(0.012, 0.035),
-                                        rng.uniform(0.25, 0.9)) for _ in range(64)])
-        self.big = Grains(rng, [_plip(rng, sr, rng.uniform(700, 1500), rng.uniform(0.03, 0.06),
-                                      rng.uniform(0.4, 1.2), click=0.3) for _ in range(24)])
-        self.intensity = SmoothRandom(rng, 0.7, 1.15, 6.0, sr)
-        self._calibrate()
-
-    def _raw(self, n):
-        sr = self.sr
-        env = self.intensity.render(n)
-        patter = self.patter.render(n, 1400 / sr * env, (0.05, 0.25))
-        drops = self.drops.render(n, 22 / sr * env, (0.15, 0.5), heavy=2.5)
-        big = self.big.render(n, 2.5 / sr, (0.4, 0.9))
-        return (self.bed.render(n) * 0.9 + patter * 0.35 + drops * 0.55 + big * 0.6) * env
-
-
 class Leaves(_Calibrated):
     """Rustling leaves: gusts sweep through the canopy, thousands of soft grains."""
 
@@ -379,7 +371,7 @@ class Leaves(_Calibrated):
         self.grains = Grains(rng, [_grain(rng, sr, rng.uniform(0.004, 0.035), rng.uniform(1800, 7000),
                                           rng.uniform(0.8, 2.0)) for _ in range(64)])
         self.gust = SmoothRandom(rng, 0.0, 1.0, 2.6, sr)
-        self.hiss = Bed(rng, sr, "pink", biquad_mag("hp", 2200, sr))
+        self.hiss = Bed(rng, sr, biquad_mag("hp", 2200, sr))
         self._calibrate()
 
     def _raw(self, n):
@@ -396,7 +388,7 @@ class Stream(_Calibrated):
     def __init__(self, sr, seed=None):
         super().__init__(sr, seed)
         rng = self.rng
-        self.bed = Bed(rng, sr, "pink", biquad_mag("bp", 900, sr, 0.5))
+        self.bed = Bed(rng, sr, biquad_mag("bp", 900, sr, 0.5))
         self.bubbles = Grains(rng, [_plip(rng, sr, rng.uniform(500, 2200), rng.uniform(0.008, 0.025),
                                           rng.uniform(0.6, 2.0), click=0.05) for _ in range(64)])
         self.splash = Grains(rng, [_tick(rng, sr, rng.uniform(0.002, 0.008), rng.uniform(1500, 5000), 0.7)
@@ -412,141 +404,180 @@ class Stream(_Calibrated):
         return self.bed.render(n) * mod * 1.4 + bub * 0.6 + spl * 0.3
 
 
-def _xfade(beds: list[Bed], pos: np.ndarray, n: int) -> np.ndarray:
-    """Equal-power crossfade between beds; ``pos`` in [0, len(beds) - 1] per sample."""
-    out = np.zeros(n)
-    for i, bed in enumerate(beds):
-        w = np.clip(1.0 - np.abs(pos - i), 0.0, 1.0)
-        if np.any(w > 0):
-            out += bed.render(n) * np.sin(w * np.pi / 2)
-        else:
-            bed.pos = (bed.pos + n) % len(bed.data)
-    return out
+class WhiteNoise(Generator):
+    name = "white"
+
+    def render(self, n):
+        return self.white(n) * TARGET_RMS
+
+
+class PinkNoise(Generator):
+    """Paul Kellet style -3 dB/octave filter."""
+
+    name = "pink"
+    B = (0.049922035, -0.095993537, 0.050612699, -0.004408786)
+    A = (1.0, -2.494956002, 2.017265875, -0.522189400)
+
+    def __init__(self, sr, seed=None):
+        super().__init__(sr, seed)
+        self.filt = IIR(self.B, self.A)
+
+    def render(self, n):
+        return self.filt(self.white(n)) * (TARGET_RMS / 0.0864)
+
+
+class BrownNoise(Generator):
+    """Integrated white noise with a gentle DC blocker."""
+
+    name = "brown"
+
+    def __init__(self, sr, seed=None):
+        super().__init__(sr, seed)
+        self.leaky = IIR([1.0], [1.0, -0.997])
+        self.dc = IIR(*_biquad("hp", 20, sr))
+
+    def render(self, n):
+        return self.dc(self.leaky(self.white(n))) * (TARGET_RMS / 7.5)
+
+
+class Fan(Generator):
+    """Steady air noise with a faint rotating hum."""
+
+    name = "fan"
+
+    def __init__(self, sr, seed=None):
+        super().__init__(sr, seed)
+        self.pink = PinkNoise(sr, seed)
+        self.lp = IIR(*_biquad("lp", 1400, sr, 0.6))
+        self.phase = 0
+
+    def render(self, n):
+        y = self.lp(self.pink.render(n))
+        t = (self.phase + np.arange(n)) / self.sr
+        self.phase += n
+        wobble = 1.0 + 0.04 * np.sin(2 * np.pi * 7.3 * t)
+        hum = 0.012 * np.sin(2 * np.pi * 98 * t) * (1 + 0.3 * np.sin(2 * np.pi * 0.2 * t))
+        return y * wobble * 1.25 + hum
+
+
+class Rain(Generator):
+    """Steady rain bed plus individual drops hitting surfaces."""
+
+    name = "rain"
+    LEVEL = 1.13  # long-term average of the hand-tuned mix is ~0.89 x TARGET_RMS
+
+    def __init__(self, sr, seed=None, drops_per_s=900):
+        super().__init__(sr, seed)
+        self.pink = PinkNoise(sr, seed)
+        self.hp = IIR(*_biquad("hp", 500, sr))
+        self.lp = IIR(*_biquad("lp", 7000, sr))
+        self.drop = IIR(*_biquad("bp", 2800, sr, 0.9))
+        self.rate = drops_per_s
+        self.intensity = SmoothRandom(self.rng, 0.75, 1.15, 6.0, sr)
+
+    def render(self, n):
+        bed = self.lp(self.hp(self.pink.render(n)))
+        hits = np.zeros(n)
+        idx = np.flatnonzero(self.rng.random(n) < self.rate / self.sr)
+        hits[idx] = np.minimum(self.rng.pareto(3.0, len(idx)), 3.0)
+        drops = self.drop(hits)
+        return (bed * 1.6 + drops * 0.35) * self.intensity.render(n) * self.LEVEL
 
 
 class Wind(Generator):
-    """Gusty wind: band-limited noise with wandering centre frequency and level."""
+    """Gusty wind: band-limited noise with wandering cutoff and level."""
 
     name = "wind"
-    CENTRES = (250.0, 420.0, 900.0)
+    BLOCK = 256
 
     def __init__(self, sr, seed=None):
         super().__init__(sr, seed)
-        lp = biquad_mag("lp", 1800, sr, 0.6)
-        self.beds = [Bed(self.rng, sr, "white", lp, biquad_mag("bp", c, sr, 1.2)) for c in self.CENTRES]
-        self.cut = SmoothRandom(self.rng, 250, 900, 4.0, sr)
+        self.cut = SmoothRandom(self.rng, 250, 900, 4.0, sr / self.BLOCK)
         self.level = SmoothRandom(self.rng, 0.35, 1.2, 5.0, sr)
-        self._norm = [TARGET_RMS / (float(np.sqrt(np.mean(b.data.astype(np.float64) ** 2))) or 1.0)
-                      for b in self.beds]
-        for b, g in zip(self.beds, self._norm, strict=True):
-            b.data *= g
+        self.lp = IIR(*_biquad("lp", 1800, sr, 0.6))
+        self.bp = TVBiquad()
 
     def render(self, n):
-        logc = np.log(self.cut.render(n))
-        lc = np.log(self.CENTRES)
-        pos = np.interp(logc, lc, np.arange(len(lc)))
-        return _xfade(self.beds, pos, n) * self.level.render(n)
+        x = self.lp(self.white(n))
+        out = np.empty_like(x)
+        cuts = self.cut.render(math.ceil(n / self.BLOCK))
+        for k, start in enumerate(range(0, n, self.BLOCK)):
+            seg = x[start : start + self.BLOCK]
+            out[start : start + len(seg)] = self.bp(seg, *_biquad("bp", float(cuts[k]), self.sr, 1.2))
+        return out * self.level.render(n) * (TARGET_RMS / 0.120)
 
 
-@dataclass(eq=False)
-class _Wave:
-    start: int
-    swell: np.ndarray
-    crash: np.ndarray
-    wash: np.ndarray
-
-
-class Waves(_Calibrated):
-    """Ocean surf: each wave swells, breaks with a bright crash and washes out
-    as fizzing foam while the next one builds. Waves overlap and vary in size."""
+class Waves(Generator):
+    """Ocean waves: swells that build, break and wash back out."""
 
     name = "waves"
+    BLOCK = 256
 
     def __init__(self, sr, seed=None):
         super().__init__(sr, seed)
-        rng = self.rng
-        self.body = Bed(rng, sr, "brown", biquad_mag("lp", 380, sr, 0.6))
-        self.bed = Bed(rng, sr, "pink", biquad_mag("lp", 650, sr, 0.6))
-        # the crash low-pass opens from 500 Hz to 7.5 kHz as the wave breaks
-        self.crash = [Bed(rng, sr, "pink", biquad_mag("lp", 500, sr, 0.6)),
-                      Bed(rng, sr, "pink", biquad_mag("lp", 2200, sr, 0.6)),
-                      Bed(rng, sr, "pink", biquad_mag("lp", 7500, sr, 0.6))]
-        self.hiss = Bed(rng, sr, "white", biquad_mag("hp", 1800, sr))
-        self.foam = Grains(rng, [_plip(rng, sr, rng.uniform(2000, 6500), rng.uniform(0.003, 0.012),
-                                       rng.uniform(0.5, 2.5), click=0.4) for _ in range(64)])
-        self.pos = 0
-        self.next_start = 0
-        self.waves: list[_Wave] = []
-        self._calibrate(16.0)
+        self.pink = PinkNoise(sr, seed)
+        self.brown = BrownNoise(sr, None if seed is None else seed + 1)
+        self.lp = TVBiquad()
+        self.env = np.zeros(0)
+        self.env_pos = 0
 
-    def _new_wave(self, start):
-        rng, sr = self.rng, self.sr
-        rise, fall = rng.uniform(2.8, 4.5), rng.uniform(6.0, 9.0)
-        size = rng.uniform(0.55, 1.0)
-        m = int((rise + fall) * sr)
-        t = np.arange(m) / sr
-        swell = np.where(t < rise, (t / rise) ** 2, np.exp(-(t - rise) / (fall / 2.2)))
-        curl = np.clip((t - (rise - 1.3)) / 1.3, 0.0, 1.0)
-        tc = np.maximum(t - rise, 0.0)
-        crash = np.where(t < rise, curl**2.5, np.exp(-tc / rng.uniform(0.9, 1.6)))
-        wash = np.where(t < rise, 0.0, (1 - np.exp(-tc / 0.7)) * np.exp(-tc / (fall / 2.5)))
-        taper = np.minimum(1.0, (m - np.arange(m)) / (1.5 * sr))
-        return _Wave(start, swell * taper * size, crash * taper * size * rng.uniform(0.6, 1.0),
-                     wash * taper * size)
+    def _new_wave(self):
+        sr = self.sr
+        rise = self.rng.uniform(2.5, 4.0)
+        fall = self.rng.uniform(4.0, 7.0)
+        gap = self.rng.uniform(0.0, 1.5)
+        peak = self.rng.uniform(0.6, 1.0)
+        t_r = np.linspace(0, 1, int(rise * sr), endpoint=False)
+        t_f = np.linspace(0, 1, int(fall * sr), endpoint=False)
+        floor = 0.12
+        up = floor + (peak - floor) * t_r**2.2
+        down = floor + (peak - floor) * np.exp(-3.5 * t_f) * (1 - t_f)
+        tail = np.full(int(gap * sr), floor)
+        return np.concatenate([up, down, tail])
 
-    def _envelopes(self, n):
-        while self.next_start < self.pos + n:
-            self.waves.append(self._new_wave(self.next_start))
-            self.next_start += int(self.rng.uniform(5.0, 9.5) * self.sr)
-        sw, cr, wa = np.zeros(n), np.zeros(n), np.zeros(n)
-        for w in list(self.waves):
-            a = max(self.pos, w.start)
-            b = min(self.pos + n, w.start + len(w.swell))
-            if b > a:
-                s, d = slice(a - w.start, b - w.start), slice(a - self.pos, b - self.pos)
-                sw[d] += w.swell[s]
-                cr[d] += w.crash[s]
-                wa[d] += w.wash[s]
-            if w.start + len(w.swell) <= self.pos + n:
-                self.waves.remove(w)
-        self.pos += n
-        return sw, cr, wa
+    def _envelope(self, n):
+        out = np.empty(n)
+        i = 0
+        while i < n:
+            if self.env_pos >= len(self.env):
+                self.env, self.env_pos = self._new_wave(), 0
+            take = min(n - i, len(self.env) - self.env_pos)
+            out[i : i + take] = self.env[self.env_pos : self.env_pos + take]
+            i += take
+            self.env_pos += take
+        return out
 
-    def _raw(self, n):
-        sw, cr, wa = self._envelopes(n)
-        crash = _xfade(self.crash, 2.0 * np.minimum(cr, 1.0) ** 0.8, n)
-        foam = self.foam.render(n, 900 / self.sr * wa, (0.05, 0.3))
-        return (self.bed.render(n) * 0.35 + self.body.render(n) * sw * 1.4 + crash * cr * 1.6
-                + self.hiss.render(n) * wa * 0.18 + foam * 0.5)
+    def render(self, n):
+        env = self._envelope(n)
+        x = self.pink.render(n) * 0.7 + self.brown.render(n) * 0.6
+        out = np.empty_like(x)
+        for start in range(0, n, self.BLOCK):
+            e = float(env[start])
+            seg = x[start : start + self.BLOCK]
+            out[start : start + len(seg)] = self.lp(seg, *_biquad("lp", 300 + 3500 * e**1.5, self.sr, 0.6))
+        return out * env * 3.2
 
 
-class Fire(_Calibrated):
-    """Fireplace: low roar, soft hiss, and clearly audible crackles and pops."""
+class Fire(Generator):
+    """Crackling fireplace: low roar plus random crackles and pops."""
 
     name = "fire"
 
     def __init__(self, sr, seed=None):
         super().__init__(sr, seed)
-        rng = self.rng
-        self.roar = Bed(rng, sr, "brown", biquad_mag("lp", 420, sr))
-        self.hiss = Bed(rng, sr, "pink", biquad_mag("hp", 3000, sr))
-        self.ticks = Grains(rng, [_tick(rng, sr, rng.uniform(0.0002, 0.0012), rng.uniform(1800, 6500), 0.9)
-                                  for _ in range(48)])
-        self.clusters = Grains(rng, [_cluster(rng, sr, int(rng.integers(3, 12)), rng.uniform(0.03, 0.18),
-                                              1500, 6000) for _ in range(32)])
-        self.pops = Grains(rng, [_tick(rng, sr, rng.uniform(0.003, 0.012), rng.uniform(500, 1400), 1.4)
-                                 for _ in range(16)])
-        self.activity = SmoothRandom(rng, 0.3, 1.0, 2.0, sr)
-        self._calibrate()
+        self.brown = BrownNoise(sr, seed)
+        self.lp = IIR(*_biquad("lp", 500, sr))
+        self.hp = IIR(*_biquad("hp", 1800, sr))
+        self.activity = SmoothRandom(self.rng, 2, 40, 1.5, sr)
 
-    def _raw(self, n):
-        sr = self.sr
-        act = self.activity.render(n)
-        ticks = self.ticks.render(n, 45 / sr * act, (0.1, 0.5), heavy=2.5)
-        cl = self.clusters.render(n, 2.2 / sr * act, (0.3, 0.9))
-        pops = self.pops.render(n, 0.35 / sr, (0.6, 1.0))
-        return (self.roar.render(n) * 0.55 + self.hiss.render(n) * 0.08 * act
-                + ticks * 0.45 + cl * 0.55 + pops * 0.7)
+    def render(self, n):
+        rng = self.rng
+        roar = self.lp(self.brown.render(n))
+        rate = self.activity.render(n) / self.sr
+        hits = np.zeros(n)
+        idx = np.flatnonzero(rng.random(n) < rate)
+        hits[idx] = rng.uniform(-1, 1, len(idx)) * (np.minimum(rng.pareto(2.5, len(idx)), 3.0) + 0.2)
+        return roar * 0.8 + self.hp(hits) * 0.5
 
 
 @dataclass(eq=False)
@@ -610,39 +641,34 @@ class EventGenerator(Generator):
 
 
 class Thunder(EventGenerator):
-    """Thunder for small speakers: crack for close strikes, a rolling middle part
-    and a long rumble voiced around 120-500 Hz."""
+    """Distant rolling thunder, sometimes with a closer crack."""
 
     name = "thunder"
 
-    def __init__(self, sr, seed=None, every=(20.0, 70.0)):
+    def __init__(self, sr, seed=None, every=(25.0, 90.0)):
         super().__init__(sr, seed, every)
+        self.countdown = int(self.rng.uniform(3.0, 20.0) * sr)  # first roll soon after switching on
 
     def make_event(self):
         sr, rng = self.sr, self.rng
-        dur = rng.uniform(7, 14)
+        dur = rng.uniform(6, 13)
         n = int(dur * sr)
         t = np.arange(n) / sr
-        close = rng.random() < 0.45
-        rumble = fft_filter(rng.standard_normal(n), sr, leaky_mag(0.97, sr), butter_lp_mag(rng.uniform(260, 520)))
-        rumble = _peak_norm(rumble)
-        attack = rng.uniform(0.02, 0.15) if close else rng.uniform(0.5, 1.5)
-        env = np.minimum(t / attack, 1.0) * np.exp(-t / (dur / 3.0))
-        for _ in range(rng.integers(3, 6)):  # rolling swells
-            c, w = rng.uniform(0.6, dur * 0.65), rng.uniform(0.25, 0.9)
-            env *= 1 + 1.2 * np.exp(-(((t - c) / w) ** 2))
+        close = rng.random() < 0.3
+        x = rng.standard_normal(n)
+        lp = IIR(*_biquad("lp", rng.uniform(90, 220), sr, BUTTER_Q))
+        rumble = lp(IIR([1.0], [1.0, -0.98])(x))
+        attack = rng.uniform(0.05, 0.4) if close else rng.uniform(0.6, 1.8)
+        env = np.minimum(t / attack, 1.0) * np.exp(-t / (dur / 3.2))
+        # rolling: a few secondary swells
+        for _ in range(rng.integers(2, 5)):
+            c, w = rng.uniform(0.5, dur * 0.7), rng.uniform(0.3, 1.2)
+            env *= 1 + 0.9 * np.exp(-(((t - c) / w) ** 2))
         out = rumble * env
-        roll = _peak_norm(fft_filter(rng.standard_normal(n), sr, butter_bp_mag(180, 1400)))
-        renv = np.zeros(n)
-        t0 = 0.0 if close else attack * 0.6
-        for _ in range(rng.integers(4, 10)):
-            c = t0 + rng.uniform(0, 3.5)
-            renv += rng.uniform(0.3, 1.0) * np.exp(-np.abs(t - c) / rng.uniform(0.04, 0.2)) * np.exp(-c / 3)
-        out += roll * renv * 0.9
-        if close:  # the crack: a bright, sudden split
-            crack = _peak_norm(fft_filter(rng.standard_normal(n), sr, butter_hp_mag(900)))
-            out += crack * (np.exp(-t / 0.12) + 0.5 * np.exp(-np.abs(t - 0.18) / 0.05)) * 0.9
-        return _peak_norm(out) * rng.uniform(0.45, 0.85)
+        if close:
+            crack = IIR(*_biquad("hp", 1500, sr, BUTTER_Q))(rng.standard_normal(n))
+            out += crack * np.exp(-t / 0.25) * 0.02
+        return _peak_norm(out) * rng.uniform(0.35, 0.8)
 
 
 class Birds(EventGenerator):
