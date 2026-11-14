@@ -4,8 +4,8 @@
 // Parts: assembly, base_shell, divider, top_lid, bottom_plate, stem, led_core,
 //        core_cap, spider, shade, knob
 //
-// Base: 2 compartments. Below: electronics (Pi Zero 2 W + DigiAMP+, LED buck).
-// Above: sealed ~2.6 l speaker chamber with a 4" full-range driver firing to
+// Base: 2 compartments. Below: electronics (Pi 3 A+ or Pi Zero 2 W + DigiAMP+, LED buck).
+// Above: sealed ~2.1 l (net) speaker chamber with a 4" full-range driver firing to
 // the front and a passive radiator firing to the back, behind vertical grille slats.
 // Top: brass or printed stem, LED core wrapped with an SK6812 strip,
 // pleated shade printed in vase mode from translucent PLA/PETG.
@@ -23,7 +23,7 @@ div_t       = 4;
 lid_t       = 5;
 
 /* [Driver (front) and passive radiator (back)] */
-drv_flange_d = 106;  // outer flange diameter (Dayton ND105-4: check!)
+drv_flange_d = 106;  // outer flange diameter (ND105-4: 105 mm, cut-out 93 mm, depth 67 mm per datasheet)
 drv_cutout_d = 93;   // baffle cut-out
 drv_bolt_d   = 99;   // bolt circle for 4 mounting screws
 drv_bolt_hole= 4.2;  // M3 heat-set insert hole (use 5.0 for M4 inserts)
@@ -43,15 +43,21 @@ dc_jack_d   = 11;     // panel DC jack (5.5/2.1 mm)
 hat_origin  = [-32.5, -28];   // lower left corner of the DigiAMP+ (65 x 56.5 mm HAT)
 hat_holes   = [[3.5,3.5],[61.5,3.5],[3.5,52.5],[61.5,52.5]];  // M2.5
 zero_holes  = [[3.5,29.5],[61.5,29.5],[3.5,52.5],[61.5,52.5]]; // Pi Zero below the HAT, header rows aligned
-zero_z      = 5;      // Pi Zero board height above the plate
-hat_z       = 17.6;   // DigiAMP+ height (Pi Zero + 11 mm M2.5 spacers)
+pi_model    = "3a";   // "3a" = Raspberry Pi 3 Model A+ (same 65 x 56 footprint as the HAT), "zero2" = Pi Zero 2 W
+pi_holes    = pi_model == "3a" ? hat_holes : zero_holes;
+zero_z      = 8;      // Pi board height above the plate bottom (5 mm air under the board for the SD slot and header pins)
+hat_z       = zero_z + 1.6 + 11;   // DigiAMP+ height (Pi + 11 mm M2.5 spacers)
+buck_center = [0, -58];            // LM2596 step-down module (approx. 43 x 21 mm)
+buck_size   = [43, 21];
+buck_holes  = [[-15,-8],[15,-8],[-15,8],[15,8]];  // 4 domes: fits both diagonals of the usual 30 x 16 mm hole pattern
 knob_offset = [0, -52];   // encoder position on the lid (front), used when knob_pos = "top"
 knob_pos    = "side";     // "side": knob in the right side wall (works with every shade), "top": on the lid
 knob_side_a = 0;          // angle of the side knob (0 = right side, seen from the front)
 brace_angles = [20, 40, 140, 160, 200, 220, 320, 340];  // vertical stiffening ribs in the chamber
+conduit_pos = [45, 0];    // cable tube beside the speakers (the ND105-4 is 67 mm deep, its magnet reaches the centre)
 
 /* [Lamp] */
-shade_style = "plissee";  // "plissee" | "glocke" (on the stem) | "kolben" | "twist" (sit directly on the base)
+shade_style = "plissee";  // "plissee" | "glocke" (on the stem) | "kolben" | "twist" | "laterne" (sit directly on the base)
 stem_od    = 20;      // fits a 20 mm brass tube, or print the stem part
 stem_id    = 13;
 stem_len   = 150;
@@ -149,14 +155,14 @@ module divider() {
     cylinder(r = Ri - 0.4, h = div_t);
     // speaker cables + LED/encoder conduit, seal with silicone after wiring
     for (p = [[30, 0], [-30, 0]]) translate([p[0], p[1], -eps]) cylinder(d = 5, h = div_t + 1, $fn = 20);
-    translate([0, 0, -eps]) cylinder(d = 10, h = div_t + 1);
+    translate([conduit_pos[0], conduit_pos[1], -eps]) cylinder(d = 10, h = div_t + 1);
     // screws into the ledge (heat-set inserts in the ledge)
     for (a = [0:60:300]) rotate(a) translate([Ri - 3.5, 0, -eps]) cylinder(d = 3.4, h = div_t + 1, $fn = 20);
     // notches so the divider slides past the stiffening ribs
     for (a = brace_angles) rotate(a) translate([Ri - 7, -2, -eps]) cube([8, 4, div_t + 1]);
   }
   // stub that the cable tube (conduit) slides over
-  ring(9.8, 6, div_t + 6);
+  translate(conduit_pos) ring(9.8, 6, div_t + 6);
 }
 
 module top_lid() {
@@ -169,7 +175,9 @@ module top_lid() {
       translate([0, 0, lid_t]) cylinder(d = stem_od + 12, h = 22);
     }
     translate([0, 0, lid_t + 4]) cylinder(d = stem_od + 0.4, h = 40);   // stem socket
-    translate([0, 0, -eps]) cylinder(d = 10, h = 60);                 // cable conduit
+    // cable path: conduit (off-centre) -> horizontal channel inside the lid -> stem socket
+    translate([conduit_pos[0], conduit_pos[1], -eps]) cylinder(d = 8, h = lid_t + 2.5 + eps);
+    hull() for (p = [[0, 0], conduit_pos]) translate([p[0], p[1], lid_t + 2.5]) sphere(d = 6, $fn = 24);
     if (knob_pos == "top") {
       translate([knob_offset[0], knob_offset[1], -eps]) cylinder(d = 7.4, h = 40, $fn = 32);  // EC11 bushing
       translate([knob_offset[0], knob_offset[1], -eps]) cylinder(d = 14, h = lid_t + 8 - 1.6, $fn = 32); // thin top skin for the nut
@@ -189,14 +197,15 @@ module bottom_plate() {
       // Pi Zero 2 W on short standoffs; the DigiAMP+ sits on 11 mm spacers above it
       // (shared header-side holes) and on two tall standoffs on the other side
       translate(hat_origin) {
-        for (p = zero_holes) translate([p[0], p[1], 0]) cylinder(d = 6, h = zero_z, $fn = 24);
-        for (p = [hat_holes[0], hat_holes[1]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = hat_z, $fn = 24);
+        for (p = pi_holes) translate([p[0], p[1], 0]) cylinder(d = 6, h = zero_z, $fn = 24);
+        // Pi Zero: two tall standoffs carry the free side of the HAT. Pi 3A+: the HAT sits on 4 spacers.
+        if (pi_model != "3a") for (p = [hat_holes[0], hat_holes[1]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = hat_z, $fn = 24);
       }
-      // standoffs for the 5 V buck converter (mini MP1584 / LM2596 board)
-      translate([-20, -60, 0]) for (p = [[0,0],[30,0]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = 6, $fn = 24);
+      // standoffs for the LM2596 5 V step-down module
+      translate(buck_center) for (p = buck_holes) translate([p[0], p[1], 0]) cylinder(d = 6, h = 7, $fn = 24);
     }
-    translate([hat_origin[0], hat_origin[1], -eps]) for (p = concat(zero_holes, hat_holes)) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 30, $fn = 16);
-    translate([-20, -60, -eps]) for (p = [[0,0],[30,0]]) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 10, $fn = 16);
+    translate([hat_origin[0], hat_origin[1], -eps]) for (p = concat(pi_holes, hat_holes)) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 30, $fn = 16);
+    translate([buck_center[0], buck_center[1], -eps]) for (p = buck_holes) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 10, $fn = 16);
     // vent slots
     for (x = [-60:8:60]) translate([x - 1.5, 45, -eps]) cube([3, 30, 4]);
     // screw holes into the shell bosses + recesses for rubber feet
@@ -241,6 +250,7 @@ function style(name) =
   name == "glocke" ? [150, function(t) 52 + 52 * pow(1 - t, 1.8), 36, 2.0, 0, false] :
   name == "kolben" ? [230, function(t) 58 + 44 * sin(180 * pow(t, 0.85)), 56, 2.2, 0, true] :
   name == "twist"  ? [210, function(t) 76 + 10 * sin(180 * t), 40, 3.0, 50, true] :
+  name == "laterne"? [215, function(t) 58 + 16 * sin(180 * t) + 13 * pow(sin(540 * t), 2), 72, 1.6, 0, true] :
   /* plissee */      [shade_h, function(t) (shade_bot_d + (shade_top_d - shade_bot_d) * t) / 2, pleats, pleat_depth, 0, false];
 
 S          = style(shade_style);
@@ -327,7 +337,7 @@ module dummy_driver() {   // in the -Y baffle, cone facing out
   color("#202231") translate([0, -baffle_dist, drv_z]) rotate([-90,0,0]) {
     cylinder(d = drv_flange_d, h = 3);
     cylinder(d1 = drv_cutout_d - 4, d2 = 40, h = 30);
-    translate([0,0,30]) cylinder(d = 72, h = 25);
+    translate([0,0,30]) cylinder(d = 62, h = 34);   // ND105-4: 67 mm overall depth
   }
   color("#5a5f6e") translate([0, -baffle_dist - 2, drv_z]) rotate([90,0,0]) cylinder(d1 = 84, d2 = 30, h = 14);
   color("#8d92a3") translate([0, -baffle_dist - 14, drv_z]) rotate([90,0,0]) sphere(d = 30);
@@ -341,14 +351,24 @@ module dummy_pr() {
 }
 module dummy_electronics() {
   translate([hat_origin[0], hat_origin[1], 0]) {
-    color("#1f7a3c") translate([0, 26, zero_z]) cube([65, 30, 1.6]);                 // Pi Zero 2 W
+    if (pi_model == "3a") {
+      color("#1f7a3c") translate([0, 0, zero_z]) cube([65, 56, 1.6]);                // Pi 3 Model A+
+      color("#bbb") translate([-1, 18, zero_z + 1.6]) cube([17, 14, 8]);              // USB-A
+      color("#999") translate([20, 18, zero_z + 1.6]) cube([14, 14, 2]);              // SoC
+    } else
+      color("#1f7a3c") translate([0, 26, zero_z]) cube([65, 30, 1.6]);               // Pi Zero 2 W
     color("#222") translate([3.5 + 29 - 25.4, 26 + 30 - 5, zero_z + 1.6]) cube([51, 5, 9]); // header
     color("#2a4b8d") translate([0, 0, hat_z]) cube([65, 56.5, 1.6]);                 // DigiAMP+
     color("#111") translate([8, 8, hat_z + 1.6]) cube([14, 14, 10]);                 // inductors/caps
     color("#111") translate([40, 8, hat_z + 1.6]) cube([14, 14, 10]);
     color("#2f8a4f") translate([0, 40, hat_z + 1.6]) cube([10, 16, 9]);               // terminals
   }
-  color("#2a4b8d") translate([-25, -66, 6]) cube([40, 20, 1.6]);                       // buck converter
+  translate([buck_center[0] - buck_size[0]/2, buck_center[1] - buck_size[1]/2, 7]) {  // LM2596 module
+    color("#2a4b8d") cube([buck_size[0], buck_size[1], 1.6]);
+    color("#333") translate([14, 3, 1.6]) cube([13, 13, 7]);                         // inductor
+    color("#3b6fd8") translate([30, 3, 1.6]) cube([9, 5, 10]);                       // trim pot
+    color("#111") translate([4, 4, 1.6]) cylinder(d = 8, h = 11, $fn = 24);           // electrolytic caps
+  }
   color("#7a7f8f") translate([0, R - wall - 8, 18]) rotate([-90,0,0]) cylinder(d = 10, h = 12); // DC jack
 }
 module dummy_leds() {
@@ -364,7 +384,7 @@ module assembly(with_shade = true, with_parts = true) {
   color("#2b2f3d") translate([0,0,-3]) bottom_plate();
   if (with_parts) { dummy_driver(); dummy_pr(); dummy_electronics(); dummy_leds(); }
   color("#b88a3c") translate([0,0,stem_z]) ring(stem_od, stem_id, lamp_stem_len);
-  color("#2b2f3d") translate([0,0,chamber_bot]) conduit();
+  color("#2b2f3d") translate([conduit_pos[0], conduit_pos[1], chamber_bot]) conduit();
   color("#e9e3d5") translate([0,0,stem_top]) led_core();
   color("#e9e3d5") translate([0,0,stem_top + core_h]) core_cap();
   knob_placed();
@@ -385,6 +405,41 @@ module knob_placed() {
 // cut open to show the inside (for documentation)
 module cutaway() { difference() { assembly(with_shade = false); translate([0, -300, -10]) cube([300, 600, 600]); } }
 
+// ------------------------------------------------------------------ detail views for the docs
+module led_strip_spiral(turns = 4, pitch = 15, w = 10) {
+  n = 30;                                   // 30 LEDs on 0.5 m
+  steps = 160;
+  r = core_d / 2 + 0.6;
+  for (i = [0 : steps - 1]) let(a0 = i * 360 * turns / steps, a1 = (i + 1) * 360 * turns / steps)
+    hull() for (a = [a0, a1]) rotate(a) translate([r, 0, 6 + a / 360 * pitch]) cube([0.6, 0.6, w], center = true);
+  for (k = [0 : n - 1]) let(a = k * 360 * turns / n)
+    color("#fff2b8") rotate(a) translate([r + 0.9, 0, 6 + a / 360 * pitch]) cube([1.6, 5, 5], center = true);
+}
+module led_detail() {
+  color("#e9e2d2") led_core();
+  color("#f4f4f4") led_strip_spiral();
+  color("#d8cfbd") translate([0, 0, core_h + 25]) core_cap();
+  color("#b88a3e") translate([0, 0, -60]) ring(stem_od, stem_id, 45);
+  // cable: 3 wires leaving the strip start into the core and down the stem
+  for (i = [0:2]) color(["#e8862a", "#222", "#2f6fd0"][i]) translate([-2 + i * 2, 0, -58]) cylinder(d = 1.6, h = 66, $fn = 8);
+}
+module perfboard_dummy() {
+  translate([-78, -35, 3]) {
+    color("#c9e3c4") cube([30, 70, 1.6]);
+    color("#232a40") translate([8, 20, 1.6]) cube([7.6, 19, 5]);          // 74AHCT125
+    color("#222") translate([20, 10, 1.6]) cylinder(d = 8, h = 12, $fn = 24); // 1000 uF
+    color("#d9b46c") translate([16, 48, 1.6]) cube([8, 2.4, 2.4]);       // 330 R
+    color("#2f8a4f") translate([4, 58, 1.6]) cube([22, 8, 10]);          // screw terminals
+  }
+}
+module electronics_detail() {
+  color("#3a4361") bottom_plate();
+  dummy_electronics();
+  perfboard_dummy();
+}
+if (part == "led_detail")         led_detail();
+if (part == "electronics_detail") electronics_detail();
+
 if (part == "assembly")      assembly();
 if (part == "cutaway")       cutaway();
 
@@ -398,7 +453,7 @@ module exploded() {
   color("#2b2f3d") translate([0,0,-60]) bottom_plate();
   translate([0,0,-57]) dummy_electronics();
   color("#2b2f3d") translate([0,0,div_z]) divider();
-  color("#2b2f3d") translate([0,0,chamber_bot]) conduit();
+  color("#2b2f3d") translate([conduit_pos[0], conduit_pos[1], chamber_bot]) conduit();
   color("#4b5168") translate([0,0,chamber_top + 70]) top_lid();
   translate([40, 0, 0]) knob_placed();
   color("#b88a3c") translate([0,0,stem_z + 110]) ring(stem_od, stem_id, lamp_stem_len);

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "dusk-dawn-core"
+description = "Rust sound engine for the Dusk & Dawn Home Assistant integration (procedural sleep sounds and alarm tones)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Multimedia :: Sound/Audio :: Sound Synthesis",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest", "numpy", "scipy"]
+
+[tool.maturin]
+module-name = "dusk_dawn_core"
+features = ["extension-module"]
+strip = true

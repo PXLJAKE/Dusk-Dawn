@@ -24,6 +24,8 @@ journalctl -u sleepgen -f                          # Log des Dienstes
 
 ## 2. Home Assistant anbinden
 
+> **Stand bei Jake (14.11.2026):** Mosquitto, MQTT und Music Assistant laufen schon. Helfer, Skripte, die fünf Automationen und das Dashboard **Soundlampe** (Seitenleiste) sind bereits angelegt. Es fehlt nur noch Schritt 2 (Benutzer für die Lampe). Sobald die Lampe läuft, füllen sich die Karten im Dashboard von selbst. Die Schritte 4 und 5 sind für einen Nachbau in einer anderen HA-Installation.
+
 1. In Home Assistant die App **Mosquitto broker** installieren und starten (Einstellungen → Apps). Die Integration **MQTT** wird danach vorgeschlagen, einfach bestätigen.
 2. Einen Benutzer für die Lampe anlegen (Einstellungen → Personen → Benutzer, z. B. `sleepgen`). Den Namen und das Passwort in `/etc/sleepgen/config.yaml` unter `mqtt:` eintragen, `host` ist die IP von Home Assistant.
 3. `sudo systemctl restart sleepgen`. Unter Einstellungen → Geräte & Dienste → MQTT erscheint das Gerät **Soundlampe** mit allen Entitäten:
@@ -33,7 +35,7 @@ journalctl -u sleepgen -f                          # Log des Dienstes
 | `switch.sleepgen_sound` | Sounds an/aus |
 | `select.sleepgen_preset` | Regen, Gewitternacht, Meer, Kaminabend … |
 | `select.sleepgen_timer` | Sleep-Timer 15–120 min (die letzten 10 min werden ausgeblendet) |
-| `number.sleepgen_layer_*` | ein Regler je Klang: rain, thunder, waves, wind, fire, birds, fan, white, pink, brown |
+| `number.sleepgen_layer_*` | ein Regler je Klang: rain, thunder, waves, wind, fire, birds, leaves, stream, fan, white, pink, brown |
 | `number.sleepgen_master` | Lautstärke der Sounds |
 | `number.sleepgen_device_volume` | Gerätelautstärke (wie der Drehknopf, gilt auch für Musik) |
 | `light.sleepgen_lamp` | Lampe: Helligkeit, Farbtemperatur 1800–6500 K, Farbe, Effekte *Sonnenaufgang*, *Kerze*, *Einschlafen* |
@@ -41,6 +43,10 @@ journalctl -u sleepgen -f                          # Log des Dienstes
 | `number.sleepgen_sunrise_minutes` | Dauer des Sonnenaufgangs |
 | `switch.sleepgen_lamp_follows_timer` | Licht dimmt mit dem Sleep-Timer herunter |
 | `sensor.sleepgen_timer_remaining` | Restzeit |
+| `switch.sleepgen_alarm` | Wecker: an = klingelt jetzt, aus = stoppen |
+| `select.sleepgen_alarm_tone` | Weckton: Glocken, Klassisch, Vogelchor |
+| `number.sleepgen_alarm_minutes` | Weckdauer 1–60 min, danach hört er von selbst auf |
+| `number.sleepgen_alarm_volume` | Wecklautstärke |
 
 4. **Paket mit Wecker und Automationen:** [`homeassistant/sleepgen_package.yaml`](../homeassistant/sleepgen_package.yaml) nach `/config/packages/sleepgen.yaml` kopieren und in `configuration.yaml` eintragen:
    ```yaml
@@ -49,6 +55,7 @@ journalctl -u sleepgen -f                          # Log des Dienstes
    ```
    Danach Home Assistant neu starten. Das Paket bringt mit:
    - **Aufwachlicht:** Weckzeit einstellen. Der Sonnenaufgang startet automatisch so, dass er zur Weckzeit fertig ist (optional nur werktags, optional mit leisem Vogelgezwitscher).
+   - **Wecker:** klingelt zur Weckzeit, wenn „Wecker klingelt zur Weckzeit“ an ist. Er wird in 40 s lauter, hört nach der Weckdauer auf, ein Druck auf den Drehknopf stoppt ihn sofort.
    - **Skript „Gute Nacht“:** Preset wählen, Lampe auf warmes Licht, Sleep-Timer starten, Licht dimmt mit herunter. Eigene Aktionen, z. B. alle anderen Lichter aus, sind im Skript vorbereitet.
    - **Automatisch per Präsenzmelder** (für den Melder `binary_sensor.pasenzmelder_schalfzimmer_presence` im DG Schlafzimmer vorbereitet):
      - *Start:* Abends im eingestellten Zeitfenster (z. B. 21:00–03:00) ist jemand im Schlafzimmer und das Deckenlicht `light.licht_schlafzimmer` ist aus. Dann startet der Gute-Nacht-Sound mit dem Gute-Nacht-Timer. Ausgelöst wird beim Ausschalten des Deckenlichts oder beim Betreten des dunklen Zimmers.
@@ -76,7 +83,7 @@ Alle mitgelieferten Klänge werden live erzeugt (keine Dateien, keine Lizenzfrag
 ```bash
 cd device
 pip install -e .[dev]
-pytest                                            # 21 Tests, inkl. MQTT-Test mit lokalem mosquitto
+pytest                                            # 27 Tests, inkl. MQTT-Test mit lokalem mosquitto
 python -m sleepgen --render demo.wav --preset Gewitternacht --seconds 60
 python -m sleepgen --config config.example.yaml --no-audio -v   # läuft ohne Pi-Hardware
 ```

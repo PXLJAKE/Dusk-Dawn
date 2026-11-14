@@ -29,6 +29,11 @@ class App:
         )
         self.timer_option = "Aus"
         self.lamp_follows_timer = False
+        al = cfg["alarm"]
+        self.alarm_tone = al["tone"]
+        self.alarm_minutes = float(al["minutes"])
+        self.engine.alarm_volume = float(al["volume"])
+        self._volume_before_alarm: float | None = None
 
         led = cfg["led"]
         driver = NullDriver(led["count"])
@@ -75,6 +80,31 @@ class App:
             if self.lamp_follows_timer and self.lamp.state.on:
                 self.lamp.start_sunset(minutes)
 
+    # ----------------------------------------------------------- alarm
+    def start_alarm(self):
+        """Ring now. Stops after ``alarm_minutes`` or on a knob press."""
+        floor = float(self.cfg["alarm"]["min_device_volume"])
+        if not self.engine.alarm_ringing and self.volume.value < floor:
+            self._volume_before_alarm = self.volume.value
+            self.volume.set(floor)
+        self.engine.start_alarm(self.alarm_tone, self.alarm_minutes)
+
+    def stop_alarm(self):
+        self.engine.stop_alarm()
+        self._alarm_stopped()
+
+    def _alarm_stopped(self):
+        if self._volume_before_alarm is not None and not self.engine.alarm_ringing:
+            v, self._volume_before_alarm = self._volume_before_alarm, None
+            self.volume.set(v)
+
+    def knob_click(self):
+        """Press: stops a ringing alarm, otherwise sounds on/off."""
+        if self.engine.alarm_ringing:
+            self.stop_alarm()
+        else:
+            self.toggle_playing()
+
     def toggle_lamp(self):
         self.lamp.apply({"state": "OFF" if self.lamp.state.on else "ON"})
 
@@ -88,6 +118,9 @@ class App:
             device_volume=round(self.volume.value, 3),
             sunrise_minutes=round(self.lamp.sunrise_minutes),
             lamp_follows_timer=self.lamp_follows_timer,
+            alarm_tone=self.alarm_tone,
+            alarm_minutes=round(self.alarm_minutes),
+            alarm_volume=round(self.engine.alarm_volume, 3),
         )
         return st
 
@@ -99,7 +132,8 @@ class App:
 
     def save(self):
         s = self.full_state()
-        data = {k: s[k] for k in ("playing", "master", "preset", "levels", "sunrise_minutes", "lamp_follows_timer")}
+        data = {k: s[k] for k in ("playing", "master", "preset", "levels", "sunrise_minutes", "lamp_follows_timer",
+                                  "alarm_tone", "alarm_minutes", "alarm_volume")}
         try:
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.state_file.with_suffix(".tmp")
@@ -121,6 +155,9 @@ class App:
         self.engine.master = float(data.get("master", 0.6))
         self.lamp.sunrise_minutes = float(data.get("sunrise_minutes", 30))
         self.lamp_follows_timer = bool(data.get("lamp_follows_timer", False))
+        self.alarm_tone = data.get("alarm_tone", self.alarm_tone)
+        self.alarm_minutes = float(data.get("alarm_minutes", self.alarm_minutes))
+        self.engine.alarm_volume = float(data.get("alarm_volume", self.engine.alarm_volume))
         if data.get("playing") and self.cfg["resume_on_boot"]:
             self.engine.play()
 
@@ -138,7 +175,7 @@ class App:
         if knob and k["enabled"]:
             try:
                 self.knob = Knob(k["pin_a"], k["pin_b"], k["pin_button"], k["step"],
-                                 on_turn=self.volume.step, on_click=self.toggle_playing,
+                                 on_turn=self.volume.step, on_click=self.knob_click,
                                  on_hold=self.toggle_lamp)
             except Exception as exc:  # noqa: BLE001
                 log.warning("knob disabled: %s", exc)
@@ -158,6 +195,7 @@ class App:
                 fired = True
             if fired:
                 self._dirty.clear()
+                self._alarm_stopped()  # restores the amp volume once an alarm ran out
                 last_tick = now
                 if self.mqtt:
                     self.mqtt.publish()

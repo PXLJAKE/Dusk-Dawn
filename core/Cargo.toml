@@ -1,0 +1,28 @@
+[package]
+name = "dusk_dawn_core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Procedural sleep-sound engine (rain, waves, wind, birds, ...) for the Dusk & Dawn Home Assistant integration"
+license = "MIT"
+readme = "README.md"
+publish = false
+
+[lib]
+name = "dusk_dawn_core"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+# Python bindings. maturin enables this (see pyproject.toml); `cargo test` runs without it.
+python = ["dep:pyo3"]
+extension-module = ["python", "pyo3/extension-module"]
+
+[dependencies]
+pyo3 = { version = "0.30", optional = true, features = ["abi3-py312"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "unwind"

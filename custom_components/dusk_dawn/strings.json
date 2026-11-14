@@ -1,0 +1,199 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a sleeping spot",
+        "description": "A sleeping spot combines speakers, lights and an optional presence sensor.",
+        "data": {
+          "name": "Name",
+          "speakers": "Speakers",
+          "lights": "Lights",
+          "presence": "Presence sensor",
+          "diy_device": "DIY Soundlampe (MQTT device ID)"
+        },
+        "data_description": {
+          "name": "Name of the sleeping spot, e.g. bedroom.",
+          "speakers": "Media players that play the sleep sounds (stream).",
+          "lights": "Lights for night light, fall-asleep fade and sunrise.",
+          "presence": "Optional occupancy/motion sensor for automatic start and stop.",
+          "diy_device": "Only for a self-built Soundlampe (device/sleepgen): its MQTT device ID, e.g. sleepgen. It then plays sounds and light effects itself instead of streaming."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Please enter a name."
+    },
+    "abort": {
+      "already_configured": "A sleeping spot with this name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sleeping spot settings",
+        "data": {
+          "name": "Name",
+          "speakers": "Speakers",
+          "lights": "Lights",
+          "presence": "Presence sensor",
+          "diy_device": "DIY Soundlampe (MQTT device ID)"
+        },
+        "data_description": {
+          "name": "Name of the sleeping spot, e.g. bedroom.",
+          "speakers": "Media players that play the sleep sounds (stream).",
+          "lights": "Lights for night light, fall-asleep fade and sunrise.",
+          "presence": "Optional occupancy/motion sensor for automatic start and stop.",
+          "diy_device": "Only for a self-built Soundlampe (device/sleepgen): its MQTT device ID, e.g. sleepgen. It then plays sounds and light effects itself instead of streaming."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Please enter a name."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alarm_ringing": {
+        "name": "Alarm ringing"
+      }
+    },
+    "button": {
+      "good_night": {
+        "name": "Good night"
+      },
+      "stop_alarm": {
+        "name": "Stop alarm"
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Volume"
+      },
+      "level_rain": {
+        "name": "Rain"
+      },
+      "level_waves": {
+        "name": "Ocean waves"
+      },
+      "level_stream": {
+        "name": "Brook"
+      },
+      "level_wind": {
+        "name": "Wind"
+      },
+      "level_thunder": {
+        "name": "Thunder"
+      },
+      "level_birds": {
+        "name": "Birds"
+      },
+      "level_leaves": {
+        "name": "Rustling leaves"
+      },
+      "level_fire": {
+        "name": "Fireplace"
+      },
+      "level_fan": {
+        "name": "Fan"
+      },
+      "level_white": {
+        "name": "White noise"
+      },
+      "level_pink": {
+        "name": "Pink noise"
+      },
+      "level_brown": {
+        "name": "Brown noise"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Sound"
+      },
+      "timer": {
+        "name": "Sleep timer",
+        "state": {
+          "off": "Off",
+          "15": "15 min",
+          "30": "30 min",
+          "45": "45 min",
+          "60": "60 min",
+          "90": "90 min"
+        }
+      }
+    },
+    "sensor": {
+      "next_alarm": {
+        "name": "Next alarm"
+      }
+    },
+    "switch": {
+      "sound": {
+        "name": "Sounds"
+      },
+      "alarms_enabled": {
+        "name": "Alarms"
+      }
+    },
+    "time": {
+      "next_alarm_time": {
+        "name": "Alarm time"
+      }
+    }
+  },
+  "selector": {
+    "tone": {
+      "options": {
+        "bells": "Bells",
+        "classic": "Classic",
+        "birds": "Dawn chorus"
+      }
+    }
+  },
+  "services": {
+    "play": {
+      "name": "Play",
+      "description": "Starts the sleep sounds of a spot.",
+      "fields": {
+        "preset": {
+          "name": "Preset",
+          "description": "Name or ID of the preset (optional)."
+        },
+        "volume": {
+          "name": "Volume",
+          "description": "Volume 0–1."
+        },
+        "timer": {
+          "name": "Sleep timer",
+          "description": "Minutes until the sounds fade out; 0 turns the timer off."
+        }
+      }
+    },
+    "stop": {
+      "name": "Stop",
+      "description": "Stops the sleep sounds."
+    },
+    "good_night": {
+      "name": "Good night",
+      "description": "Starts the good-night sound with sleep timer and dims the light."
+    },
+    "ring": {
+      "name": "Ring",
+      "description": "Rings the alarm now.",
+      "fields": {
+        "tone": {
+          "name": "Tone",
+          "description": "Alarm tone."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Minutes the alarm rings at most."
+        }
+      }
+    },
+    "stop_alarm": {
+      "name": "Stop alarm",
+      "description": "Stops a ringing alarm."
+    }
+  }
+}

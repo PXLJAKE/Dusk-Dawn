@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" font-family="Inter, DejaVu Sans, sans-serif"><rect width="1200" height="800" fill="#fff"/>
+<text x="40" y="50" font-size="28" font-weight="700" fill="#232a40">Stiftleiste: welche Pins benutzt werden</text>
+<text x="40" y="78" font-size="15" fill="#555">Die Kabel kommen mit Jumperkabeln (Buchse) auf die durchgeführte Stiftleiste oben auf dem DigiAMP+. Pin 1 hat das eckige Lötpad, Pin 2 liegt am Platinenrand.</text>
+<rect x="470" y="110" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="127" font-size="12" text-anchor="middle" fill="#232a40">1</text>
+<rect x="506" y="110" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="127" font-size="12" text-anchor="middle" fill="#232a40">2</text>
+<rect x="470" y="141" width="28" height="24" rx="4" fill="#b9a3d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="158" font-size="12" text-anchor="middle" fill="#232a40">3</text>
+<rect x="506" y="141" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="158" font-size="12" text-anchor="middle" fill="#232a40">4</text>
+<rect x="470" y="172" width="28" height="24" rx="4" fill="#b9a3d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="189" font-size="12" text-anchor="middle" fill="#232a40">5</text>
+<rect x="506" y="172" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="189" font-size="12" text-anchor="middle" fill="#232a40">6</text>
+<rect x="470" y="203" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="220" font-size="12" text-anchor="middle" fill="#232a40">7</text>
+<rect x="506" y="203" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="220" font-size="12" text-anchor="middle" fill="#232a40">8</text>
+<rect x="470" y="234" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="251" font-size="12" text-anchor="middle" fill="#232a40">9</text>
+<rect x="506" y="234" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="251" font-size="12" text-anchor="middle" fill="#232a40">10</text>
+<rect x="470" y="265" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="282" font-size="12" text-anchor="middle" fill="#232a40">11</text>
+<rect x="506" y="265" width="28" height="24" rx="4" fill="#b9a3d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="282" font-size="12" text-anchor="middle" fill="#232a40">12</text>
+<rect x="470" y="296" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="313" font-size="12" text-anchor="middle" fill="#232a40">13</text>
+<rect x="506" y="296" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="313" font-size="12" text-anchor="middle" fill="#232a40">14</text>
+<rect x="470" y="327" width="28" height="24" rx="4" fill="#b9a3d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="344" font-size="12" text-anchor="middle" fill="#232a40">15</text>
+<rect x="506" y="327" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="344" font-size="12" text-anchor="middle" fill="#232a40">16</text>
+<rect x="470" y="358" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="375" font-size="12" text-anchor="middle" fill="#232a40">17</text>
+<rect x="506" y="358" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="375" font-size="12" text-anchor="middle" fill="#232a40">18</text>
+<rect x="470" y="389" width="28" height="24" rx="4" fill="#2f6fd0" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="406" font-size="12" text-anchor="middle" fill="#fff">19</text>
+<line x1="468" y1="401" x2="428" y2="401" stroke="#2f6fd0" stroke-width="2.5"/>
+<text x="420" y="406" font-size="15" fill="#232a40" text-anchor="end">GPIO10 → 74AHCT125 Pin 2 (1A)</text>
+<rect x="506" y="389" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="406" font-size="12" text-anchor="middle" fill="#232a40">20</text>
+<rect x="470" y="420" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="437" font-size="12" text-anchor="middle" fill="#232a40">21</text>
+<rect x="506" y="420" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="437" font-size="12" text-anchor="middle" fill="#232a40">22</text>
+<rect x="470" y="451" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="468" font-size="12" text-anchor="middle" fill="#232a40">23</text>
+<rect x="506" y="451" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="468" font-size="12" text-anchor="middle" fill="#232a40">24</text>
+<rect x="470" y="482" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="499" font-size="12" text-anchor="middle" fill="#232a40">25</text>
+<rect x="506" y="482" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="499" font-size="12" text-anchor="middle" fill="#232a40">26</text>
+<rect x="470" y="513" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="530" font-size="12" text-anchor="middle" fill="#232a40">27</text>
+<rect x="506" y="513" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="530" font-size="12" text-anchor="middle" fill="#232a40">28</text>
+<rect x="470" y="544" width="28" height="24" rx="4" fill="#2f6fd0" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="561" font-size="12" text-anchor="middle" fill="#fff">29</text>
+<line x1="468" y1="556" x2="428" y2="556" stroke="#2f6fd0" stroke-width="2.5"/>
+<text x="420" y="561" font-size="15" fill="#232a40" text-anchor="end">GPIO5 → Drehgeber A</text>
+<rect x="506" y="544" width="28" height="24" rx="4" fill="#222" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="561" font-size="12" text-anchor="middle" fill="#fff">30</text>
+<line x1="536" y1="556" x2="576" y2="556" stroke="#222" stroke-width="2.5"/>
+<text x="584" y="561" font-size="15" fill="#232a40">GND → Drehgeber C</text>
+<rect x="470" y="575" width="28" height="24" rx="4" fill="#2f6fd0" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="592" font-size="12" text-anchor="middle" fill="#fff">31</text>
+<line x1="468" y1="587" x2="428" y2="587" stroke="#2f6fd0" stroke-width="2.5"/>
+<text x="420" y="592" font-size="15" fill="#232a40" text-anchor="end">GPIO6 → Drehgeber B</text>
+<rect x="506" y="575" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="592" font-size="12" text-anchor="middle" fill="#232a40">32</text>
+<rect x="470" y="606" width="28" height="24" rx="4" fill="#2f6fd0" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="623" font-size="12" text-anchor="middle" fill="#fff">33</text>
+<line x1="468" y1="618" x2="428" y2="618" stroke="#2f6fd0" stroke-width="2.5"/>
+<text x="420" y="623" font-size="15" fill="#232a40" text-anchor="end">GPIO13 → Drehgeber Taster</text>
+<rect x="506" y="606" width="28" height="24" rx="4" fill="#222" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="623" font-size="12" text-anchor="middle" fill="#fff">34</text>
+<line x1="536" y1="618" x2="576" y2="618" stroke="#222" stroke-width="2.5"/>
+<text x="584" y="623" font-size="15" fill="#232a40">GND → Drehgeber Taster 2</text>
+<rect x="470" y="637" width="28" height="24" rx="4" fill="#b9a3d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="654" font-size="12" text-anchor="middle" fill="#232a40">35</text>
+<rect x="506" y="637" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="654" font-size="12" text-anchor="middle" fill="#232a40">36</text>
+<rect x="470" y="668" width="28" height="24" rx="4" fill="#e6e1d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="685" font-size="12" text-anchor="middle" fill="#232a40">37</text>
+<rect x="506" y="668" width="28" height="24" rx="4" fill="#b9a3d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="685" font-size="12" text-anchor="middle" fill="#232a40">38</text>
+<rect x="470" y="699" width="28" height="24" rx="4" fill="#222" stroke="#232a40" stroke-width="1.2"/>
+<text x="484" y="716" font-size="12" text-anchor="middle" fill="#fff">39</text>
+<line x1="468" y1="711" x2="428" y2="711" stroke="#222" stroke-width="2.5"/>
+<text x="420" y="716" font-size="15" fill="#232a40" text-anchor="end">GND → Masse-Leitung</text>
+<rect x="506" y="699" width="28" height="24" rx="4" fill="#b9a3d6" stroke="#232a40" stroke-width="1.2"/>
+<text x="520" y="716" font-size="12" text-anchor="middle" fill="#232a40">40</text>
+<g transform="translate(40,750)" font-size="15" fill="#333"><rect width="20" height="16" fill="#b9a3d6"/><text x="28" y="13">vom DigiAMP+ belegt (nicht anschließen)</text><rect x="360" width="20" height="16" fill="#2f6fd0"/><text x="388" y="13">Signal</text><rect x="470" width="20" height="16" fill="#222"/><text x="498" y="13">Masse (GND)</text></g>
+</svg>

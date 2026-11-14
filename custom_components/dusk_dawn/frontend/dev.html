@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dusk &amp; Dawn – Panel preview</title>
+<style>
+  /* Standalone preview of the panel with a fake `hass`. Open via file:// or any static server.
+     Query params: ?lang=en  &narrow=1|0 (default: auto by width)  &admin=0  &empty=1  &ring=1  &bare=1 (hide this bar)  &view=sounds */
+  html, body { margin: 0; background: #0b1020; }
+  [hidden] { display: none !important; }
+  body { min-height: 100vh; display: flex; flex-direction: column; font: 13px/1.4 system-ui, sans-serif; color: #dfe3ee; }
+  .devbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 16px; background: #05070f; border-bottom: 1px solid #222a44; }
+  .devbar b { color: #e3b062; }
+  .devbar label { display: inline-flex; gap: 6px; align-items: center; }
+  .devbar button, .devbar select { font: inherit; background: #1a2340; color: #eee; border: 1px solid #364371; border-radius: 6px; padding: 4px 8px; }
+  dusk-dawn-panel { flex: 1; display: block; }
+</style>
+</head>
+<body>
+<div class="devbar" id="devbar">
+  <b>Dusk &amp; Dawn · dev preview</b>
+  <label>Sprache <select id="lang"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+  <label><input type="checkbox" id="narrow"> narrow</label>
+  <label><input type="checkbox" id="admin" checked> admin</label>
+  <label><input type="checkbox" id="empty"> keine Spots</label>
+  <button id="ring">Wecker klingeln lassen</button>
+  <span id="log" style="color:#8a93ae"></span>
+</div>
+<dusk-dawn-panel id="panel"></dusk-dawn-panel>
+
+<!-- loaded as a classic script so the preview also works from file:// (module fetches are blocked there);
+     the file has no imports/exports, so HA can still load it as a module -->
+<script>
+  // must run before the panel is defined: the panel reads its last view from localStorage
+  (function () { var v = new URLSearchParams(location.search).get("view"); if (v) { try { localStorage.setItem("dusk_dawn.view", v); } catch (e) {} } })();
+</script>
+<script src="./dusk-dawn-panel.js"></script>
+<script type="module">
+
+const q = new URLSearchParams(location.search);
+if (q.get("bare") === "1") document.getElementById("devbar").hidden = true;
+
+/* ---------- fake backend following integration/CONTRACT.md §2 and §4 ---------- */
+const SOUNDS = ["rain","waves","stream","wind","thunder","birds","leaves","fire","fan","white","pink","brown"];
+const BUILTIN = {
+  "Regen": [{ rain: 0.8, brown: 0.3 }, "mdi:weather-rainy"],
+  "Gewitternacht": [{ rain: 0.8, thunder: 0.75, wind: 0.35 }, "mdi:weather-lightning-rainy"],
+  "Meer": [{ waves: 0.85, wind: 0.25, brown: 0.2 }, "mdi:waves"],
+  "Kaminabend": [{ fire: 0.8, rain: 0.4 }, "mdi:fireplace"],
+  "Waldmorgen": [{ birds: 0.65, leaves: 0.45, stream: 0.3, wind: 0.15 }, "mdi:bird"],
+  "Wald": [{ leaves: 0.6, stream: 0.5, birds: 0.3 }, "mdi:forest"],
+  "Ventilator": [{ fan: 0.8 }, "mdi:fan"],
+  "Brown Noise": [{ brown: 0.8 }, "mdi:sine-wave"],
+  "Pink Noise": [{ pink: 0.7 }, "mdi:sine-wave"],
+  "White Noise": [{ white: 0.6 }, "mdi:square-wave"],
+};
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+const fullLevels = (lv) => Object.fromEntries(SOUNDS.map((k) => [k, lv[k] || 0]));
+const builtins = () => Object.entries(BUILTIN).map(([name, [lv, icon]]) => ({ id: slug(name), name, icon, levels: fullLevels(lv), builtin: true }));
+
+function makeState(over = {}) {
+  return {
+    playing: false, preset: "regen", levels: fullLevels(BUILTIN.Regen[0]), volume: 0.42,
+    timer: { minutes: 45, ends_at: null },
+    light: { on: false, brightness: 90, kelvin: 2200 },
+    alarms: [],
+    auto: { presence_start: true, presence_from: "20:30", presence_to: "01:00", presence_stop_min: 15, pause_on_music: true, night_light_with_sound: false },
+    presets: builtins(),
+    alarm_ringing: false, next_alarm: null,
+    ...over,
+  };
+}
+
+const SPOTS = [
+  {
+    entry_id: "e1", name: "Schlafzimmer",
+    speakers: ["media_player.schlafzimmer_sonos"], lights: ["light.nachttisch"], presence: "binary_sensor.bett_belegt", diy_device: null,
+    state: makeState({
+      playing: true, preset: "gewitternacht", levels: fullLevels(BUILTIN.Gewitternacht[0]), volume: 0.38,
+      timer: { minutes: 45, ends_at: new Date(Date.now() + 32 * 60000).toISOString() },
+      light: { on: true, brightness: 64, kelvin: 2200 },
+      alarms: [
+        { id: "a1", enabled: true, time: "06:45", days: [0,1,2,3,4], tone: "birds", duration_min: 10, volume: 0.6, sunrise: true, sunrise_min: 30 },
+        { id: "a2", enabled: false, time: "08:30", days: [5,6], tone: "bells", duration_min: 15, volume: 0.45, sunrise: true, sunrise_min: 45 },
+      ],
+      presets: [...builtins(), { id: "user_lesen", name: "Leseecke", icon: "mdi:leaf", levels: fullLevels({ leaves: 0.4, fire: 0.5, rain: 0.2 }) }],
+    }),
+  },
+  {
+    entry_id: "e2", name: "Kinderzimmer",
+    speakers: [], lights: [], presence: null, diy_device: "sleepgen_kinder",
+    state: makeState({ preset: "meer", levels: fullLevels(BUILTIN.Meer[0]), timer: { minutes: 30, ends_at: null }, auto: { presence_start: false, presence_from: "19:00", presence_to: "23:00", presence_stop_min: 0, pause_on_music: false, night_light_with_sound: true } }),
+  },
+];
+
+const ENTITIES = [
+  ["media_player.schlafzimmer_sonos", "Schlafzimmer Sonos"], ["media_player.kueche", "Küche Echo"], ["media_player.wohnzimmer_tv", "Wohnzimmer TV"],
+  ["media_player.bad_speaker", "Bad Lautsprecher"], ["media_player.kinder_nest", "Kinderzimmer Nest Mini"],
+  ["media_player.buero", "Büro HomePod"], ["media_player.gaestezimmer", "Gästezimmer Sonos"],
+  ["light.nachttisch", "Nachttischlampe"], ["light.deckenlicht_schlafzimmer", "Deckenlicht Schlafzimmer"], ["light.led_streifen_bett", "LED-Streifen Bett"],
+  ["binary_sensor.bett_belegt", "Bett belegt", "occupancy"], ["binary_sensor.bewegung_schlafzimmer", "Bewegung Schlafzimmer", "motion"], ["binary_sensor.praesenz_flur", "Präsenz Flur", "presence"],
+].map(([entity_id, name, device_class]) => ({ entity_id, name, domain: entity_id.split(".")[0], device_class: device_class || null }));
+
+let spots = q.get("empty") === "1" ? [] : SPOTS;
+if (q.get("ring") === "1" && spots[0]) spots[0].state.alarm_ringing = true;
+
+function computeNext(st) {
+  const now = new Date(); let best = null;
+  for (const a of st.alarms) {
+    if (!a.enabled) continue;
+    const [h, m] = a.time.split(":").map(Number);
+    for (let d = 0; d < 8; d++) {
+      const c = new Date(now); c.setDate(now.getDate() + d); c.setHours(h, m, 0, 0);
+      if (c <= now) continue;
+      const wd = (c.getDay() + 6) % 7;
+      if (a.days.length && !a.days.includes(wd)) continue;
+      if (!best || c < best) best = c; break;
+    }
+  }
+  st.next_alarm = best ? best.toISOString() : null;
+}
+spots.forEach((s) => computeNext(s.state));
+
+const subs = new Set();
+const pending = {};
+function push(id) {
+  clearTimeout(pending[id]);
+  pending[id] = setTimeout(() => {
+    const s = spots.find((x) => x.entry_id === id);
+    subs.forEach((cb) => cb({ entry_id: id, state: structuredClone(s.state) }));
+  }, 100);
+}
+const log = (t) => { document.getElementById("log").textContent = t; };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function command(msg) {
+  const s = spots.find((x) => x.entry_id === msg.entry_id);
+  if (!s) throw { code: "not_found", message: "Unknown spot" };
+  const st = s.state;
+  const applyPreset = (id) => { const p = st.presets.find((x) => x.id === id); if (p) { st.levels = fullLevels(p.levels); st.preset = id; } };
+  switch (msg.action) {
+    case "play": if (msg.preset) applyPreset(msg.preset); st.playing = true; break;
+    case "stop": st.playing = false; break;
+    case "toggle": st.playing = !st.playing; break;
+    case "set_level": st.levels[msg.sound] = msg.level; st.preset = null; break;
+    case "set_volume": st.volume = msg.volume; break;
+    case "apply_preset": applyPreset(msg.preset_id); break;
+    case "save_preset": { const id = "user_" + slug(msg.name) + "_" + Date.now().toString(36); st.presets.push({ id, name: msg.name, icon: msg.icon, levels: { ...st.levels } }); st.preset = id; break; }
+    case "delete_preset": st.presets = st.presets.filter((p) => p.id !== msg.preset_id || p.builtin); if (st.preset === msg.preset_id) st.preset = null; break;
+    case "set_timer": st.timer = { minutes: msg.minutes, ends_at: msg.minutes && st.playing ? new Date(Date.now() + msg.minutes * 60000).toISOString() : null }; break;
+    case "good_night": applyPreset("regen"); st.playing = true; st.timer = { minutes: 30, ends_at: new Date(Date.now() + 30 * 60000).toISOString() }; st.light = { ...st.light, on: true, brightness: 90, kelvin: 2200 }; break;
+    case "light": { const { on, brightness, kelvin, effect } = msg; st.light = { ...st.light, ...(on !== undefined && { on }), ...(brightness !== undefined && { brightness }), ...(kelvin !== undefined && { kelvin }) }; if (effect && effect !== "fade") st.light.on = true; break; }
+    case "set_alarm": { const i = st.alarms.findIndex((a) => a.id === msg.alarm.id); if (i >= 0) st.alarms[i] = msg.alarm; else st.alarms.push(msg.alarm); break; }
+    case "delete_alarm": st.alarms = st.alarms.filter((a) => a.id !== msg.alarm_id); break;
+    case "ring": st.alarm_ringing = true; break;
+    case "stop_alarm": st.alarm_ringing = false; break;
+    case "preview_tone": break;
+    case "set_auto": st.auto = { ...st.auto, ...msg.auto }; break;
+    default: throw { code: "invalid_action", message: `Unknown action ${msg.action}` };
+  }
+  computeNext(st);
+  push(s.entry_id);
+  return { state: structuredClone(st) };
+}
+
+const connection = {
+  async subscribeMessage(cb, msg) {
+    await wait(30);
+    if (msg.type !== "dusk_dawn/subscribe") throw { code: "unknown_command" };
+    subs.add(cb);
+    return async () => { subs.delete(cb); };
+  },
+};
+
+// like a real websocket, messages are handled in the order they were sent
+let queue = Promise.resolve();
+function callWS(msg) {
+  const run = queue.then(() => handleWS(msg));
+  queue = run.catch(() => {});
+  return run;
+}
+async function handleWS(msg) {
+  await wait(40 + Math.random() * 60);
+  log(`${msg.type}${msg.action ? " · " + msg.action : ""}`);
+  switch (msg.type) {
+    case "dusk_dawn/spots": return { spots: structuredClone(spots) };
+    case "dusk_dawn/command": return command(msg);
+    case "dusk_dawn/entities": return ENTITIES;
+    case "dusk_dawn/config": {
+      if (!hass.user.is_admin) throw { code: "unauthorized", message: "Admin only" };
+      const s = spots.find((x) => x.entry_id === msg.entry_id);
+      for (const k of ["name", "speakers", "lights", "presence"]) if (k in msg) s[k] = msg[k];
+      return {};
+    }
+    default: throw { code: "unknown_command", message: msg.type };
+  }
+}
+
+const states = Object.fromEntries(ENTITIES.map((e) => [e.entity_id, { entity_id: e.entity_id, state: "off", attributes: { friendly_name: e.name } }]));
+let hass = {
+  language: q.get("lang") || "de", locale: { language: q.get("lang") || "de" },
+  user: { id: "u1", name: "Dev", is_admin: q.get("admin") !== "0" },
+  states, connection, callWS,
+};
+
+/* ---------- mount + dev controls ---------- */
+const panel = document.getElementById("panel");
+const narrowParam = q.get("narrow");
+const elLang = document.getElementById("lang"), elNarrow = document.getElementById("narrow"), elAdmin = document.getElementById("admin"), elEmpty = document.getElementById("empty");
+elLang.value = hass.language; elAdmin.checked = hass.user.is_admin; elEmpty.checked = !spots.length;
+let narrowManual = narrowParam === null ? null : narrowParam === "1";
+const updateNarrow = () => { panel.narrow = narrowManual ?? window.innerWidth < 870; elNarrow.checked = panel.narrow; };
+const setHass = (patch) => { hass = { ...hass, ...patch }; panel.hass = hass; };
+
+panel.panel = { url_path: "dusk-dawn", config: {} };
+panel.route = { prefix: "/dusk-dawn", path: "" };
+updateNarrow();
+panel.hass = hass;
+window.addEventListener("resize", updateNarrow);
+panel.addEventListener("hass-toggle-menu", () => log("hass-toggle-menu fired"));
+window.addEventListener("location-changed", () => log("navigate → " + location.pathname));
+
+elLang.onchange = () => setHass({ language: elLang.value, locale: { language: elLang.value } });
+elNarrow.onchange = () => { narrowManual = elNarrow.checked; updateNarrow(); };
+elAdmin.onchange = () => setHass({ user: { ...hass.user, is_admin: elAdmin.checked } });
+elEmpty.onchange = () => { spots = elEmpty.checked ? [] : SPOTS; panel._spots = null; panel.remove(); document.body.append(panel); };
+document.getElementById("ring").onclick = () => { if (spots[0]) { spots[0].state.alarm_ringing = true; push(spots[0].entry_id); } };
+window.__dev = { spots, push, panel };
+</script>
+</body>
+</html>

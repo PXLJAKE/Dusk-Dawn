@@ -1,0 +1,58 @@
+play:
+  target:
+    entity:
+      integration: dusk_dawn
+  fields:
+    preset:
+      example: Regen
+      selector:
+        text:
+    volume:
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.05
+          mode: slider
+    timer:
+      selector:
+        number:
+          min: 0
+          max: 240
+          step: 5
+          unit_of_measurement: min
+
+stop:
+  target:
+    entity:
+      integration: dusk_dawn
+
+good_night:
+  target:
+    entity:
+      integration: dusk_dawn
+
+ring:
+  target:
+    entity:
+      integration: dusk_dawn
+  fields:
+    tone:
+      selector:
+        select:
+          translation_key: tone
+          options:
+            - bells
+            - classic
+            - birds
+    duration:
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: min
+
+stop_alarm:
+  target:
+    entity:
+      integration: dusk_dawn

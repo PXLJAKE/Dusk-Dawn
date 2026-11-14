@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs SleepGenerator on Raspberry Pi OS Lite (Bookworm, 64-bit) on a Pi Zero 2 W.
+# Installs SleepGenerator on Raspberry Pi OS Lite (Bookworm, 64-bit) on a Pi 3 A+ or Pi Zero 2 W.
 # Run from the repo:  sudo ./device/system/install.sh
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

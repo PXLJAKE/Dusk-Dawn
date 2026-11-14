@@ -14,7 +14,7 @@ from typing import Callable
 
 import numpy as np
 
-from .dsp import GENERATORS, Generator, make_generator
+from .dsp import GENERATORS, AlarmTone, Generator, make_generator
 
 
 def volume_curve(v: float) -> float:
@@ -59,6 +59,11 @@ class Engine:
         self.clock = 0.0  # seconds of audio rendered
         self.timer_end: float | None = None
         self.preset: str | None = None
+        self.alarm: AlarmTone | None = None
+        self.alarm_end: float | None = None
+        self.alarm_volume = 0.7
+        self.alarm_ramp_s = 40.0
+        self._alarm_t0 = 0.0
         self._lock = threading.Lock()
 
     # ---------------------------------------------------------------- control
@@ -93,6 +98,28 @@ class Engine:
         self.timer_end = self.clock + minutes * 60 if minutes else None
         self._changed()
 
+    # ---------------------------------------------------------------- alarm
+    def start_alarm(self, tone: str = "Glocken", minutes: float = 10, volume: float | None = None):
+        """Ring on top of everything; gets louder over ``alarm_ramp_s`` and stops
+        by itself after ``minutes`` (or earlier via :meth:`stop_alarm`)."""
+        with self._lock:
+            self.alarm = AlarmTone(self.sr, self.seed, tone if tone in AlarmTone.TONES else "Glocken")
+            self._alarm_t0 = self.clock
+            self.alarm_end = self.clock + max(minutes, 0.1) * 60
+            if volume is not None:
+                self.alarm_volume = min(max(float(volume), 0.0), 1.0)
+        self._changed()
+
+    def stop_alarm(self):
+        if self.alarm is not None:
+            with self._lock:
+                self.alarm, self.alarm_end = None, None
+            self._changed()
+
+    @property
+    def alarm_ringing(self) -> bool:
+        return self.alarm is not None
+
     @property
     def timer_remaining(self) -> float | None:
         if self.timer_end is None:
@@ -107,6 +134,7 @@ class Engine:
             "preset": self.preset,
             "levels": {k: round(l.level, 3) for k, l in self.layers.items()},
             "timer_remaining_min": None if rem is None else round(rem / 60, 1),
+            "alarm_ringing": self.alarm_ringing,
         }
 
     def _changed(self):
@@ -151,7 +179,14 @@ class Engine:
                 self._master_gain = m1
 
                 out *= (fade * master * self._timer_gain(t))[:, None]
-                out = np.tanh(out * 1.2) / 1.2  # soft limiter, transparent below ~-6 dBFS
+            alarm_done = False
+            if self.alarm is not None:
+                age = t - self._alarm_t0
+                ramp = 0.15 + 0.85 * np.minimum(age / max(self.alarm_ramp_s, 1e-3), 1.0)
+                out += self.alarm.render(n) * (ramp * volume_curve(self.alarm_volume))[:, None]
+                if self.alarm_end is not None and t[-1] >= self.alarm_end:
+                    self.alarm, self.alarm_end, alarm_done = None, None, True
+            out = np.tanh(out * 1.2) / 1.2  # soft limiter, transparent below ~-6 dBFS
             self.clock = float(t[-1])
 
             if self.timer_end is not None and self.clock >= self.timer_end:
@@ -161,6 +196,7 @@ class Engine:
                 fire = True
             else:
                 fire = False
+            fire = fire or alarm_done
         if fire:
             self._changed()
         return out.astype(np.float32)

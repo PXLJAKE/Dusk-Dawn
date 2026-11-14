@@ -17,13 +17,14 @@ DEFAULTS: dict = {
         "fade_in_s": 8,
         "fade_out_min": 10,
     },
-    "sounds": ["rain", "waves", "thunder", "wind", "fire", "birds", "fan", "white", "pink", "brown"],
+    "sounds": ["rain", "waves", "thunder", "wind", "fire", "birds", "leaves", "stream", "fan", "white", "pink", "brown"],
     "presets": {
         "Regen": {"rain": 0.8, "brown": 0.3},
         "Gewitternacht": {"rain": 0.8, "thunder": 0.75, "wind": 0.35},
         "Meer": {"waves": 0.85, "wind": 0.25, "brown": 0.2},
         "Kaminabend": {"fire": 0.8, "rain": 0.4},
-        "Waldmorgen": {"birds": 0.6, "wind": 0.3},
+        "Waldmorgen": {"birds": 0.65, "leaves": 0.45, "stream": 0.3, "wind": 0.15},
+        "Wald": {"leaves": 0.6, "stream": 0.5, "birds": 0.3},
         "Ventilator": {"fan": 0.8},
         "Brown Noise": {"brown": 0.8},
         "Pink Noise": {"pink": 0.7},
@@ -57,6 +58,12 @@ DEFAULTS: dict = {
         "count": 30,
         "rgbw": True,
         "max_brightness": 0.7,  # limits current draw and heat inside the shade
+    },
+    "alarm": {
+        "tone": "Glocken",        # Glocken / Klassisch / Vogelchor
+        "minutes": 10,            # rings at most this long, a knob press stops it earlier
+        "volume": 0.7,
+        "min_device_volume": 0.5,  # amp volume is raised to at least this while ringing
     },
     "state_file": "/var/lib/sleepgen/state.json",
 }
