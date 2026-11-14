@@ -1,4 +1,10 @@
-# SleepGenerator – Soundlampe
+# Dusk & Dawn – Schlafsounds, Wecker und Sonnenaufgang für Home Assistant
+
+**Schlafgeräusche für Home Assistant:** Regen, Meer, Gewitter, Kaminfeuer, Vögel, Wind, Ventilator, White/Pink/Brown Noise, frei mischbar, mit Sleep-Timer, Lichtwecker (Sonnenaufgang) und Wecker. Läuft als HACS-Integration mit eigener Seitenleiste auf jedem Lautsprecher (Sonos, Google Nest, Music Assistant …) und mit jeder Lampe. Dazu gibt es eine DIY-Soundlampe mit Raspberry Pi zum Selberbauen.
+
+*Sleep sounds / white noise machine for Home Assistant: rain, ocean waves, thunderstorm, fireplace, birds, brown noise, sleep timer, sunrise alarm. HACS custom integration with sidebar panel, works with any media player and light.*
+
+## SleepGenerator – Soundlampe
 
 Retro-Tischlampe fürs Bett mit eingebautem Lautsprecher: Regen, Meer, Gewitter, Wind, Kaminfeuer, Vögel, Ventilator und White/Pink/Brown Noise, frei mischbar, mit Sleep-Timer, Aufwachlicht und Musikplayer in Home Assistant.
 
