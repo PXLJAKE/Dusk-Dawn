@@ -1,7 +1,5 @@
 play:
   target:
-    device:
-      integration: dusk_dawn
     entity:
       integration: dusk_dawn
   fields:
@@ -26,22 +24,16 @@ play:
 
 stop:
   target:
-    device:
-      integration: dusk_dawn
     entity:
       integration: dusk_dawn
 
 good_night:
   target:
-    device:
-      integration: dusk_dawn
     entity:
       integration: dusk_dawn
 
 ring:
   target:
-    device:
-      integration: dusk_dawn
     entity:
       integration: dusk_dawn
   fields:
@@ -62,7 +54,5 @@ ring:
 
 stop_alarm:
   target:
-    device:
-      integration: dusk_dawn
     entity:
       integration: dusk_dawn
