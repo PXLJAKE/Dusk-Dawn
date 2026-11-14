@@ -6,7 +6,7 @@ Dusk & Dawn bringt die Schlafgeräusche, das Aufwachlicht und den Wecker der Sou
 
 ## Installation über HACS
 
-1. HACS öffnen → oben rechts ⋮ → **Benutzerdefinierte Repositories** → `https://github.com/PXLJAKE/SleepGenerator`, Typ **Integration**.
+1. HACS öffnen → oben rechts ⋮ → **Benutzerdefinierte Repositories** → `https://github.com/PXLJAKE/Dusk-Dawn`, Typ **Integration**.
 2. „Dusk & Dawn“ suchen, **Herunterladen**, Home Assistant neu starten.
 3. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Dusk & Dawn**.
 4. Einen Schlafplatz anlegen: Name, Lautsprecher, Lampen und (optional) Präsenzmelder auswählen. Für weitere Zimmer einfach noch einmal hinzufügen.

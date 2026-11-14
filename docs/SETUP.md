@@ -7,8 +7,8 @@
    ```bash
    ssh <benutzer>@soundlampe.local
    sudo apt update && sudo apt install -y git
-   git clone https://github.com/PXLJAKE/SleepGenerator.git
-   sudo ./SleepGenerator/device/system/install.sh
+   git clone https://github.com/PXLJAKE/Dusk-Dawn.git
+   sudo ./Dusk-Dawn/device/system/install.sh
    ```
    Das Skript installiert alles, aktiviert den DigiAMP+ und SPI für die LEDs, richtet das Mischen von Sounds und Musik ein und startet die Dienste `sleepgen` und `squeezelite`.
 3. `/etc/sleepgen/config.yaml` anpassen (mindestens die MQTT-Zugangsdaten, siehe unten), dann `sudo reboot`.
