@@ -26,7 +26,7 @@ Der Pi braucht etwas mehr Strom (ca. 1 W im Leerlauf). Dafür ist das Gerät ein
 | DAC + Verstärker | **Raspberry Pi DigiAMP+** (2 × 35 W, 12–24 V, versorgt auch den Pi) | 30 € |
 | Netzteil | 19 V / 3,42 A (Laptop-Typ, Hohlstecker 5,5 × 2,5) oder 24 V / 2,5 A | 15 € |
 | Einbaubuchse | DC-Einbaubuchse 5,5 × 2,1/2,5 mm, Loch 11 mm | 2 € |
-| Step-down 5 V | MP1584- oder LM2596-Modul, auf 5,1 V einstellen (für die LEDs) | 3 € |
+| Step-down 5 V | **LM2596-Modul** (ca. 43 × 21 mm, Löcher 30 × 16 mm diagonal), vor dem Anschließen der LEDs auf 5,1 V einstellen | 3 € |
 | Speicherkarte | microSD 32 GB, A1 | 7 € |
 | LEDs | **SK6812 RGBW** Strip, 60 LED/m, **warmweiß (3000 K)**, 5 V, 0,5 m (30 LEDs) | 8 € |
 | Pegelwandler | 74AHCT125 (DIP) + 330 Ω Widerstand + 1000 µF/10 V Elko | 2 € |
@@ -43,7 +43,7 @@ Der Pi braucht etwas mehr Strom (ca. 1 W im Leerlauf). Dafür ist das Gerät ein
 | Entdröhnung | Alubutyl-Matte 2 mm, ca. 20 × 30 cm, innen an die Kammerwände | 6 € |
 | Dichtung | Moosgummi-Dichtband 3 mm + etwas Silikon/Heißkleber | 4 € |
 
-Warum so: Ein guter 4"-Breitbänder in einer geschlossenen Kammer von ca. 2,6 l mit Passivmembran nach hinten liefert erstaunlich viel Bass. Das ist wichtig für Wellen, Gewitter und Brown Noise, und auch Musik klingt voll. Im Lampenfuß bringt Stereo keine echte Trennung, deshalb läuft das Gerät mono (beide Kanäle werden gemischt) und das Geld steckt in einem besseren Chassis.
+Warum so: Ein guter 4"-Breitbänder in einer geschlossenen Kammer von gut 2 l mit Passivmembran nach hinten liefert erstaunlich viel Bass. Das ist wichtig für Wellen, Gewitter und Brown Noise, und auch Musik klingt voll. Im Lampenfuß bringt Stereo keine echte Trennung, deshalb läuft das Gerät mono (beide Kanäle werden gemischt) und das Geld steckt in einem besseren Chassis.
 
 ### Mechanik
 
