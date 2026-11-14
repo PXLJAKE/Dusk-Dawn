@@ -1,0 +1,199 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Schlafplatz hinzufügen",
+        "description": "Ein Schlafplatz verbindet Lautsprecher, Lampen und optional einen Präsenzmelder.",
+        "data": {
+          "name": "Name",
+          "speakers": "Lautsprecher",
+          "lights": "Lampen",
+          "presence": "Präsenzmelder",
+          "diy_device": "DIY-Soundlampe (MQTT-Geräte-ID)"
+        },
+        "data_description": {
+          "name": "Name des Schlafplatzes, z. B. Schlafzimmer.",
+          "speakers": "Media-Player, die die Einschlafklänge abspielen (Stream).",
+          "lights": "Lampen für Nachtlicht, Einschlaf-Dimmen und Sonnenaufgang.",
+          "presence": "Optionaler Präsenz- oder Bewegungsmelder für automatischen Start und Stopp.",
+          "diy_device": "Nur für eine selbst gebaute Soundlampe (device/sleepgen): ihre MQTT-Geräte-ID, z. B. sleepgen. Sie spielt Klänge und Lichteffekte dann selbst, statt zu streamen."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Bitte einen Namen eingeben."
+    },
+    "abort": {
+      "already_configured": "Ein Schlafplatz mit diesem Namen existiert bereits."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Schlafplatz-Einstellungen",
+        "data": {
+          "name": "Name",
+          "speakers": "Lautsprecher",
+          "lights": "Lampen",
+          "presence": "Präsenzmelder",
+          "diy_device": "DIY-Soundlampe (MQTT-Geräte-ID)"
+        },
+        "data_description": {
+          "name": "Name des Schlafplatzes, z. B. Schlafzimmer.",
+          "speakers": "Media-Player, die die Einschlafklänge abspielen (Stream).",
+          "lights": "Lampen für Nachtlicht, Einschlaf-Dimmen und Sonnenaufgang.",
+          "presence": "Optionaler Präsenz- oder Bewegungsmelder für automatischen Start und Stopp.",
+          "diy_device": "Nur für eine selbst gebaute Soundlampe (device/sleepgen): ihre MQTT-Geräte-ID, z. B. sleepgen. Sie spielt Klänge und Lichteffekte dann selbst, statt zu streamen."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Bitte einen Namen eingeben."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alarm_ringing": {
+        "name": "Wecker klingelt"
+      }
+    },
+    "button": {
+      "good_night": {
+        "name": "Gute Nacht"
+      },
+      "stop_alarm": {
+        "name": "Wecker stoppen"
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Lautstärke"
+      },
+      "level_rain": {
+        "name": "Regen"
+      },
+      "level_waves": {
+        "name": "Meereswellen"
+      },
+      "level_stream": {
+        "name": "Bach"
+      },
+      "level_wind": {
+        "name": "Wind"
+      },
+      "level_thunder": {
+        "name": "Gewitter"
+      },
+      "level_birds": {
+        "name": "Vögel"
+      },
+      "level_leaves": {
+        "name": "Blätterrauschen"
+      },
+      "level_fire": {
+        "name": "Kaminfeuer"
+      },
+      "level_fan": {
+        "name": "Ventilator"
+      },
+      "level_white": {
+        "name": "White Noise"
+      },
+      "level_pink": {
+        "name": "Pink Noise"
+      },
+      "level_brown": {
+        "name": "Brown Noise"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Klang"
+      },
+      "timer": {
+        "name": "Sleep-Timer",
+        "state": {
+          "off": "Aus",
+          "15": "15 min",
+          "30": "30 min",
+          "45": "45 min",
+          "60": "60 min",
+          "90": "90 min"
+        }
+      }
+    },
+    "sensor": {
+      "next_alarm": {
+        "name": "Nächster Wecker"
+      }
+    },
+    "switch": {
+      "sound": {
+        "name": "Klänge"
+      },
+      "alarms_enabled": {
+        "name": "Wecker"
+      }
+    },
+    "time": {
+      "next_alarm_time": {
+        "name": "Weckzeit"
+      }
+    }
+  },
+  "selector": {
+    "tone": {
+      "options": {
+        "bells": "Glocken",
+        "classic": "Klassisch",
+        "birds": "Vogelchor"
+      }
+    }
+  },
+  "services": {
+    "play": {
+      "name": "Abspielen",
+      "description": "Startet die Einschlafklänge eines Schlafplatzes.",
+      "fields": {
+        "preset": {
+          "name": "Preset",
+          "description": "Name oder ID des Presets (optional)."
+        },
+        "volume": {
+          "name": "Lautstärke",
+          "description": "Lautstärke 0–1."
+        },
+        "timer": {
+          "name": "Sleep-Timer",
+          "description": "Minuten bis zum Ausblenden; 0 schaltet den Timer aus."
+        }
+      }
+    },
+    "stop": {
+      "name": "Stoppen",
+      "description": "Stoppt die Einschlafklänge."
+    },
+    "good_night": {
+      "name": "Gute Nacht",
+      "description": "Startet den Gute-Nacht-Klang mit Sleep-Timer und dimmt das Licht."
+    },
+    "ring": {
+      "name": "Klingeln",
+      "description": "Lässt den Wecker jetzt klingeln.",
+      "fields": {
+        "tone": {
+          "name": "Weckton",
+          "description": "Weckton."
+        },
+        "duration": {
+          "name": "Dauer",
+          "description": "Minuten, die der Wecker höchstens klingelt."
+        }
+      }
+    },
+    "stop_alarm": {
+      "name": "Wecker stoppen",
+      "description": "Stoppt einen klingelnden Wecker."
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "alarm_ringing": {
+        "default": "mdi:alarm-bell"
+      }
+    },
+    "button": {
+      "good_night": {
+        "default": "mdi:weather-night"
+      },
+      "stop_alarm": {
+        "default": "mdi:alarm-off"
+      }
+    },
+    "number": {
+      "volume": {
+        "default": "mdi:volume-high"
+      },
+      "level_rain": {
+        "default": "mdi:weather-pouring"
+      },
+      "level_waves": {
+        "default": "mdi:waves"
+      },
+      "level_stream": {
+        "default": "mdi:waves-arrow-right"
+      },
+      "level_wind": {
+        "default": "mdi:weather-windy"
+      },
+      "level_thunder": {
+        "default": "mdi:weather-lightning"
+      },
+      "level_birds": {
+        "default": "mdi:bird"
+      },
+      "level_leaves": {
+        "default": "mdi:leaf"
+      },
+      "level_fire": {
+        "default": "mdi:fireplace"
+      },
+      "level_fan": {
+        "default": "mdi:fan"
+      },
+      "level_white": {
+        "default": "mdi:waveform"
+      },
+      "level_pink": {
+        "default": "mdi:waveform"
+      },
+      "level_brown": {
+        "default": "mdi:waveform"
+      }
+    },
+    "select": {
+      "preset": {
+        "default": "mdi:playlist-music"
+      },
+      "timer": {
+        "default": "mdi:timer-sand",
+        "state": {
+          "off": "mdi:timer-off-outline"
+        }
+      }
+    },
+    "sensor": {
+      "next_alarm": {
+        "default": "mdi:alarm"
+      }
+    },
+    "switch": {
+      "sound": {
+        "default": "mdi:sleep",
+        "state": {
+          "off": "mdi:sleep-off"
+        }
+      },
+      "alarms_enabled": {
+        "default": "mdi:alarm-check",
+        "state": {
+          "off": "mdi:alarm-off"
+        }
+      }
+    },
+    "time": {
+      "next_alarm_time": {
+        "default": "mdi:alarm"
+      }
+    }
+  },
+  "services": {
+    "play": {
+      "service": "mdi:play"
+    },
+    "stop": {
+      "service": "mdi:stop"
+    },
+    "good_night": {
+      "service": "mdi:weather-night"
+    },
+    "ring": {
+      "service": "mdi:alarm-bell"
+    },
+    "stop_alarm": {
+      "service": "mdi:alarm-off"
+    }
+  }
+}

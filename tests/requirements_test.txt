@@ -1,0 +1,3 @@
+pytest-homeassistant-custom-component
+ha-ffmpeg==3.2.2
+home-assistant-frontend

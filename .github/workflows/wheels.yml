@@ -1,0 +1,133 @@
+# Builds the optional Rust sound core (core/, Python module `dusk_dawn_core`).
+#
+# One abi3 wheel per platform covers every CPython >= 3.12:
+#   manylinux_2_28  x86_64, aarch64     (HA Core in a venv on Debian/Ubuntu, ...)
+#   musllinux_1_2   x86_64, aarch64, armv7   (HA OS / HA Container are Alpine based)
+# plus an sdist.
+#
+# Runs on tags `core-v*` (e.g. core-v0.1.0, must match core/Cargo.toml) and manually.
+name: Core wheels
+
+on:
+  push:
+    tags: ["core-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: core
+
+jobs:
+  test:
+    name: cargo test + pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rust unit tests
+        run: cargo test --release
+      - name: Build module and run parity tests against device/sleepgen
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install maturin pytest numpy scipy
+          maturin develop --release
+          pytest tests/test_parity.py -q
+          python bench.py --seconds 30
+
+  linux:
+    name: manylinux ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: core
+          target: ${{ matrix.target }}
+          manylinux: "2_28"
+          args: --release --out dist
+          rust-toolchain: stable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-manylinux-${{ matrix.target }}
+          path: core/dist/*.whl
+
+  musllinux:
+    name: musllinux ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64, aarch64, armv7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: core
+          target: ${{ matrix.target }}
+          manylinux: musllinux_1_2
+          args: --release --out dist
+          rust-toolchain: stable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-musllinux-${{ matrix.target }}
+          path: core/dist/*.whl
+
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches core/Cargo.toml version
+        if: startsWith(github.ref, 'refs/tags/core-v')
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
+          test "core-v${version}" = "${GITHUB_REF_NAME}" || {
+            echo "::error::tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${version}"; exit 1; }
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: core
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: core/dist/*.tar.gz
+
+  # Publishing to PyPI with trusted publishing (OIDC, no API token).
+  # DISABLED BY DEFAULT: it only runs for `core-v*` tags AND when the repository
+  # variable PYPI_PUBLISH is set to "true" (Settings > Secrets and variables >
+  # Actions > Variables). Before enabling it, add a trusted publisher on PyPI for
+  # project "dusk-dawn-core": this repository, workflow "wheels.yml",
+  # environment "pypi".
+  publish:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/core-v') && vars.PYPI_PUBLISH == 'true'
+    needs: [test, linux, musllinux, sdist]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dusk-dawn-core
+    permissions:
+      id-token: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: ls -l dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
