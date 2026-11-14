@@ -1,0 +1,17 @@
+[Unit]
+Description=SleepGenerator sound lamp
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+User=sleepgen
+Group=audio
+SupplementaryGroups=gpio spi
+ExecStart=/opt/sleepgen/venv/bin/python -m sleepgen --config /etc/sleepgen/config.yaml
+StateDirectory=sleepgen
+Restart=always
+RestartSec=3
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

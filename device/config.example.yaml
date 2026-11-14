@@ -1,0 +1,42 @@
+# /etc/sleepgen/config.yaml  – only override what you need, everything else uses defaults
+device_id: sleepgen          # also used in MQTT topics and Home Assistant entity ids
+name: Soundlampe
+
+mqtt:
+  host: homeassistant.local  # IP of your Home Assistant / Mosquitto broker
+  port: 1883
+  username: sleepgen         # create this user in Home Assistant (Settings → People → Users)
+  password: "CHANGE-ME"
+
+audio:
+  fade_in_s: 8               # sounds fade in when started
+  fade_out_min: 10           # the last 10 minutes of the sleep timer fade out
+
+# Available layers. Built-in, generated live: rain waves thunder wind fire birds fan white pink brown
+# Your own recordings: "file:/home/pi/sounds/regen-am-fenster.wav" (16-bit WAV, will loop seamlessly)
+sounds: [rain, waves, thunder, wind, fire, birds, fan, white, pink, brown]
+
+presets:
+  Regen:         {rain: 0.8, brown: 0.3}
+  Gewitternacht: {rain: 0.8, thunder: 0.75, wind: 0.35}
+  Meer:          {waves: 0.85, wind: 0.25, brown: 0.2}
+  Kaminabend:    {fire: 0.8, rain: 0.4}
+  Waldmorgen:    {birds: 0.6, wind: 0.3}
+  Ventilator:    {fan: 0.8}
+  Brown Noise:   {brown: 0.8}
+default_preset: Regen
+
+hardware_volume:
+  card: 0
+  control: Digital           # `amixer scontrols` shows the name; "Digital" for DigiAMP+
+
+knob:                        # KY-040 / EC11 rotary encoder, BCM pin numbers
+  pin_a: 5
+  pin_b: 6
+  pin_button: 13
+
+led:
+  driver: spi                # SK6812 data on GPIO10 (SPI MOSI) via 74AHCT125
+  count: 30
+  rgbw: true
+  max_brightness: 0.7
