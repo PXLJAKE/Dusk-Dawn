@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Soundlampe</title>
+<style>
+@page { size: A4; margin: 0; }
+:root { --cream:#f5efe4; --paper:#fbf8f2; --navy:#232a40; --navy2:#3a4361; --brass:#b88a3e; --ink:#2b2b2b; --muted:#6b6658; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family: Inter, sans-serif; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.page { width:210mm; height:297mm; position:relative; overflow:hidden; background:var(--cream); page-break-after:always; }
+.page:last-child { page-break-after:auto; }
+h1,h2,h3 { font-family:"Bitstream Charter", Georgia, serif; font-weight:700; color:var(--navy); }
+.eyebrow { font-size:8.5pt; letter-spacing:.22em; text-transform:uppercase; color:var(--brass); font-weight:600; }
+
+/* page 1 */
+.hero { display:grid; grid-template-columns: 1fr 74mm; height:132mm; padding:18mm 16mm 0 18mm; }
+.hero h1 { font-size:46pt; line-height:1; margin:5mm 0 6mm; letter-spacing:-.01em; }
+.hero .lead { font-size:12.5pt; line-height:1.5; color:var(--navy2); max-width:98mm; }
+.hero .pills { margin-top:9mm; display:flex; flex-wrap:wrap; gap:2.5mm; max-width:100mm; }
+.pill { font-size:8.5pt; padding:1.6mm 3.6mm; border-radius:20mm; background:var(--navy); color:var(--cream); font-weight:500; }
+.hero img { height:122mm; justify-self:center; align-self:end; filter: drop-shadow(0 6mm 6mm rgba(35,42,64,.18)); }
+.band { background:var(--navy); color:var(--cream); height:165mm; padding:12mm 18mm 0; }
+.band .eyebrow { color:#d9b46c; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:6.5mm 12mm; margin-top:6mm; }
+.feat h3 { color:var(--cream); font-size:13.5pt; margin-bottom:2mm; display:flex; align-items:center; gap:2.5mm; }
+.feat h3 .n { font-family:Inter; font-size:8pt; font-weight:600; color:var(--navy); background:#d9b46c; width:5.2mm; height:5.2mm; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; }
+.feat ul { list-style:none; }
+.feat li { font-size:9.6pt; line-height:1.45; color:#dcd6c9; padding-left:4mm; position:relative; margin-bottom:1mm; }
+.feat li::before { content:""; position:absolute; left:0; top:2.1mm; width:1.6mm; height:1.6mm; border-radius:50%; background:var(--brass); }
+.foot1 { position:absolute; bottom:7mm; left:18mm; right:18mm; display:flex; justify-content:space-between; font-size:8pt; color:#7d7a8c; }
+
+/* page 2 */
+.p2 { padding:16mm 18mm; }
+.p2 h2 { font-size:24pt; margin:2mm 0 2mm; }
+.p2 .sub { font-size:10pt; color:var(--muted); max-width:150mm; line-height:1.5; }
+.shades { display:grid; grid-template-columns:repeat(4,1fr); gap:4mm; margin-top:7mm; align-items:end; }
+.shade { text-align:center; }
+.shade img { height:72mm; display:block; margin:0 auto 3mm; }
+.shade b { font-family:"Bitstream Charter",serif; font-size:12pt; color:var(--navy); display:block; }
+.shade span { font-size:8.3pt; color:var(--muted); }
+.lower { display:grid; grid-template-columns: 56mm 1fr; gap:10mm; margin-top:11mm; padding-top:9mm; border-top:0.3mm solid #d8cfbd; }
+.lower img { height:118mm; display:block; margin:0 auto; }
+.inside h2 { margin-top:2mm; }
+.inside ul { list-style:none; margin-top:4mm; }
+.inside li { font-size:9.6pt; line-height:1.45; margin-bottom:2.4mm; padding-left:4.5mm; position:relative; }
+.inside li::before { content:""; position:absolute; left:0; top:2.1mm; width:1.6mm; height:1.6mm; border-radius:50%; background:var(--brass); }
+.inside li b { color:var(--navy); }
+.specs { margin-top:6mm; display:grid; grid-template-columns:1fr 1fr 1fr; gap:3mm; }
+.spec { background:var(--paper); border-radius:2.5mm; padding:3mm 3.5mm; }
+.spec small { display:block; font-size:7.3pt; letter-spacing:.12em; text-transform:uppercase; color:var(--brass); font-weight:600; margin-bottom:1mm; }
+.spec div { font-size:9.5pt; white-space:nowrap; font-weight:600; color:var(--navy); }
+.foot2 { position:absolute; bottom:8mm; left:18mm; right:18mm; font-size:8pt; color:#9a947f; display:flex; justify-content:space-between; }
+</style></head><body>
+
+<section class="page">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">DIY-Projekt · Nachttisch</div>
+      <h1>Soundlampe</h1>
+      <p class="lead">Einschlafgeräusche, Musik und Licht in einer Retro-Nachttischlampe. Selbst gebaut, im 3D-Druck gefertigt und vom Handy aus über Home Assistant gesteuert.</p>
+      <div class="pills"><span class="pill">10 Klänge mischbar</span><span class="pill">Musikplayer</span><span class="pill">Aufwachlicht</span><span class="pill">Home Assistant</span><span class="pill">ein Drehknopf</span></div>
+    </div>
+    <img src="variant_kolben.png" alt="">
+  </div>
+  <div class="band">
+    <div class="eyebrow">Was sie kann</div>
+    <div class="grid">
+      <div class="feat"><h3><span class="n">1</span>Klänge zum Einschlafen</h3><ul>
+        <li>Regen, Gewitter, Meer, Wind, Kaminfeuer, Vögel, Ventilator, White, Pink und Brown Noise</li>
+        <li>Alles frei mischbar, dazu fertige Presets wie „Gewitternacht“ oder „Kaminabend“</li>
+        <li>Live erzeugt: endlos, ohne hörbare Schleife</li>
+        <li>Sleep-Timer, der sanft ausblendet</li></ul></div>
+      <div class="feat"><h3><span class="n">2</span>Musik</h3><ul>
+        <li>Erscheint in Music Assistant als Lautsprecher: Spotify, Radio, eigene Musik</li>
+        <li>Musik und Schlafgeräusche gleichzeitig</li>
+        <li>Optional AirPlay und Spotify Connect</li></ul></div>
+      <div class="feat"><h3><span class="n">3</span>Licht</h3><ul>
+        <li>Warmweißes, dimmbares Licht von 1800 bis 6500 K</li>
+        <li>Aufwachlicht: Sonnenaufgang bis zur Weckzeit</li>
+        <li>Kerzenflackern und ein Einschlaflicht, das mit dem Timer dunkler wird</li></ul></div>
+      <div class="feat"><h3><span class="n">4</span>Smart Home</h3><ul>
+        <li>Alles vom Handy aus über Home Assistant, mit fertigem Dashboard</li>
+        <li>Startet automatisch, wenn abends jemand im dunklen Schlafzimmer ist</li>
+        <li>Geht aus, wenn das Zimmer leer ist</li></ul></div>
+      <div class="feat"><h3><span class="n">5</span>Am Gerät nur ein Knopf</h3><ul>
+        <li>Drehen ändert die Lautstärke, Drücken schaltet die Sounds, Halten das Licht</li></ul></div>
+      <div class="feat"><h3><span class="n">6</span>Klingt nach mehr</h3><ul>
+        <li>4"-Breitbänder mit Passivmembran und 35-W-Verstärker</li>
+        <li>Gedämmte, versteifte Kammer für tiefen Bass bei Meer und Gewitter</li></ul></div>
+    </div>
+  </div>
+  <div class="foot1"><span>Soundlampe · Konzept & Bauplan</span><span>1 / 2</span></div>
+</section>
+
+<section class="page">
+  <div class="p2">
+    <div class="eyebrow">Design</div>
+    <h2>Vier Schirme zur Auswahl</h2>
+    <p class="sub">Alle Schirme werden aus transluzentem Filament im Vasenmodus gedruckt. Die Rippen streuen das Licht weich wie Riffelglas.</p>
+    <div class="shades">
+      <div class="shade"><img src="variant_plissee.png" alt=""><b>Plissee</b><span>klassischer Faltenschirm</span></div>
+      <div class="shade"><img src="variant_glocke.png" alt=""><b>Glocke</b><span>weiches Licht nach unten</span></div>
+      <div class="shade"><img src="variant_kolben.png" alt=""><b>Kolben</b><span>bauchig wie Riffelglas</span></div>
+      <div class="shade"><img src="variant_twist.png" alt=""><b>Twist</b><span>gedrehte Rippen</span></div>
+    </div>
+    <div class="lower">
+      <img src="section_side.png" alt="">
+      <div class="inside">
+        <div class="eyebrow">Im Inneren</div>
+        <h2>Durchdacht gebaut</h2>
+        <ul>
+          <li><b>Lautsprecherkammer</b> mit ca. 2,6 l: Breitbänder vorne, Passivmembran hinten statt Bassreflexrohr. Mehr Bass, keine Strömungsgeräusche.</li>
+          <li><b>Gedämmt und steif:</b> 4 mm Wand, 8 Versteifungsrippen, Polyesterwatte und Alubutyl gegen Plastikklang.</li>
+          <li><b>Elektronikfach</b> im Boden: Raspberry Pi Zero 2 W mit Verstärker-Aufsatz und LED-Treiber.</li>
+          <li><b>Lichtkern</b> im Schirm: RGBW-LED-Streifen, spiralförmig gewickelt, Kabel durch den Messingstiel.</li>
+          <li><b>Offen und anpassbar:</b> Gehäuse in OpenSCAD, Software in Python, alle Teile auf normalen 3D-Druckern druckbar.</li>
+        </ul>
+        <div class="specs">
+          <div class="spec"><small>Größe</small><div>Ø 19 × 40 cm</div></div>
+          <div class="spec"><small>Material</small><div>PETG-Druck</div></div>
+          <div class="spec"><small>Kosten</small><div>ca. 220 €</div></div>
+          <div class="spec"><small>Rechner</small><div>Pi Zero 2 W</div></div>
+          <div class="spec"><small>Verstärker</small><div>2 × 35 W</div></div>
+          <div class="spec"><small>Steuerung</small><div>Handy + HA</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot2"><span>Soundlampe · Konzept & Bauplan</span><span>2 / 2</span></div>
+</section>
+</body></html>

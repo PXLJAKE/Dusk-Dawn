@@ -1,0 +1,204 @@
+# SleepGenerator Soundlampe – Home Assistant package
+# Copy to /config/packages/sleepgen.yaml and add to configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+# Requires: MQTT integration (Mosquitto broker app). The lamp creates its entities itself.
+# Presence sensor used below: binary_sensor.pasenzmelder_schalfzimmer_presence (DG Schlafzimmer).
+
+input_datetime:
+  sleepgen_wecker:
+    name: Wecker
+    has_date: false
+    has_time: true
+    icon: mdi:alarm
+  sleepgen_praesenz_ab:
+    name: Auto-Start ab
+    has_date: false
+    has_time: true
+    icon: mdi:weather-night
+  sleepgen_praesenz_bis:
+    name: Auto-Start bis
+    has_date: false
+    has_time: true
+    icon: mdi:weather-sunset-up
+
+input_boolean:
+  sleepgen_wecker_aktiv:
+    name: Aufwachlicht aktiv
+    icon: mdi:weather-sunset-up
+  sleepgen_wecker_werktags:
+    name: Nur werktags
+    icon: mdi:calendar-week
+  sleepgen_wecker_voegel:
+    name: Mit Vogelgezwitscher wecken
+    icon: mdi:bird
+  sleepgen_praesenz_auto:
+    name: Sounds automatisch per Präsenzmelder
+    icon: mdi:motion-sensor
+
+input_select:
+  sleepgen_gute_nacht_preset:
+    name: Gute-Nacht-Sound
+    options: [Regen, Gewitternacht, Meer, Kaminabend, Ventilator, Brown Noise]
+    icon: mdi:playlist-music
+  sleepgen_gute_nacht_timer:
+    name: Gute-Nacht-Timer
+    options: ["30 min", "45 min", "60 min", "90 min", "120 min"]
+    icon: mdi:timer-sand
+
+template:
+  - sensor:
+      - name: Sonnenaufgang startet um
+        unique_id: sleepgen_sunrise_start
+        icon: mdi:weather-sunset-up
+        state: >
+          {% set t = today_at(states('input_datetime.sleepgen_wecker')) %}
+          {% set m = states('number.sleepgen_sunrise_minutes') | int(30) %}
+          {{ (t - timedelta(minutes=m)).strftime('%H:%M') }}
+
+script:
+  sleepgen_gute_nacht:
+    alias: Gute Nacht
+    icon: mdi:weather-night
+    sequence:
+      - action: select.select_option
+        target: {entity_id: select.sleepgen_preset}
+        data: {option: "{{ states('input_select.sleepgen_gute_nacht_preset') }}"}
+      - action: switch.turn_on
+        target: {entity_id: switch.sleepgen_lamp_follows_timer}
+      - action: light.turn_on
+        target: {entity_id: light.sleepgen_lamp}
+        data: {brightness: 90, color_temp_kelvin: 2200}
+      - action: select.select_option
+        target: {entity_id: select.sleepgen_timer}
+        data: {option: "{{ states('input_select.sleepgen_gute_nacht_timer') }}"}
+      # Add your own: e.g. turn off all other lights
+      # - action: light.turn_off
+      #   target: {area_id: schlafzimmer}
+
+  sleepgen_alles_aus:
+    alias: Soundlampe aus
+    icon: mdi:power
+    sequence:
+      - action: switch.turn_off
+        target: {entity_id: switch.sleepgen_sound}
+      - action: light.turn_off
+        target: {entity_id: light.sleepgen_lamp}
+
+automation:
+  - id: sleepgen_aufwachlicht
+    alias: Soundlampe – Aufwachlicht
+    description: Startet den Sonnenaufgang so, dass er zur Weckzeit fertig ist.
+    mode: single
+    triggers:
+      - trigger: template
+        value_template: >
+          {{ now().strftime('%H:%M') == states('sensor.sonnenaufgang_startet_um') }}
+    conditions:
+      - condition: state
+        entity_id: input_boolean.sleepgen_wecker_aktiv
+        state: "on"
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.sleepgen_wecker_werktags
+            state: "off"
+          - condition: time
+            weekday: [mon, tue, wed, thu, fri]
+    actions:
+      - action: select.select_option
+        target: {entity_id: select.sleepgen_timer}
+        data: {option: "Aus"}
+      - action: button.press
+        target: {entity_id: button.sleepgen_sunrise}
+      - wait_for_trigger:
+          - trigger: time
+            at: input_datetime.sleepgen_wecker
+        timeout: "02:00:00"
+      - if:
+          - condition: state
+            entity_id: input_boolean.sleepgen_wecker_voegel
+            state: "on"
+        then:
+          - action: number.set_value
+            target: {entity_id: number.sleepgen_master}
+            data: {value: 35}
+          - action: select.select_option
+            target: {entity_id: select.sleepgen_preset}
+            data: {option: Waldmorgen}
+          - action: switch.turn_on
+            target: {entity_id: switch.sleepgen_sound}
+
+  # Optional: pause the sleep sounds while music plays on the lamp.
+  # The music player entity comes from Music Assistant; check its id under
+  # Settings → Devices & services → Music Assistant and adjust below.
+  - id: sleepgen_musik_pausiert_sounds
+    alias: Soundlampe – Sounds pausieren bei Musik
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: media_player.soundlampe
+        to: playing
+    conditions:
+      - condition: state
+        entity_id: switch.sleepgen_sound
+        state: "on"
+    actions:
+      - action: switch.turn_off
+        target: {entity_id: switch.sleepgen_sound}
+
+  # ---------------------------------------------------------------- Präsenzmelder
+  # Start: Abends im Zeitfenster, du bist im Schlafzimmer und machst das Deckenlicht aus
+  # (oder betrittst das Zimmer, wenn das Licht schon aus ist) -> Gute-Nacht-Sound mit Timer.
+  - id: sleepgen_praesenz_start
+    alias: Soundlampe – Sounds starten bei Präsenz
+    description: Startet den Gute-Nacht-Sound, wenn abends jemand im Schlafzimmer ist und das Deckenlicht aus ist.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: light.licht_schlafzimmer
+        to: "off"
+      - trigger: occupancy.detected
+        target:
+          entity_id: binary_sensor.pasenzmelder_schalfzimmer_presence
+    conditions:
+      - condition: state
+        entity_id: input_boolean.sleepgen_praesenz_auto
+        state: "on"
+      - condition: time
+        after: input_datetime.sleepgen_praesenz_ab
+        before: input_datetime.sleepgen_praesenz_bis
+      - condition: state
+        entity_id: binary_sensor.pasenzmelder_schalfzimmer_presence
+        state: "on"
+      - condition: state
+        entity_id: light.licht_schlafzimmer
+        state: "off"
+      - condition: state
+        entity_id: switch.sleepgen_sound
+        state: "off"
+    actions:
+      - action: select.select_option
+        target: {entity_id: select.sleepgen_preset}
+        data: {option: "{{ states('input_select.sleepgen_gute_nacht_preset') }}"}
+      - action: select.select_option
+        target: {entity_id: select.sleepgen_timer}
+        data: {option: "{{ states('input_select.sleepgen_gute_nacht_timer') }}"}
+
+  # Stopp: Niemand mehr im Schlafzimmer -> Sounds und Lampe aus.
+  # mmWave-Melder erkennen auch Schlafende (Atmung); die 15 Minuten fangen kurze Aussetzer ab.
+  - id: sleepgen_praesenz_stopp
+    alias: Soundlampe – Aus, wenn niemand mehr da ist
+    mode: single
+    triggers:
+      - trigger: occupancy.cleared
+        target:
+          entity_id: binary_sensor.pasenzmelder_schalfzimmer_presence
+        options:
+          for: "00:15:00"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.sleepgen_praesenz_auto
+        state: "on"
+    actions:
+      - action: script.sleepgen_alles_aus
