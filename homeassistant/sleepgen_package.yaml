@@ -3,7 +3,9 @@
 #   homeassistant:
 #     packages: !include_dir_named packages
 # Requires: MQTT integration (Mosquitto broker app). The lamp creates its entities itself.
-# Presence sensor used below: binary_sensor.pasenzmelder_schalfzimmer_presence (DG Schlafzimmer).
+# Presence sensor and ceiling light used below are examples:
+#   binary_sensor.schlafzimmer_praesenz, light.schlafzimmer_decke
+# Replace them with your own entity ids (search and replace) before loading the package.
 
 input_datetime:
   sleepgen_wecker:
@@ -49,7 +51,7 @@ input_select:
     options: ["30 min", "45 min", "60 min", "90 min", "120 min"]
     icon: mdi:timer-sand
 
-# In Jakes HA als Template-Helfer (UI) angelegt; hier zum Nachbauen.
+# Geht auch als Template-Helfer in der Oberfläche.
 template:
   - sensor:
       - name: Soundlampe Sonnenaufgang startet um
@@ -184,10 +186,10 @@ automation:
     triggers:
       - trigger: light.turned_off
         target:
-          entity_id: light.licht_schlafzimmer
+          entity_id: light.schlafzimmer_decke
       - trigger: occupancy.detected
         target:
-          entity_id: binary_sensor.pasenzmelder_schalfzimmer_presence
+          entity_id: binary_sensor.schlafzimmer_praesenz
     conditions:
       - condition: state
         entity_id: input_boolean.sleepgen_praesenz_auto
@@ -196,10 +198,10 @@ automation:
         after: input_datetime.sleepgen_praesenz_ab
         before: input_datetime.sleepgen_praesenz_bis
       - condition: state
-        entity_id: binary_sensor.pasenzmelder_schalfzimmer_presence
+        entity_id: binary_sensor.schlafzimmer_praesenz
         state: "on"
       - condition: state
-        entity_id: light.licht_schlafzimmer
+        entity_id: light.schlafzimmer_decke
         state: "off"
       - condition: state
         entity_id: switch.sleepgen_sound
@@ -222,7 +224,7 @@ automation:
     triggers:
       - trigger: occupancy.cleared
         target:
-          entity_id: binary_sensor.pasenzmelder_schalfzimmer_presence
+          entity_id: binary_sensor.schlafzimmer_praesenz
         options:
           for: "00:15:00"
     conditions:

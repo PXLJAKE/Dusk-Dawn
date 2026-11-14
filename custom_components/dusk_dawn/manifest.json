@@ -5,9 +5,9 @@
   "codeowners": ["@PXLJAKE"],
   "config_flow": true,
   "dependencies": ["ffmpeg", "frontend", "http", "panel_custom"],
-  "documentation": "https://github.com/PXLJAKE/SleepGenerator",
+  "documentation": "https://github.com/PXLJAKE/Dusk-Dawn",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/PXLJAKE/SleepGenerator/issues",
+  "issue_tracker": "https://github.com/PXLJAKE/Dusk-Dawn/issues",
   "requirements": [],
   "version": "0.3.0"
 }
