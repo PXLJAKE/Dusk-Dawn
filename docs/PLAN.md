@@ -34,7 +34,7 @@ Quellen: [Tom's Guide – Hatch Restore 3](https://www.tomsguide.com/wellness/sl
                    │                                              │
             Home Assistant ◄──── MQTT (Auto-Discovery) ────┐      │ Slimproto
                                                            │      │
- ┌──────────────────────── Raspberry Pi Zero 2 W ──────────┴──────┴──────────────┐
+ ┌──────────────────────── Raspberry Pi 3 A+ ──────────────┴──────┴──────────────┐
  │  sleepgen (Python)                                       squeezelite          │
  │   ├─ Sound-Engine: 10 Klänge live erzeugt, Mixer,                │            │
  │   │  Fade-in, Sleep-Timer mit Fade-out, Limiter ─────► ALSA dmix ◄┘ (mono)     │
@@ -47,9 +47,9 @@ Quellen: [Tom's Guide – Hatch Restore 3](https://www.tomsguide.com/wellness/sl
 ```
 
 **Entscheidungen:**
-- **Raspberry Pi Zero 2 W statt ESP32**, weil nur so Musik über Music Assistant, gleichzeitiges Mischen von Sounds und Musik und ein guter Verstärker sauber gehen (Details in [HARDWARE.md](HARDWARE.md)).
+- **Raspberry Pi (3 A+, alternativ Zero 2 W) statt ESP32**, weil nur so Musik über Music Assistant, gleichzeitiges Mischen von Sounds und Musik und ein guter Verstärker sauber gehen (Details in [HARDWARE.md](HARDWARE.md)).
 - **Alle Klänge werden live berechnet** (Regen mit einzelnen Tropfen, Wellen, die anrollen und brechen, Donner mit Nachrollen, Vogelrufe). Es gibt keine Loops, die man nachts wiedererkennt, und keine Lizenzprobleme. Eigene WAV-Aufnahmen können zusätzlich eingebunden werden.
-- **Home Assistant über MQTT mit Auto-Discovery:** Die Lampe legt alle Entitäten selbst an, YAML braucht es nur für Wecker und Automationen ([Paket](../homeassistant/sleepgen_package.yaml)).
+- **Home Assistant über MQTT mit Auto-Discovery:** Die Lampe legt alle Entitäten selbst an, Wecker, Sonnenaufgang und Automatik kommen über die Integration [Dusk & Dawn](DUSK_AND_DAWN.md) oder alternativ über das [Paket](../homeassistant/sleepgen_package.yaml).
 - **Am Gerät nur ein Drehknopf:** Drehen = Lautstärke, Drücken = Sounds an/aus, lange Drücken = Lampe.
 
 ---

@@ -98,7 +98,7 @@ sections:
           - input_boolean.sleepgen_praesenz_auto
           - input_datetime.sleepgen_praesenz_ab
           - input_datetime.sleepgen_praesenz_bis
-          - binary_sensor.pasenzmelder_schalfzimmer_presence
+          - binary_sensor.schlafzimmer_praesenz
   - type: grid
     cards:
       - type: heading

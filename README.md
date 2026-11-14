@@ -23,9 +23,9 @@ Retro-Tischlampe fürs Bett mit eingebautem Lautsprecher: Regen, Meer, Gewitter,
 
 | Ordner | Inhalt |
 |---|---|
-| `device/` | Software für den Raspberry Pi Zero 2 W: Sound-Engine, Lampe, Drehknopf, Home Assistant (MQTT) |
+| `device/` | Software für den Raspberry Pi (3 A+ oder Zero 2 W): Sound-Engine, Lampe, Drehknopf, Home Assistant (MQTT) |
 | `custom_components/dusk_dawn/` | Home-Assistant-Integration Dusk & Dawn (über HACS installierbar) |
 | `core/` | Klangkern in Rust (Python-Paket `dusk_dawn_core`) |
-| `homeassistant/` | alte Lösung mit Helfern und Automationen, durch Dusk & Dawn ersetzt |
+| `homeassistant/` | Paket und Dashboard für die Lampe ohne Integration (Entitäten an die eigenen anpassen) |
 | `enclosure/` | OpenSCAD-Modell, STL-Dateien, Renderbilder |
 | `demo/` | Online-Demo (eine HTML-Datei, Web Audio) |
