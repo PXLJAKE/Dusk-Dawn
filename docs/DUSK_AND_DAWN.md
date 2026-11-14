@@ -20,6 +20,7 @@ Danach erscheint links in der Seitenleiste **Dusk & Dawn**.
 - **Wecker:** beliebig viele Weckzeiten mit Wochentagen, Weckton (Glocken, Klassisch, Vogelchor) mit Vorhören, Dauer, Lautstärke und Sonnenaufgang davor.
 - **Automatik:** Start bei Anwesenheit im Zeitfenster, Aus wenn niemand mehr da ist, Pause bei Musik.
 - **Zahnrad:** Lautsprecher, Lampen und Melder ändern.
+- **Sonne/Mond oben rechts:** Design wechseln: wie Home Assistant (automatisch), hell oder dunkel. Die Wahl merkt sich jeder Browser selbst.
 
 Für eigene Automationen gibt es pro Schlafplatz Entitäten (Schalter, Klangwelt, Lautstärke, Timer, nächster Wecker …) und die Aktionen `dusk_dawn.play`, `stop`, `good_night`, `ring` und `stop_alarm`.
 
@@ -27,7 +28,9 @@ Für eigene Automationen gibt es pro Schlafplatz Entitäten (Schalter, Klangwelt
 
 Die Integration berechnet die Geräusche selbst und stellt sie als MP3-Stream bereit, den der Lautsprecher wie ein Internetradio abspielt. Dadurch reagieren Sonos und Google-Lautsprecher auf Regler mit 2–10 s Verzögerung. Die DIY-Soundlampe bekommt stattdessen nur Befehle über MQTT und rechnet den Klang selbst, ohne Verzögerung und mit Wecker auch ohne WLAN.
 
-Der Klangkern ist in Rust geschrieben (`core/`) und braucht für vier Klänge etwa 0,5 % eines CPU-Kerns. Solange das Rust-Paket noch nicht auf PyPI liegt, nutzt die Integration automatisch die etwas langsamere Python-Version mit gleichem Klang.
+Der Klangkern ist in Rust geschrieben (`core/`) und liegt für x86_64 und aarch64 fertig gebaut bei; er braucht für vier Klänge etwa 0,5 % eines CPU-Kerns. Auf anderen Systemen nutzt die Integration automatisch die langsamere Python-Version mit gleichem Klang.
+
+Das Kaminfeuer folgt dem Feuer-Modell aus Andy Farnells Buch *Designing Sound* (Practical 11, „Fire“): vier Feuerstimmen aus Knistern, leisem Zischen und dem tiefen Flattern der Flammen (ein 30-Hz-Resonator, übersteuert), jede durch einen eigenen Klangfilter. Der Regen ist das ursprüngliche Rauschbett mit zusätzlich hörbaren Einzeltropfen („Tick“ und „Plitsch“).
 
 ## Grenzen
 

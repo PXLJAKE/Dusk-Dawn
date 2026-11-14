@@ -10,7 +10,7 @@
  * the live tree, so focused inputs and sliders that are being dragged are kept.
  */
 
-const VERSION = "0.1.0";
+const VERSION = "0.3.0";
 
 /* ------------------------------------------------------------------ data */
 
@@ -74,6 +74,8 @@ const ICONS = {
   music: { d: "M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" },
   external: { d: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" },
   back: { d: "M15 5l-7 7 7 7" },
+  sun: { d: "M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" },
+  contrast: { d: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 3v18M12 3a9 9 0 0 1 0 18z" },
   // sounds
   rain: { d: "M7 14.5a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 17 6a4.3 4.3 0 0 1 .5 8.5zM8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5" },
   thunder: { d: "M7 14.5a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 17 6a4.3 4.3 0 0 1 .5 8.5M13 12.5 10.5 17h3.5l-2.5 4.5" },
@@ -101,7 +103,8 @@ function icon(name, cls = "") {
 
 const STR = {
   de: {
-    menu: "Menü öffnen", settings: "Einstellungen", spots: "Schlafplätze", sections: "Bereiche",
+    menu: "Menü öffnen", settings: "Einstellungen",
+    theme_auto: "Design: wie Home Assistant (tippen für hell)", theme_light: "Design: hell (tippen für dunkel)", theme_dark: "Design: dunkel (tippen für automatisch)", spots: "Schlafplätze", sections: "Bereiche",
     now: "Jetzt", sounds: "Klänge", alarms: "Wecker", auto: "Automatik",
     play: "Klang starten", stop: "Klang stoppen", playing: "Läuft", ready: "Bereit – zum Starten tippen",
     custom_mix: "Eigene Mischung", nothing: "Noch kein Klang gewählt",
@@ -148,7 +151,8 @@ const STR = {
     err_cmd: "Das hat nicht geklappt", close: "Schließen", percent: "{n} %",
   },
   en: {
-    menu: "Open menu", settings: "Settings", spots: "Sleep spots", sections: "Sections",
+    menu: "Open menu", settings: "Settings",
+    theme_auto: "Theme: follow Home Assistant (tap for light)", theme_light: "Theme: light (tap for dark)", theme_dark: "Theme: dark (tap for automatic)", spots: "Sleep spots", sections: "Sections",
     now: "Now", sounds: "Sounds", alarms: "Alarms", auto: "Automation",
     play: "Start sound", stop: "Stop sound", playing: "Playing", ready: "Ready – tap to start",
     custom_mix: "Custom mix", nothing: "No sound chosen yet",
@@ -279,6 +283,10 @@ const STYLE = `
   --brass-fg: #1e1506;
   --danger: #ff9b8f;
   --danger-bg: rgba(255, 120, 105, 0.12);
+  --glow-2: #141b36;
+  --toolbar-bg: rgba(11, 16, 32, 0.86);
+  --hero-top: #172042;
+  --savebar-bg: rgba(26, 35, 64, .95);
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", "P052", Georgia, "DejaVu Serif", serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
@@ -290,6 +298,29 @@ const STYLE = `
   font: 15px/1.5 var(--sans);
   -webkit-font-smoothing: antialiased;
   color-scheme: dark;
+}
+:host([theme="light"]) {
+  --bg: #f4f1ea;
+  --bg-glow: #fbe8c6;
+  --surface: #ffffff;
+  --surface-2: #f8f5ef;
+  --sunken: #ece7dd;
+  --line: #ddd5c6;
+  --line-2: #c9bda7;
+  --fg: #1d2233;
+  --muted: #50576b;
+  --faint: #656b80;
+  --brass: #94600f;
+  --brass-hi: #7a4e0b;
+  --brass-dim: rgba(148, 96, 15, 0.12);
+  --brass-fg: #ffffff;
+  --danger: #b3261e;
+  --danger-bg: rgba(179, 38, 30, 0.08);
+  --glow-2: #e3e9f6;
+  --toolbar-bg: rgba(244, 241, 234, 0.88);
+  --hero-top: #fcf1dd;
+  --savebar-bg: rgba(255, 255, 255, .96);
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -307,7 +338,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   min-height: 100vh;
   background:
     radial-gradient(1200px 520px at 85% -120px, var(--bg-glow), transparent 70%),
-    radial-gradient(800px 400px at -10% -80px, #141b36, transparent 70%),
+    radial-gradient(800px 400px at -10% -80px, var(--glow-2), transparent 70%),
     var(--bg);
 }
 
@@ -316,7 +347,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   position: sticky; top: 0; z-index: 5;
   display: flex; align-items: center; gap: 8px;
   height: 56px; padding: 0 12px 0 16px;
-  background: rgba(11, 16, 32, 0.86);
+  background: var(--toolbar-bg);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
@@ -380,7 +411,7 @@ h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .09em; text-t
 
 /* hero (Jetzt) */
 .hero {
-  background: linear-gradient(180deg, #172042 0%, var(--surface) 62%);
+  background: linear-gradient(180deg, var(--hero-top) 0%, var(--surface) 62%);
   border-color: var(--line-2); gap: 18px; position: relative; overflow: hidden;
 }
 .hero::before {
@@ -622,7 +653,7 @@ input[type=time].text { font: 600 18px var(--mono); width: auto; min-width: 130p
 .settings-grid .span { grid-column: 1 / -1; }
 .savebar {
   position: sticky; bottom: 12px; z-index: 3; display: flex; align-items: center; gap: 12px; justify-content: flex-end;
-  padding: 12px 14px; border-radius: 14px; background: rgba(26, 35, 64, .95); border: 1px solid var(--line-2);
+  padding: 12px 14px; border-radius: 14px; background: var(--savebar-bg); border: 1px solid var(--line-2);
   box-shadow: 0 12px 30px -10px rgba(0,0,0,.7);
 }
 .savebar .grow { flex: 1; color: var(--muted); font-size: 14px; }
@@ -695,6 +726,7 @@ class DuskDawnPanel extends HTMLElement {
     this._loadError = null;
     this._active = lsGet("dusk_dawn.spot");
     this._view = lsGet("dusk_dawn.view") || "now";
+    this._theme = lsGet("dusk_dawn.theme") || "auto"; // auto | light | dark
     this._ov = {}; // optimistic overrides: entry_id -> path -> {value, until}
     this._timers = {}; // debounce timers
     this._gen = 0;
@@ -965,10 +997,17 @@ class DuskDawnPanel extends HTMLElement {
     const spot = this._spot();
     const admin = this._isAdmin();
     const showGear = admin && spot;
+    const dark = this._theme === "auto"
+      ? (typeof this._hass?.themes?.darkMode === "boolean" ? this._hass.themes.darkMode : !!window.matchMedia?.("(prefers-color-scheme: dark)").matches)
+      : this._theme === "dark";
+    if (this.getAttribute("theme") !== (dark ? "dark" : "light")) this.setAttribute("theme", dark ? "dark" : "light");
+    const themeLabel = esc(this._t(`theme_${this._theme}`));
+    const themeIcon = { auto: "contrast", light: "sun", dark: "moon" }[this._theme];
     const head = `
       <header class="toolbar">
         ${this._narrow ? `<button class="iconbtn" data-action="menu" aria-label="${esc(this._t("menu"))}">${icon("menu")}</button>` : ""}
         <div class="brand">${icon("moon")}<h1>Dusk &amp; Dawn</h1></div>
+        <button class="iconbtn" data-action="theme" data-theme="${this._theme}" aria-label="${themeLabel}" title="${themeLabel}">${icon(themeIcon)}</button>
         ${showGear ? `<button class="iconbtn" data-action="settings" aria-label="${esc(this._t("settings"))}" aria-pressed="${this._view === "settings"}">${icon("gear")}</button>` : ""}
       </header>`;
 
@@ -1450,6 +1489,10 @@ class DuskDawnPanel extends HTMLElement {
       case "menu":
         this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
         break;
+      case "theme":
+        this._theme = { auto: "light", light: "dark", dark: "auto" }[this._theme] || "auto";
+        lsSet("dusk_dawn.theme", this._theme);
+        this._schedule(); break;
       case "retry": this._loadError = null; this._spots = null; this._loadSpots(); this._schedule(); break;
       case "settings":
         if (this._view === "settings") { this._setView(lsGet("dusk_dawn.view") || "now"); break; }
