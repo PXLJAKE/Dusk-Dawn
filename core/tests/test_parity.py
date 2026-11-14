@@ -4,10 +4,12 @@
 References are loaded from git history, so they stay fixed while device/
 changes (this needs the full history, e.g. ``fetch-depth: 0`` in CI):
 
-* white, pink, brown, fan, rain, wind, waves, fire, thunder: the original
+* white, pink, brown, fan, wind, waves, thunder: the original
   generators, ``device/sleepgen/dsp.py`` at commit 73c0381 (scipy biquads).
   Rust must match their loudness within 3 dB and their spectral centroid
   within 15 %.
+* rain ("Regen 1c") and fire ("Feuer G", after Farnell): the current
+  ``device/sleepgen/dsp.py`` of the working tree, same tolerances.
 * birds, leaves, stream: ``device/sleepgen`` at commit 3603211, the design the
   Rust versions were ported from (loudness within 3 dB).
 
@@ -63,7 +65,8 @@ def core():
 
 ORIGINAL_COMMIT = "73c0381"  # the original sound design (before the grain rework)
 GRAIN_COMMIT = "3603211"  # birds, leaves and stream as ported to Rust
-ORIGINAL_SOUNDS = ["white", "pink", "brown", "fan", "rain", "wind", "waves", "fire", "thunder"]
+ORIGINAL_SOUNDS = ["white", "pink", "brown", "fan", "wind", "waves", "thunder"]
+CURRENT_SOUNDS = ["rain", "fire"]
 GRAIN_SOUNDS = ["birds", "leaves", "stream"]
 
 
@@ -85,6 +88,17 @@ def orig(tmp_path_factory):
     spec = importlib.util.spec_from_file_location("orig_dsp_73c0381", path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod  # dataclasses look the module up
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.fixture(scope="session")
+def current():
+    """``device/sleepgen/dsp.py`` of the working tree as a throwaway module."""
+    pytest.importorskip("scipy")
+    spec = importlib.util.spec_from_file_location("current_dsp", REPO / "device" / "sleepgen" / "dsp.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -338,6 +352,16 @@ def _ref_rms(ref, name, seed, seconds):
 @pytest.mark.parametrize("name", ORIGINAL_SOUNDS)
 def test_matches_original_sound(core, orig, name):
     """Loudness within 3 dB and spectral centroid within 15 % of the original."""
+    _compare(core, orig, name)
+
+
+@pytest.mark.parametrize("name", CURRENT_SOUNDS)
+def test_matches_current_device_sound(core, current, name):
+    """Rain 1c and fire G: loudness within 3 dB, centroid within 15 % of the device."""
+    _compare(core, current, name)
+
+
+def _compare(core, orig, name):
     seconds = DURATION.get(name, 20.0)
     seeds = range(SEEDS.get(name, 3))
     ms_o, ms_c = [], []

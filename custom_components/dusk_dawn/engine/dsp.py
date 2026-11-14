@@ -265,8 +265,12 @@ class Grains:
         self.maxlen = max(len(k) for k in kernels)
         self.carry = np.zeros(0)
 
-    def render(self, n: int, rate, gain=(0.2, 1.0), heavy: float = 0.0) -> np.ndarray:
-        """``rate``: grains per sample (scalar or per-sample array)."""
+    def render(self, n: int, rate, gain=(0.2, 1.0), heavy: float = 0.0, tail=None) -> np.ndarray:
+        """``rate``: grains per sample (scalar or per-sample array).
+
+        ``tail`` = (alpha, cap, offset) multiplies each gain by
+        ``min(pareto(alpha), cap) + offset``.
+        """
         rng = self.rng
         buf = np.zeros(n + self.maxlen)
         buf[: len(self.carry)] += self.carry
@@ -286,6 +290,8 @@ class Grains:
             g = rng.uniform(gain[0], gain[1], k)
             if heavy:
                 g *= 1.0 + np.minimum(rng.pareto(heavy, k), 4.0)
+            if tail:
+                g *= np.minimum(rng.pareto(tail[0], k), tail[1]) + tail[2]
             idx = rng.integers(0, len(self.kernels), k)
             kernels = self.kernels
             for p, gi, ki in zip(pos.tolist(), g.tolist(), idx.tolist(), strict=True):
@@ -316,6 +322,21 @@ def _tick(rng, sr, tau, f0, q=1.2, dur=None):
     t = np.arange(m) / sr
     x = rng.standard_normal(m) * np.exp(-t / tau)
     return _peak_norm(iir(*_biquad("bp", f0, sr, q), x))
+
+
+def _drop_tick(rng, sr):
+    """Rain 1c: a raindrop tick, 4-12 ms noise burst band-passed at 1.8-6 kHz."""
+    m = int(sr * rng.uniform(0.004, 0.012))
+    x = rng.standard_normal(m) * np.exp(-np.arange(m) / (m / 5))
+    return iir(*_biquad("bp", rng.uniform(1800, 6000), sr, rng.uniform(1.5, 3.0)), x)
+
+
+def _drop_plip(rng, sr):
+    """Rain 1c: a pitched 'plip', 12-30 ms sine gliding up from 0.9-2.6 kHz."""
+    m = int(sr * rng.uniform(0.012, 0.03))
+    t = np.arange(m) / sr
+    f = rng.uniform(900, 2600) * (1 + t / t[-1] * rng.uniform(0.3, 0.9))
+    return np.sin(2 * np.pi * np.cumsum(f) / sr) * np.exp(-t / (m / sr / 4))
 
 
 def _grain(rng, sr, dur, f0, q):
@@ -461,10 +482,16 @@ class Fan(Generator):
 
 
 class Rain(Generator):
-    """Steady rain bed plus individual drops hitting surfaces."""
+    """Steady rain bed plus individual drops hitting surfaces ("Regen 1c").
+
+    The original bed at 0.8 plus clearly audible single drops: 14 ticks/s and
+    6 pitched 'plips'/s with a Pareto-weighted loudness.
+    """
 
     name = "rain"
-    LEVEL = 1.13  # long-term average of the hand-tuned mix is ~0.89 x TARGET_RMS
+    LEVEL = 1.13  # long-term average of the hand-tuned bed is ~0.89 x TARGET_RMS
+    TICKS_PER_S, PLIPS_PER_S, PLIP_GAIN = 14.0, 6.0, 0.35
+    MIX = 1.21  # scales bed*0.8 + drops back to TARGET_RMS (mono)
 
     def __init__(self, sr, seed=None, drops_per_s=900):
         super().__init__(sr, seed)
@@ -474,6 +501,8 @@ class Rain(Generator):
         self.drop = IIR(*_biquad("bp", 2800, sr, 0.9))
         self.rate = drops_per_s
         self.intensity = SmoothRandom(self.rng, 0.75, 1.15, 6.0, sr)
+        self.ticks = Grains(self.rng, [_drop_tick(self.rng, sr) for _ in range(64)])
+        self.plips = Grains(self.rng, [_drop_plip(self.rng, sr) for _ in range(64)])
 
     def render(self, n):
         bed = self.lp(self.hp(self.pink.render(n)))
@@ -481,7 +510,11 @@ class Rain(Generator):
         idx = np.flatnonzero(self.rng.random(n) < self.rate / self.sr)
         hits[idx] = np.minimum(self.rng.pareto(3.0, len(idx)), 3.0)
         drops = self.drop(hits)
-        return (bed * 1.6 + drops * 0.35) * self.intensity.render(n) * self.LEVEL
+        base = (bed * 1.6 + drops * 0.35) * self.intensity.render(n) * self.LEVEL
+        tail = (2.5, 3.0, 0.3)  # 0.7 = mean channel gain of the stereo original
+        single = self.ticks.render(n, self.TICKS_PER_S / self.sr, (0.7, 0.7), tail=tail)
+        single += self.plips.render(n, self.PLIPS_PER_S / self.sr, (0.7 * self.PLIP_GAIN,) * 2, tail=tail)
+        return (base * 0.8 + single) * self.MIX
 
 
 class Wind(Generator):
@@ -558,26 +591,128 @@ class Waves(Generator):
         return out * env * 3.2
 
 
+def _pd_lop(f, sr):
+    """Pure Data ``lop~``: one-pole low-pass."""
+    k = min(1.0, 2 * math.pi * f / sr)
+    return [k], [1.0, -(1 - k)]
+
+
+def _pd_hip(f, sr):
+    """Pure Data ``hip~``: one-pole high-pass."""
+    c = max(0.0, 1 - 2 * math.pi * f / sr)
+    return [(1 + c) / 2, -(1 + c) / 2], [1.0, -c]
+
+
+def _pd_bp(f, q, sr):
+    """Pure Data ``bp~``: two-pole resonator."""
+    om = 2 * math.pi * f / sr
+    r = max(0.0, 1 - om / q) if q > 0 else 0.0
+    return [2 * (1 - r) * ((1 - r) + r * om), 0.0, 0.0], [1.0, -2 * r * math.cos(om), r * r]
+
+
+FIRE_POST = [("hip", 1000), ("bp", 1200, 0.6), ("bp", 2600, 0.4), ("bp", 600, 0.2)]
+
+
+class _IIRCols(IIR):
+    """:class:`IIR` over the columns of a ``(CHUNK, cols)`` block, each column
+    with its own state (one matrix product for all of them)."""
+
+    def __init__(self, b, a, cols):
+        super().__init__(b, a)
+        self.xh = np.zeros((self.order, cols))
+        self.yh = np.zeros((self.order, cols))
+
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        o, size = self.order, len(x)
+        xp = np.concatenate([self.xh, x])
+        u = self.b[0] * x
+        for k in range(1, o + 1):
+            u = u + self.b[k] * xp[o - k : o - k + size]
+        for m in range(min(o, size)):
+            for k in range(m + 1, o + 1):
+                u[m] -= self.a[k] * self.yh[o + m - k]
+        y = self.toeplitz[:size, :size] @ u
+        self.xh = xp[-o:].copy()
+        self.yh = np.concatenate([self.yh, y])[-o:].copy()
+        return y
+
+
 class Fire(Generator):
-    """Crackling fireplace: low roar plus random crackles and pops."""
+    """Fireplace after Andy Farnell, *Designing Sound*, Practical 11 ("Feuer G").
+
+    Four fire voices (one per colour filter in FIRE_POST), summed x0.2. One
+    voice is crackles (triggered when the RMS of 1 Hz low-passed noise over the
+    last 1024 samples lands in 50..51 dB, checked every 512 samples; r = 0..29
+    sets an r ms squared decay and a band-pass at 1500 + 500 r Hz), hiss (noise
+    above 1 kHz gated by (10 x low-passed noise)^4 x 600) and lapping (noise
+    through a 30 Hz resonator, x100, clipped), mixed 0.2 / 0.3 / 0.6. Mono:
+    one fire (the device renders two, cross-mixed).
+    """
 
     name = "fire"
+    HOP = IIR.CHUNK
+    VOICES = len(FIRE_POST)
+    LEVEL = 0.81  # RMS -> TARGET_RMS
 
     def __init__(self, sr, seed=None):
         super().__init__(sr, seed)
-        self.brown = BrownNoise(sr, seed)
-        self.lp = IIR(*_biquad("lp", 500, sr))
-        self.hp = IIR(*_biquad("hp", 1800, sr))
-        self.activity = SmoothRandom(self.rng, 2, 40, 1.5, sr)
+        v = self.VOICES
+        self.lop = _IIRCols(*_pd_lop(1, sr), v)
+        self.hip1k = _IIRCols(*_pd_hip(1000, sr), v)
+        self.res30 = _IIRCols(*_pd_bp(30, 5, sr), v)
+        self.hip25a = _IIRCols(*_pd_hip(25, sr), v)
+        self.hip25b = _IIRCols(*_pd_hip(25, sr), v)
+        self.posts = [IIR(*(_pd_hip(p[1], sr) if p[0] == "hip" else _pd_bp(p[1], p[2], sr))) for p in FIRE_POST]
+        self.crackles = [TVBiquad() for _ in range(v)]
+        self.freq = [1500.0] * v
+        self.envs: list[list[list[int]]] = [[] for _ in range(v)]
+        self.prev_sq: np.ndarray | None = None
+        self.buf = np.zeros(0)
+
+    def _hop(self) -> np.ndarray:
+        n, sr, v = self.HOP, self.sr, self.VOICES
+        nz = self.rng.uniform(-1, 1, (n, v))
+        lo = self.lop(nz)
+        m = (lo * 10) ** 2
+        mix = self.hip1k(nz) * (m * m * 600) * 0.3
+        mix += self.hip25b(np.clip(self.hip25a(self.res30(nz) * 100), -0.9, 0.9)) * 0.36
+        out = np.zeros(n)
+        for c in range(v):
+            y = mix[:, c]
+            band = self.crackles[c](nz[:, c], *_pd_bp(self.freq[c], 1, sr))
+            if self.envs[c]:
+                env = np.zeros(n)
+                keep = []
+                for e in self.envs[c]:
+                    pos, length = e
+                    j = np.arange(pos, min(length, pos + n))
+                    ramp = (1 - j / (length - 1)) ** 2 if length > 1 else np.ones(len(j))
+                    env[: len(j)] = np.maximum(env[: len(j)], ramp)
+                    e[0] += n
+                    if e[0] < length:
+                        keep.append(e)
+                self.envs[c] = keep
+                y = y + band * env * 0.2
+            out += self.posts[c](y)
+        sq = np.einsum("ij,ij->j", lo, lo)
+        if self.prev_sq is not None:
+            db = 100 + 20 * np.log10(np.maximum(np.sqrt((self.prev_sq + sq) / (2 * n)), 1e-10))
+            for c in np.flatnonzero((db >= 50) & (db < 51)).tolist():
+                r = int(self.rng.integers(0, 30))
+                self.freq[c] = 1500.0 + 500.0 * r
+                self.envs[c].append([0, max(1, int(sr * r / 1000))])
+        self.prev_sq = sq
+        return out * 0.2
 
     def render(self, n):
-        rng = self.rng
-        roar = self.lp(self.brown.render(n))
-        rate = self.activity.render(n) / self.sr
-        hits = np.zeros(n)
-        idx = np.flatnonzero(rng.random(n) < rate)
-        hits[idx] = rng.uniform(-1, 1, len(idx)) * (np.minimum(rng.pareto(2.5, len(idx)), 3.0) + 0.2)
-        return roar * 0.8 + self.hp(hits) * 0.5
+        parts = [self.buf]
+        have = len(self.buf)
+        while have < n:
+            parts.append(self._hop())
+            have += self.HOP
+        buf = np.concatenate(parts)
+        self.buf = buf[n:]
+        return buf[:n] * self.LEVEL
 
 
 @dataclass(eq=False)
