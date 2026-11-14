@@ -79,6 +79,14 @@ sections:
           - input_select.sleepgen_gute_nacht_preset
           - input_select.sleepgen_gute_nacht_timer
           - number.sleepgen_device_volume
+      - type: entities
+        title: Automatisch per Präsenzmelder
+        show_header_toggle: false
+        entities:
+          - input_boolean.sleepgen_praesenz_auto
+          - input_datetime.sleepgen_praesenz_ab
+          - input_datetime.sleepgen_praesenz_bis
+          - binary_sensor.pasenzmelder_schalfzimmer_presence
   - type: grid
     cards:
       - type: heading

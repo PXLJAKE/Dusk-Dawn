@@ -10,7 +10,11 @@ Parametrisches OpenSCAD-Modell: [`soundlampe.scad`](soundlampe.scad). Fertige ST
 - **Schirm (Ø 210 → 128 mm, 155 mm hoch):** Plissee-Kegel aus 40 Falten, im Vasenmodus gedruckt. Er ruht auf einem Ring (Spinne), der auf dem Stift des Kerndeckels sitzt.
 - **Gesamthöhe:** ca. 41 cm
 
-![Schnitt](renders/cutaway.png)
+![Ansichten](renders/sheet_views.png)
+
+![Schnitte](renders/sheet_sections.png)
+
+Einzelbilder liegen in [`renders/`](renders/). Neu rendern: `openscad -D 'part="section_side"' -o renders/section_side.png soundlampe.scad` (Teile: `section_side`, `section_front`, `section_chamber`, `section_electronics`, `exploded`, `cutaway`).
 
 ## Teile und Druckeinstellungen
 
@@ -45,6 +49,6 @@ done
 3. Lautsprecherkabel und Kabelrohr durch den Zwischenboden führen. Zwischenboden mit Dichtband einsetzen und verschrauben, Durchführungen mit Silikon schließen.
 4. Polyesterwatte locker in die Kammer legen, Breitbänder und Membran frei lassen.
 5. Drehgeber in den Deckel schrauben. Oben seitlich ein 4-mm-Loch ins Kabelrohr bohren und die Drehgeber-Kabel dort hinein, das LED-Kabel von oben durch das Rohr nach unten führen. Deckel mit Dichtband aufsetzen, Rohrenden abdichten.
-6. Unten: Pi + DigiAMP+ und Step-down auf die Bodenplatte schrauben, DC-Buchse einsetzen, alles verdrahten (siehe [HARDWARE.md](../docs/HARDWARE.md)).
+6. Unten: Den Pi Zero auf die 4 kurzen Dome schrauben, an den beiden Stiftleisten-Löchern 11-mm-Abstandsbolzen (M2,5) aufsetzen und den DigiAMP+ obendrauf stecken. Er liegt auf den Bolzen und den zwei hohen Domen auf. Step-down aufschrauben, DC-Buchse einsetzen, alles verdrahten (siehe [HARDWARE.md](../docs/HARDWARE.md)).
 7. Stiel in den Deckel stecken (bei Bedarf einkleben). Den LED-Strip spiralförmig um den Lichtkern kleben, Kern auf den Stiel stecken, Kerndeckel aufsetzen.
 8. Spinne auf den Stift setzen und den Schirm von oben darüberstülpen.

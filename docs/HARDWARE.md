@@ -50,7 +50,7 @@ Warum so: Ein guter 4"-Breitbänder in einer geschlossenen Kammer von ca. 2,6 l 
 |---|---|---|
 | Lampenstiel | **Messingrohr 20 mm**, 150 mm lang (oder gedruckt: `stem.stl`) | 6 € |
 | Gewindeeinsätze | M3 Heat-Set-Inserts, ca. 30 Stück | 5 € |
-| Schrauben | M3 × 8/10/12 (Linsenkopf), M2,5 × 6 für die Platinen | 5 € |
+| Schrauben | M3 × 8/10/12 (Linsenkopf), M2,5 × 6 für die Platinen, 2 × M2,5-Abstandsbolzen 11 mm | 5 € |
 | Füße | 3 Gummifüße Ø 12 mm, selbstklebend | 2 € |
 | Filament | ca. 600 g PETG (Fuß, dunkel) + ca. 150 g transluzentes PLA/PETG (Schirm, Elfenbein/Natur) | 25 € |
 

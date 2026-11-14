@@ -40,7 +40,11 @@ grille_deg = 70;      // angular width of each grille field
 
 /* [Electronics] */
 dc_jack_d   = 11;     // panel DC jack (5.5/2.1 mm)
-pi_holes    = [[0,0],[58,0],[0,49],[58,49]];   // DigiAMP+/Pi HAT pattern, M2.5
+hat_origin  = [-32.5, -28];   // lower left corner of the DigiAMP+ (65 x 56.5 mm HAT)
+hat_holes   = [[3.5,3.5],[61.5,3.5],[3.5,52.5],[61.5,52.5]];  // M2.5
+zero_holes  = [[3.5,29.5],[61.5,29.5],[3.5,52.5],[61.5,52.5]]; // Pi Zero below the HAT, header rows aligned
+zero_z      = 5;      // Pi Zero board height above the plate
+hat_z       = 17.6;   // DigiAMP+ height (Pi Zero + 11 mm M2.5 spacers)
 knob_offset = [0, -52];   // encoder position on the lid (front)
 
 /* [Lamp] */
@@ -168,12 +172,16 @@ module bottom_plate() {
   difference() {
     union() {
       cylinder(r = Ri - 0.4, h = 3);
-      // standoffs for the Pi Zero 2 W + DigiAMP+ stack
-      translate([-29, -10, 0]) for (p = pi_holes) translate([p[0], p[1], 0]) cylinder(d = 6, h = 8, $fn = 24);
+      // Pi Zero 2 W on short standoffs; the DigiAMP+ sits on 11 mm spacers above it
+      // (shared header-side holes) and on two tall standoffs on the other side
+      translate(hat_origin) {
+        for (p = zero_holes) translate([p[0], p[1], 0]) cylinder(d = 6, h = zero_z, $fn = 24);
+        for (p = [hat_holes[0], hat_holes[1]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = hat_z, $fn = 24);
+      }
       // standoffs for the 5 V buck converter (mini MP1584 / LM2596 board)
       translate([-20, -60, 0]) for (p = [[0,0],[30,0]]) translate([p[0], p[1], 0]) cylinder(d = 6, h = 6, $fn = 24);
     }
-    translate([-29, -10, -eps]) for (p = pi_holes) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 10, $fn = 16);
+    translate([hat_origin[0], hat_origin[1], -eps]) for (p = concat(zero_holes, hat_holes)) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 30, $fn = 16);
     translate([-20, -60, -eps]) for (p = [[0,0],[30,0]]) translate([p[0], p[1], 0]) cylinder(d = 2.6, h = 10, $fn = 16);
     // vent slots
     for (x = [-60:8:60]) translate([x - 1.5, 45, -eps]) cube([3, 30, 4]);
@@ -251,13 +259,47 @@ module knob() {
   }
 }
 
+// ------------------------------------------------------------------ dummy components (renders only)
+module dummy_driver() {   // in the -Y baffle, cone facing out
+  color("#202231") translate([0, -baffle_dist, drv_z]) rotate([-90,0,0]) {
+    cylinder(d = drv_flange_d, h = 3);
+    cylinder(d1 = drv_cutout_d - 4, d2 = 40, h = 30);
+    translate([0,0,30]) cylinder(d = 72, h = 25);
+  }
+  color("#5a5f6e") translate([0, -baffle_dist - 2, drv_z]) rotate([90,0,0]) cylinder(d1 = 84, d2 = 30, h = 14);
+  color("#8d92a3") translate([0, -baffle_dist - 14, drv_z]) rotate([90,0,0]) sphere(d = 30);
+}
+module dummy_pr() {
+  color("#202231") translate([0, baffle_dist, drv_z]) rotate([90,0,0]) {
+    cylinder(d = pr_flange_d, h = 3);
+    difference() { cylinder(d1 = pr_cutout_d - 4, d2 = 60, h = 28); translate([0,0,-1]) cylinder(d1 = pr_cutout_d - 10, d2 = 52, h = 30); }
+  }
+  color("#6d7282") translate([0, baffle_dist + 1, drv_z]) rotate([-90,0,0]) cylinder(d = 80, h = 3);
+}
+module dummy_electronics() {
+  translate([hat_origin[0], hat_origin[1], 0]) {
+    color("#1f7a3c") translate([0, 26, zero_z]) cube([65, 30, 1.6]);                 // Pi Zero 2 W
+    color("#222") translate([3.5 + 29 - 25.4, 26 + 30 - 5, zero_z + 1.6]) cube([51, 5, 9]); // header
+    color("#2a4b8d") translate([0, 0, hat_z]) cube([65, 56.5, 1.6]);                 // DigiAMP+
+    color("#111") translate([8, 8, hat_z + 1.6]) cube([14, 14, 10]);                 // inductors/caps
+    color("#111") translate([40, 8, hat_z + 1.6]) cube([14, 14, 10]);
+    color("#2f8a4f") translate([0, 40, hat_z + 1.6]) cube([10, 16, 9]);               // terminals
+  }
+  color("#2a4b8d") translate([-25, -66, 6]) cube([40, 20, 1.6]);                       // buck converter
+  color("#7a7f8f") translate([0, R - wall - 8, 18]) rotate([-90,0,0]) cylinder(d = 10, h = 12); // DC jack
+}
+module dummy_leds() {
+  color("#fff3c4") translate([0,0,stem_top + 5]) for (i = [0:29])
+    let(a = i * 360 / 7.5, z = i * 1.6) translate([0,0,z]) rotate(a) translate([core_d/2 + 0.8, 0, 0]) cube([1.6, 5, 5], center = true);
+}
+
 // ------------------------------------------------------------------ assembly
-module assembly(with_shade = true) {
+module assembly(with_shade = true, with_parts = true) {
   color("#3c4157") base_shell();
   color("#2b2f3d") translate([0,0,div_z]) divider();
   color("#4b5168") translate([0,0,chamber_top]) top_lid();
   color("#2b2f3d") translate([0,0,-3]) bottom_plate();
-  color("#1b1d26") translate([0, -(baffle_dist), drv_z]) rotate([90,0,0]) cylinder(d = drv_flange_d, h = 3);
+  if (with_parts) { dummy_driver(); dummy_pr(); dummy_electronics(); dummy_leds(); }
   color("#b88a3c") translate([0,0,stem_z]) stem();
   color("#2b2f3d") translate([0,0,chamber_bot]) conduit();
   color("#e9e3d5") translate([0,0,stem_top]) led_core();
@@ -274,6 +316,33 @@ module cutaway() { difference() { assembly(with_shade = false); translate([0, -3
 
 if (part == "assembly")      assembly();
 if (part == "cutaway")       cutaway();
+
+// ------------------------------------------------------------------ documentation views
+module section_side()   { difference() { assembly(with_shade = false); translate([0, -300, -100]) cube([300, 600, 700]); } }
+module section_front()  { difference() { assembly(with_shade = false); translate([-300, 0, -100]) cube([600, 300, 700]); } }
+module section_top(z)   { difference() { assembly(with_shade = false); translate([-300, -300, z]) cube([600, 600, 420]); } }
+module exploded() {
+  color("#3c4157") base_shell();
+  dummy_driver(); dummy_pr();
+  color("#2b2f3d") translate([0,0,-60]) bottom_plate();
+  translate([0,0,-57]) dummy_electronics();
+  color("#2b2f3d") translate([0,0,div_z]) divider();
+  color("#2b2f3d") translate([0,0,chamber_bot]) conduit();
+  color("#4b5168") translate([0,0,chamber_top + 70]) top_lid();
+  color("#d0c7b3") translate([knob_offset[0], knob_offset[1], chamber_top + 70 + lid_t + 30]) knob();
+  color("#b88a3c") translate([0,0,stem_z + 110]) stem();
+  translate([0,0,150]) { color("#e9e3d5") translate([0,0,stem_top]) led_core(); dummy_leds(); }
+  color("#e9e3d5") translate([0,0,stem_top + core_h + 175]) core_cap();
+  translate([0,0,shade_z + 230]) {
+    color("#d9cdb5") translate([0,0,shade_h - 8 - 40]) spider();
+    color("#f3ead8", 0.8) translate([0,0,40]) shade();
+  }
+}
+if (part == "section_side")  section_side();
+if (part == "section_front") section_front();
+if (part == "section_chamber") section_top(drv_z);
+if (part == "section_electronics") section_top(div_z - 6);
+if (part == "exploded")      exploded();
 if (part == "base_shell")    base_shell();
 if (part == "divider")       divider();
 if (part == "top_lid")       top_lid();

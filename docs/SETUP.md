@@ -24,7 +24,7 @@ journalctl -u sleepgen -f                          # Log des Dienstes
 
 ## 2. Home Assistant anbinden
 
-1. In Home Assistant das Add-on **Mosquitto broker** installieren und starten (Einstellungen → Add-ons). Die Integration **MQTT** wird danach vorgeschlagen, einfach bestätigen.
+1. In Home Assistant die App **Mosquitto broker** installieren und starten (Einstellungen → Apps). Die Integration **MQTT** wird danach vorgeschlagen, einfach bestätigen.
 2. Einen Benutzer für die Lampe anlegen (Einstellungen → Personen → Benutzer, z. B. `sleepgen`). Den Namen und das Passwort in `/etc/sleepgen/config.yaml` unter `mqtt:` eintragen, `host` ist die IP von Home Assistant.
 3. `sudo systemctl restart sleepgen`. Unter Einstellungen → Geräte & Dienste → MQTT erscheint das Gerät **Soundlampe** mit allen Entitäten:
 
@@ -50,6 +50,10 @@ journalctl -u sleepgen -f                          # Log des Dienstes
    Danach Home Assistant neu starten. Das Paket bringt mit:
    - **Aufwachlicht:** Weckzeit einstellen. Der Sonnenaufgang startet automatisch so, dass er zur Weckzeit fertig ist (optional nur werktags, optional mit leisem Vogelgezwitscher).
    - **Skript „Gute Nacht“:** Preset wählen, Lampe auf warmes Licht, Sleep-Timer starten, Licht dimmt mit herunter. Eigene Aktionen, z. B. alle anderen Lichter aus, sind im Skript vorbereitet.
+   - **Automatisch per Präsenzmelder** (für den Melder `binary_sensor.pasenzmelder_schalfzimmer_presence` im DG Schlafzimmer vorbereitet):
+     - *Start:* Abends im eingestellten Zeitfenster (z. B. 21:00–03:00) ist jemand im Schlafzimmer und das Deckenlicht `light.licht_schlafzimmer` ist aus. Dann startet der Gute-Nacht-Sound mit dem Gute-Nacht-Timer. Ausgelöst wird beim Ausschalten des Deckenlichts oder beim Betreten des dunklen Zimmers.
+     - *Stopp:* 15 Minuten lang niemand mehr im Zimmer, dann gehen Sounds und Lampe aus.
+     - Einschalten mit „Sounds automatisch per Präsenzmelder“, Zeitfenster mit „Auto-Start ab/bis“ (einmalig setzen, sonst ist das Fenster leer).
    - **Sounds pausieren bei Musik** (optional)
 5. **Dashboard:** Den Inhalt von [`homeassistant/dashboard.yaml`](../homeassistant/dashboard.yaml) als neue Ansicht einfügen (Dashboard → Bearbeiten → Raw-Konfigurationseditor). Damit steuerst du alles vom Handy aus, auch unterwegs über die Home-Assistant-App.
 
@@ -57,7 +61,7 @@ Weitere Ideen für Automationen: Lampe als Nachtlicht bei Bewegung (gedimmt rot)
 
 ## 3. Musik über Home Assistant (Music Assistant)
 
-1. Das Add-on **Music Assistant** installieren und starten, dann die Integration hinzufügen.
+1. Die App **Music Assistant** installieren und starten, dann die Integration hinzufügen.
 2. In Music Assistant unter Einstellungen → Player taucht **Soundlampe** automatisch auf (squeezelite/Slimproto). In Home Assistant heißt der Player dann z. B. `media_player.soundlampe`.
 3. Musikquellen in Music Assistant verbinden (Spotify, Radio, NAS …). Musik und Schlafsounds laufen gleichzeitig. Der Drehknopf regelt beides.
 
