@@ -21,6 +21,7 @@ Parametrisches OpenSCAD-Modell: [`soundlampe.scad`](soundlampe.scad). Fertige ST
 | `glocke` | ausgestellte Glocke, 36 Rippen | auf dem Messingstiel, Spinne `spider_glocke.stl` | weicheres, nach unten gerichtetes Licht |
 | `kolben` | bauchige Kugel, 56 feine Rippen | steht auf `globe_seat.stl` direkt auf dem Fuß, kurzer Stiel `stem_short.stl` | wirkt wie Riffelglas. Unten ca. 45° Überhang, langsam drucken (Außenwand 25 mm/s), Lüfter 100 % |
 | `twist` | leicht bauchiger Zylinder, 40 Rippen mit 50° Drehung | wie `kolben` | moderner Look, druckt am problemlosesten |
+| `laterne` | gestufte Kugel mit drei Wülsten, 72 feine Rippen, 215 mm hoch | wie `kolben` (Kerndeckel `core_cap_globe.stl`) | wie gestapeltes Riffelglas. Überhänge bleiben unter ca. 40°, Außenwand langsam (25 mm/s) |
 
 Alle Schirme sind eigene, parametrische Entwürfe. Rippenzahl, Tiefe, Drehung und Höhe stehen in der Tabelle `style()` in `soundlampe.scad` und lassen sich frei ändern.
 
@@ -41,12 +42,12 @@ Einzelbilder liegen in [`renders/`](renders/). Neu rendern: `openscad -D 'part="
 | Deckel | `top_lid.stl` | PETG | auf dem Kopf drucken (Fase unten), 100 % Infill |
 | Kabelrohr | `conduit.stl` | PETG | aufrecht |
 | Bodenplatte | `bottom_plate.stl` | PETG | flach |
-| Stiel | `stem.stl` (Plissee/Glocke) oder `stem_short.stl` (Kolben/Twist) | PETG | nur wenn kein Messingrohr |
+| Stiel | `stem.stl` (Plissee/Glocke) oder `stem_short.stl` (Kolben/Twist/Laterne) | PETG | nur wenn kein Messingrohr |
 | Lichtkern | `led_core.stl` | PETG | aufrecht |
-| Kerndeckel | `core_cap_plissee.stl`, `core_cap_glocke.stl` oder `core_cap_globe.stl` (Kolben/Twist) | PETG | aufrecht |
+| Kerndeckel | `core_cap_plissee.stl`, `core_cap_glocke.stl` oder `core_cap_globe.stl` (Kolben/Twist/Laterne) | PETG | aufrecht |
 | Spinne | `spider_plissee.stl` / `spider_glocke.stl` | PETG/PLA | flach, nur Plissee und Glocke |
 | Schirmsitz | `globe_seat.stl` | PETG | nur Kolben/Twist, mit 3 × M3 auf den Deckel |
-| Schirm | `shade_plissee.stl`, `shade_glocke.stl`, `shade_kolben.stl`, `shade_twist.stl` | **transluzentes** PETG oder PLA (Natur, Elfenbein, „Glass“-PETG) | **Vasenmodus**, 0 Bodenschichten, 0,8 mm Linienbreite |
+| Schirm | `shade_plissee.stl`, `shade_glocke.stl`, `shade_kolben.stl`, `shade_twist.stl`, `shade_laterne.stl` | **transluzentes** PETG oder PLA (Natur, Elfenbein, „Glass“-PETG) | **Vasenmodus**, 0 Bodenschichten, 0,8 mm Linienbreite |
 | Knopf | `knob.stl` | PLA/PETG | aufrecht. Hell oder Messingfarbe sieht retro aus |
 
 ## Akustik und Material

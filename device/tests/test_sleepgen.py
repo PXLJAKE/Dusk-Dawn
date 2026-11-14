@@ -220,3 +220,27 @@ def test_mqtt_end_to_end(tmp_path):
     finally:
         broker.terminate()
         broker.wait()
+
+
+def test_alarm_rings_and_stops(tmp_path):
+    app = make_app(tmp_path)
+    app.alarm_minutes = 0.1  # 6 s
+    handle_command(app, "alarm/set", "ON")
+    assert app.engine.alarm_ringing and app.full_state()["alarm_ringing"]
+    x = run(app.engine, 2)
+    assert np.abs(x).max() > 0.01  # rings although the sounds are off
+    run(app.engine, 5)
+    assert not app.engine.alarm_ringing  # stopped by itself after the set duration
+    handle_command(app, "alarm/set", "ON")
+    app.knob_click()  # a press on the knob stops it
+    assert not app.engine.alarm_ringing and not app.engine.playing
+    app.knob_click()  # without an alarm a press toggles the sounds
+    assert app.engine.playing
+
+
+@pytest.mark.parametrize("tone", ["Glocken", "Klassisch", "Vogelchor"])
+def test_alarm_tones(tone):
+    eng = Engine(sr=SR, sources=["rain"], seed=1)
+    eng.start_alarm(tone, 1, 1.0)
+    x = run(eng, 3)
+    assert np.isfinite(x).all() and np.abs(x).max() <= 1.0 and np.abs(x).max() > 0.01

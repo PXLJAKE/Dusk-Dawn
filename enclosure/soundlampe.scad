@@ -57,7 +57,7 @@ brace_angles = [20, 40, 140, 160, 200, 220, 320, 340];  // vertical stiffening r
 conduit_pos = [45, 0];    // cable tube beside the speakers (the ND105-4 is 67 mm deep, its magnet reaches the centre)
 
 /* [Lamp] */
-shade_style = "plissee";  // "plissee" | "glocke" (on the stem) | "kolben" | "twist" (sit directly on the base)
+shade_style = "plissee";  // "plissee" | "glocke" (on the stem) | "kolben" | "twist" | "laterne" (sit directly on the base)
 stem_od    = 20;      // fits a 20 mm brass tube, or print the stem part
 stem_id    = 13;
 stem_len   = 150;
@@ -250,6 +250,7 @@ function style(name) =
   name == "glocke" ? [150, function(t) 52 + 52 * pow(1 - t, 1.8), 36, 2.0, 0, false] :
   name == "kolben" ? [230, function(t) 58 + 44 * sin(180 * pow(t, 0.85)), 56, 2.2, 0, true] :
   name == "twist"  ? [210, function(t) 76 + 10 * sin(180 * t), 40, 3.0, 50, true] :
+  name == "laterne"? [215, function(t) 58 + 16 * sin(180 * t) + 13 * pow(sin(540 * t), 2), 72, 1.6, 0, true] :
   /* plissee */      [shade_h, function(t) (shade_bot_d + (shade_top_d - shade_bot_d) * t) / 2, pleats, pleat_depth, 0, false];
 
 S          = style(shade_style);
@@ -403,6 +404,41 @@ module knob_placed() {
 
 // cut open to show the inside (for documentation)
 module cutaway() { difference() { assembly(with_shade = false); translate([0, -300, -10]) cube([300, 600, 600]); } }
+
+// ------------------------------------------------------------------ detail views for the docs
+module led_strip_spiral(turns = 4, pitch = 15, w = 10) {
+  n = 30;                                   // 30 LEDs on 0.5 m
+  steps = 160;
+  r = core_d / 2 + 0.6;
+  for (i = [0 : steps - 1]) let(a0 = i * 360 * turns / steps, a1 = (i + 1) * 360 * turns / steps)
+    hull() for (a = [a0, a1]) rotate(a) translate([r, 0, 6 + a / 360 * pitch]) cube([0.6, 0.6, w], center = true);
+  for (k = [0 : n - 1]) let(a = k * 360 * turns / n)
+    color("#fff2b8") rotate(a) translate([r + 0.9, 0, 6 + a / 360 * pitch]) cube([1.6, 5, 5], center = true);
+}
+module led_detail() {
+  color("#e9e2d2") led_core();
+  color("#f4f4f4") led_strip_spiral();
+  color("#d8cfbd") translate([0, 0, core_h + 25]) core_cap();
+  color("#b88a3e") translate([0, 0, -60]) ring(stem_od, stem_id, 45);
+  // cable: 3 wires leaving the strip start into the core and down the stem
+  for (i = [0:2]) color(["#e8862a", "#222", "#2f6fd0"][i]) translate([-2 + i * 2, 0, -58]) cylinder(d = 1.6, h = 66, $fn = 8);
+}
+module perfboard_dummy() {
+  translate([-78, -35, 3]) {
+    color("#c9e3c4") cube([30, 70, 1.6]);
+    color("#232a40") translate([8, 20, 1.6]) cube([7.6, 19, 5]);          // 74AHCT125
+    color("#222") translate([20, 10, 1.6]) cylinder(d = 8, h = 12, $fn = 24); // 1000 uF
+    color("#d9b46c") translate([16, 48, 1.6]) cube([8, 2.4, 2.4]);       // 330 R
+    color("#2f8a4f") translate([4, 58, 1.6]) cube([22, 8, 10]);          // screw terminals
+  }
+}
+module electronics_detail() {
+  color("#3a4361") bottom_plate();
+  dummy_electronics();
+  perfboard_dummy();
+}
+if (part == "led_detail")         led_detail();
+if (part == "electronics_detail") electronics_detail();
 
 if (part == "assembly")      assembly();
 if (part == "cutaway")       cutaway();

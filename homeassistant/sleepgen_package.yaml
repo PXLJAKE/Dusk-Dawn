@@ -29,6 +29,9 @@ input_boolean:
   sleepgen_wecker_werktags:
     name: Nur werktags
     icon: mdi:calendar-week
+  sleepgen_wecker_klingeln:
+    name: Wecker klingelt zur Weckzeit
+    icon: mdi:alarm-bell
   sleepgen_wecker_voegel:
     name: Mit Vogelgezwitscher wecken
     icon: mdi:bird
@@ -46,15 +49,17 @@ input_select:
     options: ["30 min", "45 min", "60 min", "90 min", "120 min"]
     icon: mdi:timer-sand
 
+# In Jakes HA als Template-Helfer (UI) angelegt; hier zum Nachbauen.
 template:
   - sensor:
-      - name: Sonnenaufgang startet um
+      - name: Soundlampe Sonnenaufgang startet um
         unique_id: sleepgen_sunrise_start
         icon: mdi:weather-sunset-up
+        device_class: timestamp
         state: >
-          {% set t = today_at(states('input_datetime.sleepgen_wecker')) %}
-          {% set m = states('number.sleepgen_sunrise_minutes') | int(30) %}
-          {{ (t - timedelta(minutes=m)).strftime('%H:%M') }}
+          {% set w = today_at(states('input_datetime.sleepgen_wecker')) %}
+          {% set s = w - timedelta(minutes=states('number.sleepgen_sunrise_minutes') | int(30)) %}
+          {{ (s if s > now() - timedelta(minutes=5) else s + timedelta(days=1)).isoformat() }}
 
 script:
   sleepgen_gute_nacht:
@@ -91,9 +96,8 @@ automation:
     description: Startet den Sonnenaufgang so, dass er zur Weckzeit fertig ist.
     mode: single
     triggers:
-      - trigger: template
-        value_template: >
-          {{ now().strftime('%H:%M') == states('sensor.sonnenaufgang_startet_um') }}
+      - trigger: time
+        at: sensor.soundlampe_sonnenaufgang_startet_um
     conditions:
       - condition: state
         entity_id: input_boolean.sleepgen_wecker_aktiv
@@ -129,6 +133,29 @@ automation:
           - action: switch.turn_on
             target: {entity_id: switch.sleepgen_sound}
 
+  # Wecker: klingelt zur Weckzeit. Die Lampe hört nach der Weckdauer
+  # (number.sleepgen_alarm_minutes) von selbst auf, Knopfdruck stoppt früher.
+  - id: sleepgen_wecker_klingelt
+    alias: Soundlampe – Wecker klingelt
+    mode: single
+    triggers:
+      - trigger: time
+        at: input_datetime.sleepgen_wecker
+    conditions:
+      - condition: state
+        entity_id: input_boolean.sleepgen_wecker_klingeln
+        state: "on"
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.sleepgen_wecker_werktags
+            state: "off"
+          - condition: time
+            weekday: [mon, tue, wed, thu, fri]
+    actions:
+      - action: switch.turn_on
+        target: {entity_id: switch.sleepgen_alarm}
+
   # Optional: pause the sleep sounds while music plays on the lamp.
   # The music player entity comes from Music Assistant; check its id under
   # Settings → Devices & services → Music Assistant and adjust below.
@@ -136,9 +163,9 @@ automation:
     alias: Soundlampe – Sounds pausieren bei Musik
     mode: restart
     triggers:
-      - trigger: state
-        entity_id: media_player.soundlampe
-        to: playing
+      - trigger: media_player.started_playing
+        target:
+          entity_id: media_player.soundlampe
     conditions:
       - condition: state
         entity_id: switch.sleepgen_sound
@@ -155,9 +182,9 @@ automation:
     description: Startet den Gute-Nacht-Sound, wenn abends jemand im Schlafzimmer ist und das Deckenlicht aus ist.
     mode: single
     triggers:
-      - trigger: state
-        entity_id: light.licht_schlafzimmer
-        to: "off"
+      - trigger: light.turned_off
+        target:
+          entity_id: light.licht_schlafzimmer
       - trigger: occupancy.detected
         target:
           entity_id: binary_sensor.pasenzmelder_schalfzimmer_presence
@@ -184,6 +211,8 @@ automation:
       - action: select.select_option
         target: {entity_id: select.sleepgen_timer}
         data: {option: "{{ states('input_select.sleepgen_gute_nacht_timer') }}"}
+      - action: switch.turn_on
+        target: {entity_id: switch.sleepgen_sound}
 
   # Stopp: Niemand mehr im Schlafzimmer -> Sounds und Lampe aus.
   # mmWave-Melder erkennen auch Schlafende (Atmung); die 15 Minuten fangen kurze Aussetzer ab.

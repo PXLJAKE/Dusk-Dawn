@@ -12,6 +12,8 @@ After the device connects to the broker, Home Assistant creates one device
               Sonnenaufgang / Kerze / Einschlafen)
 * button      Sonnenaufgang starten
 * switch      Licht folgt Sleep-Timer
+* switch      Wecker klingelt (an = jetzt klingeln, aus = stoppen)
+* select      Weckton; number Weckdauer, Wecklautstärke
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from .dsp import LABELS_DE
+from .dsp import LABELS_DE, AlarmTone
 from .light import EFFECTS
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -42,6 +44,8 @@ ICONS = {
     "white": "mdi:waveform",
     "pink": "mdi:waveform",
     "brown": "mdi:waveform",
+    "leaves": "mdi:leaf",
+    "stream": "mdi:waves-arrow-right",
 }
 
 
@@ -140,6 +144,28 @@ def discovery_configs(app: "App") -> dict[str, dict]:
         "command_topic": f"{base}/lamp_follows_timer/set", "state_topic": state,
         "value_template": "{{ 'ON' if value_json.lamp_follows_timer else 'OFF' }}",
     })
+    add("switch", "alarm", {
+        "name": "Wecker klingelt", "icon": "mdi:alarm-bell",
+        "command_topic": f"{base}/alarm/set", "state_topic": state,
+        "value_template": "{{ 'ON' if value_json.alarm_ringing else 'OFF' }}",
+    })
+    add("select", "alarm_tone", {
+        "name": "Weckton", "icon": "mdi:bell-ring",
+        "command_topic": f"{base}/alarm_tone/set", "state_topic": state,
+        "options": AlarmTone.TONES, "value_template": "{{ value_json.alarm_tone }}",
+    })
+    add("number", "alarm_minutes", {
+        "name": "Weckdauer", "icon": "mdi:timer-alert-outline",
+        "command_topic": f"{base}/alarm_minutes/set", "state_topic": state,
+        "min": 1, "max": 60, "step": 1, "unit_of_measurement": "min",
+        "value_template": "{{ value_json.alarm_minutes }}",
+    })
+    add("number", "alarm_volume", {
+        "name": "Wecklautstärke", "icon": "mdi:volume-vibrate",
+        "command_topic": f"{base}/alarm_volume/set", "state_topic": state,
+        "min": 0, "max": 100, "step": 1, "unit_of_measurement": "%", "mode": "slider",
+        "value_template": "{{ (value_json.alarm_volume * 100) | round(0) }}",
+    })
     return out
 
 
@@ -171,6 +197,21 @@ def handle_command(app: "App", sub: str, payload: str):
         app.lamp.start_sunrise()
     elif sub == "lamp_follows_timer/set":
         app.lamp_follows_timer = p.upper() == "ON"
+        app.publish_state()
+    elif sub == "alarm/set":
+        if p.upper() == "ON":
+            app.start_alarm()
+        else:
+            app.stop_alarm()
+    elif sub == "alarm_tone/set":
+        if p in AlarmTone.TONES:
+            app.alarm_tone = p
+            app.publish_state()
+    elif sub == "alarm_minutes/set":
+        app.alarm_minutes = float(p)
+        app.publish_state()
+    elif sub == "alarm_volume/set":
+        app.engine.alarm_volume = float(p) / 100
         app.publish_state()
     else:
         log.debug("ignoring %s", sub)

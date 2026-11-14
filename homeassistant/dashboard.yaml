@@ -37,6 +37,8 @@ sections:
           - number.sleepgen_layer_wind
           - number.sleepgen_layer_fire
           - number.sleepgen_layer_birds
+          - number.sleepgen_layer_leaves
+          - number.sleepgen_layer_stream
           - number.sleepgen_layer_fan
           - number.sleepgen_layer_white
           - number.sleepgen_layer_pink
@@ -62,13 +64,23 @@ sections:
         name: Alles aus
         tap_action: {action: perform-action, perform_action: script.sleepgen_alles_aus}
       - type: entities
+        title: Wecker
+        show_header_toggle: false
+        entities:
+          - input_boolean.sleepgen_wecker_klingeln
+          - input_datetime.sleepgen_wecker
+          - switch.sleepgen_alarm
+          - select.sleepgen_alarm_tone
+          - number.sleepgen_alarm_minutes
+          - number.sleepgen_alarm_volume
+      - type: entities
         title: Aufwachlicht
         show_header_toggle: false
         entities:
           - input_boolean.sleepgen_wecker_aktiv
           - input_datetime.sleepgen_wecker
           - number.sleepgen_sunrise_minutes
-          - sensor.sonnenaufgang_startet_um
+          - sensor.soundlampe_sonnenaufgang_startet_um
           - input_boolean.sleepgen_wecker_werktags
           - input_boolean.sleepgen_wecker_voegel
           - button.sleepgen_sunrise

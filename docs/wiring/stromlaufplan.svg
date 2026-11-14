@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 1080" font-family="Inter, DejaVu Sans, sans-serif">
+  <style>
+    .box{fill:#fbf8f2;stroke:#232a40;stroke-width:2.5}
+    .t{font-size:22px;font-weight:700;fill:#232a40}
+    .s{font-size:15px;fill:#4a4a4a}
+    .pin{font-size:15px;fill:#232a40}
+    .p19{stroke:#d1352b;stroke-width:5;fill:none}
+    .p5{stroke:#e8862a;stroke-width:5;fill:none}
+    .gnd{stroke:#222;stroke-width:4;fill:none}
+    .sig{stroke:#2f6fd0;stroke-width:3.5;fill:none}
+    .spk{stroke:#7a3fb0;stroke-width:4;fill:none}
+  </style>
+  <rect width="1560" height="1080" fill="#ffffff"/>
+  <text x="40" y="50" font-size="30" font-weight="700" fill="#232a40">Soundlampe · Stromlaufplan</text>
+  <text x="40" y="78" class="s">Pi 3 Model A+ mit aufgestecktem DigiAMP+ · LM2596 · Pegelwandler 74AHCT125 · SK6812 RGBW · EC11</text>
+  <g transform="translate(1060,32)">
+    <line x1="0" y1="10" x2="40" y2="10" class="p19"/><text x="50" y="15" class="s">19 V</text>
+    <line x1="120" y1="10" x2="160" y2="10" class="p5"/><text x="170" y="15" class="s">5,1 V</text>
+    <line x1="250" y1="10" x2="290" y2="10" class="gnd"/><text x="300" y="15" class="s">GND (Masse)</text>
+    <line x1="0" y1="40" x2="40" y2="40" class="sig"/><text x="50" y="45" class="s">Signal</text>
+    <line x1="120" y1="40" x2="160" y2="40" class="spk"/><text x="170" y="45" class="s">Lautsprecher</text>
+  </g>
+
+  <!-- PSU + jack -->
+  <rect x="40" y="130" width="200" height="100" rx="10" class="box"/>
+  <text x="58" y="165" class="t">Netzteil</text>
+  <text x="58" y="190" class="s">19 V / 3,42 A</text>
+  <text x="58" y="212" class="s">Stecker 5,5 × 2,5</text>
+  <rect x="290" y="130" width="170" height="100" rx="10" class="box"/>
+  <text x="308" y="165" class="t">DC-Buchse</text>
+  <text x="308" y="190" class="s">Mitte = Plus</text>
+  <text x="308" y="212" class="s">hinten unten</text>
+  <line x1="240" y1="160" x2="290" y2="160" class="p19"/>
+  <line x1="240" y1="200" x2="290" y2="200" class="gnd"/>
+
+  <!-- DigiAMP+ -->
+  <rect x="620" y="120" width="400" height="170" rx="10" class="box"/>
+  <text x="640" y="155" class="t">DigiAMP+ (Verstärker)</text>
+  <text x="640" y="178" class="s">steckt auf dem Pi und versorgt ihn mit Strom</text>
+  <text x="640" y="214" class="pin">◀ Strom: Hohlstecker-Kabel 5,5 × 2,5 in die Buchse</text>
+  <text x="640" y="262" class="pin">Lautsprecher-Ausgang L + / – ▶</text>
+  <line x1="460" y1="160" x2="620" y2="160" class="p19"/>
+  <line x1="460" y1="200" x2="620" y2="200" class="gnd"/>
+  <circle cx="540" cy="160" r="6" fill="#d1352b"/><circle cx="570" cy="200" r="6" fill="#222"/>
+
+  <!-- Speaker -->
+  <rect x="1100" y="150" width="270" height="110" rx="10" class="box"/>
+  <text x="1118" y="185" class="t">Breitbänder</text>
+  <text x="1118" y="210" class="s">Dayton ND105-4, 4 Ω</text>
+  <text x="1118" y="236" class="pin">+ / – (rote Markierung = +)</text>
+  <line x1="1020" y1="245" x2="1100" y2="195" class="spk"/>
+  <line x1="1020" y1="265" x2="1100" y2="235" class="spk"/>
+  <text x="1390" y="190" class="s">Passivmembran</text><text x="1390" y="210" class="s">ND105-PR:</text><text x="1390" y="230" class="s">kein Kabel</text>
+
+  <!-- LM2596 -->
+  <rect x="290" y="300" width="220" height="120" rx="10" class="box"/>
+  <text x="308" y="350" class="t">LM2596</text>
+  <text x="308" y="373" class="s">19 V → 5,1 V (einstellen!)</text>
+  <text x="318" y="320" class="pin" font-size="12">IN+</text><text x="372" y="320" class="pin" font-size="12">IN–</text>
+  <text x="312" y="410" class="pin" font-size="12">OUT+</text><text x="370" y="410" class="pin" font-size="12">OUT–</text>
+  <polyline points="540,160 540,265 330,265 330,300" class="p19"/>
+  <polyline points="570,200 570,280 380,280 380,300" class="gnd"/>
+
+  <!-- rails -->
+  <polyline points="330,420 330,470 1450,470 1450,880 1440,880" class="p5"/>
+  <line x1="110" y1="470" x2="330" y2="470" class="p5"/>
+  <polyline points="380,420 380,495 1475,495 1475,910 1440,910" class="gnd"/>
+  <line x1="230" y1="495" x2="380" y2="495" class="gnd"/>
+  <text x="1050" y="462" class="s" fill="#b25f12">5,1-V-Leitung</text>
+  <text x="1050" y="515" class="s">GND-Leitung (alle Massen verbunden)</text>
+
+  <!-- dashed amp/pi -->
+  <line x1="820" y1="290" x2="820" y2="560" stroke="#232a40" stroke-width="3" stroke-dasharray="9 7"/>
+  <text x="832" y="330" class="s">aufgesteckt über die</text><text x="832" y="350" class="s">40-polige Stiftleiste,</text><text x="832" y="370" class="s">4 × M2,5-Bolzen 11 mm</text>
+
+  <!-- Pi -->
+  <rect x="620" y="560" width="400" height="290" rx="10" class="box"/>
+  <text x="640" y="595" class="t">Raspberry Pi 3 Model A+</text>
+  <text x="640" y="617" class="s">Anschluss an der durchgeführten Stiftleiste oben</text>
+  <text x="640" y="636" class="s" font-size="13">auf dem DigiAMP+ (Jumperkabel mit Buchse)</text>
+  <text x="640" y="672" class="pin">◀ Pin 19 · GPIO10</text>
+  <text x="640" y="765" class="pin">◀ Pin 39 · GND</text>
+  <g class="pin" text-anchor="end">
+    <text x="1005" y="655">Pin 29 · GPIO5 ▶</text>
+    <text x="1005" y="690">Pin 31 · GPIO6 ▶</text>
+    <text x="1005" y="725">Pin 33 · GPIO13 ▶</text>
+    <text x="1005" y="760">Pin 30 · GND ▶</text>
+    <text x="1005" y="795">Pin 34 · GND ▶</text>
+  </g>
+  <text x="640" y="835" class="s">belegt vom DigiAMP+: GPIO 2, 3, 18–22</text>
+
+  <!-- Encoder -->
+  <rect x="1100" y="600" width="300" height="225" rx="10" class="box"/>
+  <text x="1118" y="635" class="t">Drehgeber EC11</text>
+  <g class="pin">
+    <text x="1118" y="660">◀ A (3er-Seite außen)</text>
+    <text x="1118" y="695">◀ B (3er-Seite außen)</text>
+    <text x="1118" y="730">◀ Taster-Pin 1</text>
+    <text x="1118" y="765">◀ C (3er-Seite Mitte)</text>
+    <text x="1118" y="800">◀ Taster-Pin 2</text>
+  </g>
+  <line x1="1020" y1="650" x2="1100" y2="655" class="sig"/>
+  <line x1="1020" y1="685" x2="1100" y2="690" class="sig"/>
+  <line x1="1020" y1="720" x2="1100" y2="725" class="sig"/>
+  <line x1="1020" y1="755" x2="1100" y2="760" class="gnd"/>
+  <line x1="1020" y1="790" x2="1100" y2="795" class="gnd"/>
+
+  <!-- perfboard -->
+  <rect x="40" y="560" width="510" height="320" rx="10" class="box" style="fill:#eef5ec"/>
+  <text x="250" y="595" class="t">Lochraster-Platine</text>
+  <!-- elko -->
+  <rect x="80" y="660" width="60" height="80" rx="8" fill="#222"/>
+  <text x="88" y="695" fill="#fff" font-size="13">1000 µF</text><text x="96" y="713" fill="#fff" font-size="13">10 V</text>
+  <text x="60" y="815" class="pin" font-size="13">Elko: + an 5 V, – an GND</text>
+  <polyline points="110,660 110,470" class="p5"/>
+  <polyline points="110,740 110,790 230,790" class="gnd"/>
+  <!-- chip -->
+  <rect x="300" y="640" width="130" height="150" rx="6" fill="#232a40"/>
+  <text x="312" y="662" fill="#fff" font-size="15" font-weight="700">74AHCT125</text>
+  <g font-size="13" fill="#fff">
+    <text x="306" y="690">1 1OE</text><text x="306" y="770">7 GND</text>
+    <text x="424" y="690" text-anchor="end">14 VCC</text>
+    <text x="424" y="720" text-anchor="end">2 1A</text>
+    <text x="424" y="750" text-anchor="end">3 1Y</text>
+  </g>
+  <polyline points="300,685 230,685 230,495" class="gnd"/>
+  <polyline points="300,765 230,765 230,685" class="gnd"/>
+  <line x1="230" y1="765" x2="230" y2="792" class="gnd"/>
+  <polyline points="430,685 470,685 470,470" class="p5"/>
+  <!-- signal from pi -->
+  <polyline points="620,667 580,667 580,715 430,715" class="sig"/>
+  <!-- 1Y -> R -> LED -->
+  <polyline points="430,745 455,745" class="sig"/>
+  <rect x="455" y="735" width="60" height="20" fill="#d9b46c" stroke="#232a40" stroke-width="2"/>
+  <text x="458" y="728" class="pin" font-size="13">330 Ω</text>
+  <polyline points="515,745 530,745 530,950 1080,950 1080,895 1100,895" class="sig"/>
+  <text x="58" y="845" class="s">30 × 70 mm, links neben dem Pi · unbenutzte Kanäle:</text>
+  <text x="58" y="865" class="s">Pin 4, 5 an GND · Pin 9, 10, 12, 13 an 5 V</text>
+  <!-- pi gnd -->
+  <polyline points="620,760 600,760 600,495" class="gnd"/>
+
+  <!-- LED strip -->
+  <rect x="1100" y="850" width="340" height="90" rx="10" class="box" style="fill:#fff7df"/>
+  <text x="1118" y="883" class="t">LED-Strip SK6812 RGBW</text>
+  <text x="1118" y="905" class="pin">◀ DIN (Daten)       +5V / GND ▶</text>
+  <text x="1118" y="928" class="s">30 LEDs, warmweiß, 0,5 m</text>
+  <text x="640" y="945" class="s">Datenleitung (durch Stiel, Deckelkanal und Kabelrohr)</text>
+
+  <g transform="translate(40,995)">
+    <text class="s" y="48">3. Am LED-Strip zeigen die Pfeile vom Anschluss weg: DIN ist der Anfang.</text>
+    <text class="s" y="0">1. LM2596 zuerst allein an 19 V anschließen und mit dem Multimeter auf 5,1 V einstellen, dann erst Platine und LEDs anschließen.</text>
+    <text class="s" y="24">2. Alle Massen (Netzteil, LM2596, Pi, Platine, LEDs) sind verbunden. Der Pi bekommt seinen Strom nur über den DigiAMP+, kein USB-Netzteil anstecken.</text>
+    <text class="s" y="-48"> </text>
+  </g>
+</svg>
