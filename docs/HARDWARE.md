@@ -40,6 +40,7 @@ Der Pi braucht etwas mehr Strom (ca. 1 W im Leerlauf). Dafür ist das Gerät ein
 | Breitbänder | **Dayton Audio ND105-4** (4", 4 Ω), alternativ Visaton FRS 10 / Tang Band W4-1337 | 30 € |
 | Passivmembran | **Dayton Audio ND105-PR** (oder ND90-PR, dann `pr_*`-Werte anpassen) | 15 € |
 | Dämmung | Polyesterwatte (z. B. Sonofil), lose, ca. 20 g | 5 € |
+| Entdröhnung | Alubutyl-Matte 2 mm, ca. 20 × 30 cm, innen an die Kammerwände | 6 € |
 | Dichtung | Moosgummi-Dichtband 3 mm + etwas Silikon/Heißkleber | 4 € |
 
 Warum so: Ein guter 4"-Breitbänder in einer geschlossenen Kammer von ca. 2,6 l mit Passivmembran nach hinten liefert erstaunlich viel Bass. Das ist wichtig für Wellen, Gewitter und Brown Noise, und auch Musik klingt voll. Im Lampenfuß bringt Stereo keine echte Trennung, deshalb läuft das Gerät mono (beide Kanäle werden gemischt) und das Geld steckt in einem besseren Chassis.
@@ -54,7 +55,7 @@ Warum so: Ein guter 4"-Breitbänder in einer geschlossenen Kammer von ca. 2,6 l 
 | Füße | 3 Gummifüße Ø 12 mm, selbstklebend | 2 € |
 | Filament | ca. 600 g PETG (Fuß, dunkel) + ca. 150 g transluzentes PLA/PETG (Schirm, Elfenbein/Natur) | 25 € |
 
-**Summe: ca. 190–220 €.** Zum Vergleich: Der Hatch Restore 3 kostet ca. 170 $ und kann weder mischen noch Musik aus Home Assistant spielen.
+**Summe: ca. 195–225 €.** Zum Vergleich: Der Hatch Restore 3 kostet ca. 170 $ und kann weder mischen noch Musik aus Home Assistant spielen.
 
 ## Verdrahtung
 
@@ -96,4 +97,5 @@ Vom DigiAMP+ belegt (nicht anderweitig nutzen): GPIO2/3 (I²C), GPIO18–21 (I²
 - **LED-Strom:** 30 SK6812 RGBW ziehen bei voller Helligkeit bis zu 2 A. Die Software begrenzt auf 70 % (`led.max_brightness`). Der Step-down sollte 3 A können.
 - **Wärme:** Der Lichtkern sitzt im offenen Schirm, trotzdem PETG für `led_core` nehmen und nicht über 70 % Dauerhelligkeit gehen.
 - **Lautstärke nachts:** Der DigiAMP+ regelt die Lautstärke in Hardware. Deshalb bleibt auch bei sehr leise eingestellten Sounds kein Grundrauschen hörbar, anders als beim MAX98357A.
-- **Dichtheit:** Die Lautsprecherkammer muss luftdicht sein, sonst arbeitet die Passivmembran nicht. Deckel und Zwischenboden mit Moosgummi abdichten, Kabeldurchführungen mit Silikon schließen.
+- **Gehäuse und Material:** Der Fuß wird mit 4 mm Wand (100 % Perimeter) und 8 Versteifungsrippen gedruckt, aus PETG statt PLA (wärmefester, kriecht nicht). Details und Begründung: [enclosure/README.md](../enclosure/README.md#akustik-und-material).
+- **Dichtheit:** Die Lautsprecherkammer muss luftdicht sein, sonst arbeitet die Passivmembran nicht. Deckel und Zwischenboden mit Moosgummi abdichten, Kabeldurchführungen und das Gewinde des seitlichen Drehgebers mit Silikon schließen.

@@ -17,7 +17,7 @@ part = "assembly";
 /* [Base] */
 base_d      = 190;   // outer diameter
 base_h      = 160;   // total height of the base
-wall        = 3.2;
+wall        = 4.0;   // 4 mm solid wall (print with 100 % infill = all perimeters)
 div_z       = 40;    // top of the electronics compartment (divider sits here)
 div_t       = 4;
 lid_t       = 5;
@@ -45,9 +45,13 @@ hat_holes   = [[3.5,3.5],[61.5,3.5],[3.5,52.5],[61.5,52.5]];  // M2.5
 zero_holes  = [[3.5,29.5],[61.5,29.5],[3.5,52.5],[61.5,52.5]]; // Pi Zero below the HAT, header rows aligned
 zero_z      = 5;      // Pi Zero board height above the plate
 hat_z       = 17.6;   // DigiAMP+ height (Pi Zero + 11 mm M2.5 spacers)
-knob_offset = [0, -52];   // encoder position on the lid (front)
+knob_offset = [0, -52];   // encoder position on the lid (front), used when knob_pos = "top"
+knob_pos    = "side";     // "side": knob in the right side wall (works with every shade), "top": on the lid
+knob_side_a = 0;          // angle of the side knob (0 = right side, seen from the front)
+brace_angles = [20, 40, 140, 160, 200, 220, 320, 340];  // vertical stiffening ribs in the chamber
 
 /* [Lamp] */
+shade_style = "plissee";  // "plissee" | "glocke" (on the stem) | "kolben" | "twist" (sit directly on the base)
 stem_od    = 20;      // fits a 20 mm brass tube, or print the stem part
 stem_id    = 13;
 stem_len   = 150;
@@ -67,10 +71,8 @@ Ri = R - wall;
 chamber_bot = div_z + div_t;
 chamber_top = base_h - lid_t;
 drv_z = (chamber_bot + chamber_top) / 2;
+knob_side_z = chamber_top - 18;
 stem_z   = chamber_top + lid_t + 4;           // stem sits 4 mm deep in the lid socket
-stem_top = stem_z + stem_len;
-spider_z = shade_z + shade_h - 8;
-pin_len  = spider_z + 10 - (stem_top + core_h + 3);   // core cap pin reaches through the spider hub
 
 // ------------------------------------------------------------------ helpers
 module ring(od, id, h) { difference() { cylinder(d = od, h = h); translate([0,0,-eps]) cylinder(d = id, h = h + 2*eps); } }
@@ -127,6 +129,12 @@ module base_shell() {
       for (a = [0:90:270]) rotate(a + 45) translate([Ri - 5, 0, 0]) cylinder(d = 11, h = 14, $fn = 32);
       // decorative bands
       for (z = [div_z - 2, base_h - 2]) translate([0,0,z]) ring(base_d + 1.6, base_d - 1, 2);
+      // vertical ribs stiffen the curved wall so it does not resonate
+      for (a = brace_angles) rotate(a) translate([Ri - 6, -1.5, chamber_bot]) cube([6 + eps, 3, chamber_top - chamber_bot]);
+    }
+    if (knob_pos == "side") {
+      rotate(knob_side_a) translate([R - wall - 1, 0, knob_side_z]) rotate([0, 90, 0]) cylinder(d = 7.4, h = wall + 2, $fn = 32);
+      rotate(knob_side_a) translate([R - 1.2, 0, knob_side_z]) rotate([0, 90, 0]) cylinder(d = 16, h = 5, $fn = 48);  // flat seat for the nut
     }
     grille(-1);
     grille(+1);
@@ -144,6 +152,8 @@ module divider() {
     translate([0, 0, -eps]) cylinder(d = 10, h = div_t + 1);
     // screws into the ledge (heat-set inserts in the ledge)
     for (a = [0:60:300]) rotate(a) translate([Ri - 3.5, 0, -eps]) cylinder(d = 3.4, h = div_t + 1, $fn = 20);
+    // notches so the divider slides past the stiffening ribs
+    for (a = brace_angles) rotate(a) translate([Ri - 7, -2, -eps]) cube([8, 4, div_t + 1]);
   }
   // stub that the cable tube (conduit) slides over
   ring(9.8, 6, div_t + 6);
@@ -160,8 +170,12 @@ module top_lid() {
     }
     translate([0, 0, lid_t + 4]) cylinder(d = stem_od + 0.4, h = 40);   // stem socket
     translate([0, 0, -eps]) cylinder(d = 10, h = 60);                 // cable conduit
-    translate([knob_offset[0], knob_offset[1], -eps]) cylinder(d = 7.4, h = 40, $fn = 32);  // EC11 bushing
-    translate([knob_offset[0], knob_offset[1], -eps]) cylinder(d = 14, h = lid_t + 8 - 1.6, $fn = 32); // thin top skin for the nut
+    if (knob_pos == "top") {
+      translate([knob_offset[0], knob_offset[1], -eps]) cylinder(d = 7.4, h = 40, $fn = 32);  // EC11 bushing
+      translate([knob_offset[0], knob_offset[1], -eps]) cylinder(d = 14, h = lid_t + 8 - 1.6, $fn = 32); // thin top skin for the nut
+    }
+    // screw holes for the globe seat (globe shades)
+    for (a = [0:120:240]) rotate(a + 30) translate([seat_d/2 - 5, 0, lid_t + 8 - 6]) cylinder(d = 4.2, h = 7, $fn = 20);
   }
 }
 
@@ -221,11 +235,45 @@ module core_cap() {
   }
 }
 
-// inner shade radius at height z above the shade's lower edge (pleat valleys)
-function shade_r(z) = (shade_bot_d + (shade_top_d - shade_bot_d) * z / shade_h) / 2 - pleat_depth;
+// ------------------------------------------------------------------ shades
+// style table: [height, profile(t) -> radius, ribs, rib depth, twist (deg), sits on base?]
+function style(name) =
+  name == "glocke" ? [150, function(t) 52 + 52 * pow(1 - t, 1.8), 36, 2.0, 0, false] :
+  name == "kolben" ? [230, function(t) 58 + 44 * sin(180 * pow(t, 0.85)), 56, 2.2, 0, true] :
+  name == "twist"  ? [210, function(t) 76 + 10 * sin(180 * t), 40, 3.0, 50, true] :
+  /* plissee */      [shade_h, function(t) (shade_bot_d + (shade_top_d - shade_bot_d) * t) / 2, pleats, pleat_depth, 0, false];
+
+S          = style(shade_style);
+S_h        = S[0];
+S_prof     = S[1];
+on_base    = S[5];
+seat_d     = 2 * S_prof(0) - 2 * S[3] - 1.0;   // globe seat fits inside the globe's lower opening
+short_stem = 60;                               // stem inside a globe shade
+lamp_stem_len = on_base ? short_stem : stem_len;
+lamp_shade_z  = on_base ? chamber_top + lid_t + 8 : shade_z;
+stem_top = stem_z + lamp_stem_len;
+spider_z = lamp_shade_z + S_h - 8;
+pin_len  = on_base ? 4 : spider_z + 10 - (stem_top + core_h + 3);   // core cap pin reaches through the spider hub
+
+// inner radius (rib valleys) at height z above the shade's lower edge
+function shade_r(z) = S_prof(z / S_h) - S[3];
+
+// ribbed body of revolution as a polyhedron (solid; print in vase mode)
+module ribbed(h, prof, ribs, amp, twist = 0, steps = 90) {
+  seg = ribs * 8;
+  pts = [for (i = [0:steps]) for (j = [0:seg - 1])
+           let(t = i / steps, a = 360 * j / seg, r = prof(t) - amp / 2 + amp / 2 * cos(ribs * (a + twist * t)))
+             [r * cos(a), r * sin(a), t * h]];
+  P = function(i, j) i * seg + (j % seg);
+  faces = concat(
+    [for (i = [0:steps - 1]) for (j = [0:seg - 1]) [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]],
+    [[for (j = [0:seg - 1]) P(0, j)]],
+    [[for (j = [seg - 1:-1:0]) P(steps, j)]]);
+  polyhedron(pts, faces, convexity = 6);
+}
 
 module spider() {
-  ring_z = shade_h - 8;           // where the ring sits inside the shade
+  ring_z = S_h - 8;               // where the ring sits inside the shade
   rr = shade_r(ring_z) + 0.8;     // slightly larger: the shade rests on the ring
   hub_h = 10;
   difference() {
@@ -238,12 +286,27 @@ module spider() {
   }
 }
 
+// ring screwed onto the lid; globe shades slip over it
+module globe_seat() {
+  difference() {
+    union() {
+      ring(seat_d, seat_d - 8, 12);
+      ring(seat_d + 14, seat_d - 8, 2);          // flange the globe stands on
+    }
+    for (a = [0:120:240]) rotate(a + 30) translate([seat_d/2 - 5 + 0, 0, -eps]) cylinder(d = 3.4, h = 20, $fn = 20);
+  }
+}
+
 module shade() {
-  // pleated cone; slice in vase/spiral mode (single wall, 0.8 mm line width)
-  scale_f = shade_top_d / shade_bot_d;
-  linear_extrude(height = shade_h, scale = scale_f, $fn = pleats * 4)
-    let(n = pleats * 2, ro = shade_bot_d / 2, ri = ro - pleat_depth * 1.0)
-      polygon([for (i = [0 : n - 1]) let(a = 360 * i / n, r = (i % 2 == 0) ? ro : ri) [r * cos(a), r * sin(a)]]);
+  if (shade_style == "plissee") {
+    // pleated cone
+    scale_f = shade_top_d / shade_bot_d;
+    linear_extrude(height = shade_h, scale = scale_f, $fn = pleats * 4)
+      let(n = pleats * 2, ro = shade_bot_d / 2, ri = ro - pleat_depth * 1.0)
+        polygon([for (i = [0 : n - 1]) let(a = 360 * i / n, r = (i % 2 == 0) ? ro : ri) [r * cos(a), r * sin(a)]]);
+  } else {
+    ribbed(S[0], S[1], S[2], S[3], S[4]);
+  }
 }
 
 module knob() {
@@ -300,15 +363,23 @@ module assembly(with_shade = true, with_parts = true) {
   color("#4b5168") translate([0,0,chamber_top]) top_lid();
   color("#2b2f3d") translate([0,0,-3]) bottom_plate();
   if (with_parts) { dummy_driver(); dummy_pr(); dummy_electronics(); dummy_leds(); }
-  color("#b88a3c") translate([0,0,stem_z]) stem();
+  color("#b88a3c") translate([0,0,stem_z]) ring(stem_od, stem_id, lamp_stem_len);
   color("#2b2f3d") translate([0,0,chamber_bot]) conduit();
   color("#e9e3d5") translate([0,0,stem_top]) led_core();
   color("#e9e3d5") translate([0,0,stem_top + core_h]) core_cap();
-  color("#d0c7b3") translate([knob_offset[0], knob_offset[1], chamber_top + lid_t + 10]) knob();
-  translate([0,0,shade_z]) {
-    color("#d9cdb5") translate([0,0,shade_h - 8]) spider();
+  knob_placed();
+  if (on_base) color("#d9cdb5") translate([0,0,chamber_top + lid_t + 8]) globe_seat();
+  translate([0,0,lamp_shade_z]) {
+    if (!on_base) color("#d9cdb5") translate([0,0,S_h - 8]) spider();
     if (with_shade) color("#f3ead8", 0.85) shade();
   }
+}
+
+module knob_placed() {
+  if (knob_pos == "side")
+    color("#d0c7b3") rotate(knob_side_a) translate([R + 3, 0, knob_side_z]) rotate([0, 90, 0]) knob();
+  else
+    color("#d0c7b3") translate([knob_offset[0], knob_offset[1], chamber_top + lid_t + 10]) knob();
 }
 
 // cut open to show the inside (for documentation)
@@ -329,12 +400,12 @@ module exploded() {
   color("#2b2f3d") translate([0,0,div_z]) divider();
   color("#2b2f3d") translate([0,0,chamber_bot]) conduit();
   color("#4b5168") translate([0,0,chamber_top + 70]) top_lid();
-  color("#d0c7b3") translate([knob_offset[0], knob_offset[1], chamber_top + 70 + lid_t + 30]) knob();
-  color("#b88a3c") translate([0,0,stem_z + 110]) stem();
+  translate([40, 0, 0]) knob_placed();
+  color("#b88a3c") translate([0,0,stem_z + 110]) ring(stem_od, stem_id, lamp_stem_len);
   translate([0,0,150]) { color("#e9e3d5") translate([0,0,stem_top]) led_core(); dummy_leds(); }
   color("#e9e3d5") translate([0,0,stem_top + core_h + 175]) core_cap();
-  translate([0,0,shade_z + 230]) {
-    color("#d9cdb5") translate([0,0,shade_h - 8 - 40]) spider();
+  translate([0,0,lamp_shade_z + 230]) {
+    if (!on_base) color("#d9cdb5") translate([0,0,S_h - 8 - 40]) spider();
     color("#f3ead8", 0.8) translate([0,0,40]) shade();
   }
 }
@@ -353,4 +424,6 @@ if (part == "led_core")      led_core();
 if (part == "core_cap")      core_cap();
 if (part == "spider")        spider();
 if (part == "shade")         shade();
+if (part == "globe_seat")    globe_seat();
+if (part == "stem_short")    ring(stem_od, stem_id, short_stem);
 if (part == "knob")          knob();
