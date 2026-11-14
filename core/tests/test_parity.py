@@ -1,6 +1,15 @@
 """Tests for the dusk_dawn_core Python module against the contract
-(integration/CONTRACT.md section 1) and the Python reference engine
-(device/sleepgen).
+(integration/CONTRACT.md section 1) and the Python reference generators.
+
+References are loaded from git history, so they stay fixed while device/
+changes (this needs the full history, e.g. ``fetch-depth: 0`` in CI):
+
+* white, pink, brown, fan, rain, wind, waves, fire, thunder: the original
+  generators, ``device/sleepgen/dsp.py`` at commit 73c0381 (scipy biquads).
+  Rust must match their loudness within 3 dB and their spectral centroid
+  within 15 %.
+* birds, leaves, stream: ``device/sleepgen`` at commit 3603211, the design the
+  Rust versions were ported from (loudness within 3 dB).
 
 The module is built with ``maturin develop --release`` (inside a virtualenv) or
 ``pip install`` if it is not importable yet. Set DUSK_DAWN_CORE_NO_BUILD=1 to
@@ -10,10 +19,13 @@ skip that step and use whatever is installed.
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import inspect
 import os
+import shutil
 import subprocess
 import sys
+import tarfile
 import threading
 import time
 from pathlib import Path
@@ -49,13 +61,53 @@ def core():
     return importlib.import_module("dusk_dawn_core")
 
 
-@pytest.fixture(scope="session")
-def ref():
-    pytest.importorskip("scipy")
-    sys.path.insert(0, str(REPO / "device"))
-    from sleepgen import engine
+ORIGINAL_COMMIT = "73c0381"  # the original sound design (before the grain rework)
+GRAIN_COMMIT = "3603211"  # birds, leaves and stream as ported to Rust
+ORIGINAL_SOUNDS = ["white", "pink", "brown", "fan", "rain", "wind", "waves", "fire", "thunder"]
+GRAIN_SOUNDS = ["birds", "leaves", "stream"]
 
-    return engine
+
+def _git(*args: str) -> bytes:
+    if not shutil.which("git"):
+        pytest.skip("git not available")
+    try:
+        return subprocess.run(["git", *args], cwd=REPO, check=True, capture_output=True).stdout
+    except subprocess.CalledProcessError as e:  # shallow clone without that commit
+        pytest.skip(f"git {' '.join(args)} failed: {e.stderr.decode(errors='replace').strip()}")
+
+
+@pytest.fixture(scope="session")
+def orig(tmp_path_factory):
+    """``dsp.py`` of commit 73c0381 as a throwaway module."""
+    pytest.importorskip("scipy")
+    path = tmp_path_factory.mktemp("orig") / "orig_dsp.py"
+    path.write_bytes(_git("show", f"{ORIGINAL_COMMIT}:device/sleepgen/dsp.py"))
+    spec = importlib.util.spec_from_file_location("orig_dsp_73c0381", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod  # dataclasses look the module up
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.fixture(scope="session")
+def ref(tmp_path_factory):
+    """The ``device/sleepgen`` engine of commit 3603211 (birds, leaves, stream)."""
+    pytest.importorskip("scipy")
+    root = tmp_path_factory.mktemp("ref")
+    tar = root / "src.tar"
+    tar.write_bytes(_git("archive", "--format=tar", GRAIN_COMMIT, "device/sleepgen"))
+    with tarfile.open(tar) as tf:
+        tf.extractall(root, filter="data")
+    saved = {k: v for k, v in sys.modules.items() if k == "sleepgen" or k.startswith("sleepgen.")}
+    for k in saved:
+        del sys.modules[k]
+    sys.path.insert(0, str(root / "device"))
+    try:
+        from sleepgen import engine  # noqa: PLC0415
+
+        yield engine
+    finally:
+        sys.path.remove(str(root / "device"))
 
 
 def pcm(b: bytes) -> np.ndarray:
@@ -231,36 +283,88 @@ def test_unseeded_engines_differ(core):
     assert e1.render(4410) != e2.render(4410)
 
 
-# ------------------------------------------------------------------ loudness parity
+# ------------------------------------------------------------------ parity with the references
 DURATION = {"thunder": 240.0, "birds": 90.0}
 SEEDS = {"thunder": 3, "birds": 2}
+BLOCK = 4096
+
+
+def _limit(x):
+    """The engines' soft limiter, so both sides are compared after it."""
+    return np.tanh(x * 1.2) / 1.2
+
+
+def _power_spectrum(x, nfft=8192):
+    win = np.hanning(nfft)
+    frames = len(x) // nfft
+    if frames == 0:
+        return np.zeros(nfft // 2 + 1)
+    segs = x[: frames * nfft].reshape(frames, nfft) * win
+    return np.sum(np.abs(np.fft.rfft(segs, axis=1)) ** 2, axis=0)
+
+
+def _centroid(spec):
+    f = np.fft.rfftfreq(2 * (len(spec) - 1), 1 / SR)
+    return float(np.sum(f * spec) / max(np.sum(spec), 1e-30))
+
+
+def _orig_take(orig, name, seed, seconds):
+    """Left channel of the original generator (TARGET_RMS is per channel)."""
+    gen = orig.GENERATORS[name](SR, seed)
+    gen.render(SR)  # skip the first second, like the engine side
+    x = np.concatenate([gen.render(BLOCK)[:, 0] for _ in range(int(seconds * SR / BLOCK))])
+    return _limit(x)
+
+
+def _rust_take(core, name, seed, seconds):
+    eng = core.Engine(SR, seed=seed)
+    eng.set_master(1.0)
+    eng.set_level(name, 1.0)
+    eng.render(SR)  # level smoothing
+    return pcm(eng.render(int(seconds * SR)))
 
 
 def _ref_rms(ref, name, seed, seconds):
-    """Per-channel RMS of the reference (stereo) engine; TARGET_RMS is per channel."""
+    """Per-channel mean square of the (stereo) reference engine."""
     eng = ref.Engine(sr=SR, sources=[name], seed=seed, fade_in_s=0.01)
     eng.set_master(1.0)
     eng.set_level(name, 1.0)
     eng.play()
     eng.render(SR)
-    x = np.concatenate([eng.render(4096) for _ in range(int(seconds * SR / 4096))])
+    x = np.concatenate([eng.render(BLOCK) for _ in range(int(seconds * SR / BLOCK))])
     return float(np.mean(np.square(x)))
 
 
-def _rust_rms(core, name, seed, seconds):
-    eng = core.Engine(SR, seed=seed)
-    eng.set_master(1.0)
-    eng.set_level(name, 1.0)
-    eng.render(SR)
-    return float(np.mean(np.square(pcm(eng.render(int(seconds * SR))))))
+@pytest.mark.parametrize("name", ORIGINAL_SOUNDS)
+def test_matches_original_sound(core, orig, name):
+    """Loudness within 3 dB and spectral centroid within 15 % of the original."""
+    seconds = DURATION.get(name, 20.0)
+    seeds = range(SEEDS.get(name, 3))
+    ms_o, ms_c = [], []
+    spec_o, spec_c = 0.0, 0.0
+    for s in seeds:
+        xo, xc = _orig_take(orig, name, s, seconds), _rust_take(core, name, s, seconds)
+        ms_o.append(np.mean(xo**2))
+        ms_c.append(np.mean(xc**2))
+        spec_o = spec_o + _power_spectrum(xo)
+        spec_c = spec_c + _power_spectrum(xc)
+    r, c = np.sqrt(np.mean(ms_o)), np.sqrt(np.mean(ms_c))
+    diff = db(c) - db(r)
+    co, cc = _centroid(spec_o), _centroid(spec_c)
+    print(
+        f"{name}: original {db(r):+.2f} dB, rust {db(c):+.2f} dB re TARGET_RMS, diff {diff:+.2f} dB; "
+        f"centroid original {co:.0f} Hz, rust {cc:.0f} Hz ({100 * (cc / co - 1):+.1f} %)"
+    )
+    assert abs(diff) <= 3.0
+    assert abs(cc / co - 1) <= 0.15
 
 
-@pytest.mark.parametrize("name", SOUNDS)
+@pytest.mark.parametrize("name", GRAIN_SOUNDS)
 def test_rms_matches_reference_within_3db(core, ref, name):
     seconds = DURATION.get(name, 20.0)
     seeds = range(SEEDS.get(name, 3))
     r = np.sqrt(np.mean([_ref_rms(ref, name, s, seconds) for s in seeds]))
-    c = np.sqrt(np.mean([_rust_rms(core, name, s, seconds) for s in seeds]))
+    c = np.sqrt(np.mean([np.mean(_rust_take(core, name, s, seconds) ** 2) for s in seeds]))
     diff = db(c) - db(r)
     print(f"{name}: reference {db(r):+.2f} dB, rust {db(c):+.2f} dB re TARGET_RMS, diff {diff:+.2f} dB")
     assert abs(diff) <= 3.0

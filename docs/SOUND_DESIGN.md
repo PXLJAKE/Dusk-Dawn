@@ -25,43 +25,36 @@ Drei Arten von Körnern kommen immer wieder vor:
 
 ![Spektren](sound/spektren.png)
 
-*So verteilt sich die Energie der zwölf Klänge auf die Frequenzen. Der graue Streifen links ist der Bereich unter etwa 75 Hz, den ein 4"-Lautsprecher kaum noch abstrahlt. Deshalb sind Donner und Wellen bewusst so gestimmt, dass ihr Charakter darüber liegt.*
+*So verteilt sich die Energie der zwölf Klänge auf die Frequenzen. Der graue Streifen links ist der Bereich unter etwa 75 Hz, den ein 4"-Lautsprecher kaum noch abstrahlt. Donner und Meer haben einen Teil ihrer Energie dort.*
 
 ## Die Klänge im Einzelnen
 
 ### Regen
-- **Teppich:** rosa Rauschen zwischen 600 Hz und 6,5 kHz. Das ist das gleichmäßige Rauschen von Regen in der Ferne.
-- **Prasseln:** etwa 1 400 winzige Ticks pro Sekunde (2,5–7 kHz). Das ist der Regen auf Blättern, Dach und Fenster.
-- **Deutliche Tropfen:** etwa 22 Plips pro Sekunde (1,4–4,2 kHz, 12–35 ms), einige davon deutlich lauter. Das sind Tropfen in Pfützen und Regenrinnen.
-- **Dicke Tropfen:** etwa 2–3 pro Sekunde, tiefer (0,7–1,5 kHz) und länger. Sie tropfen von der Dachkante oder von Ästen in der Nähe.
-- Die Stärke schwankt langsam (±20 % über einige Sekunden), wie echte Schauer.
+*Wieder die ursprüngliche Version.*
+- **Teppich:** rosa Rauschen zwischen 500 Hz und 7 kHz, das gleichmäßige Rauschen des Regens.
+- **Tropfen:** etwa 900 einzelne Einschläge pro Sekunde und Kanal, unterschiedlich stark (Pareto-Verteilung), durch einen Bandpass bei 2,8 kHz. Das ergibt das feine, dichte Prasseln.
+- Die Stärke schwankt langsam (etwa ±20 % über einige Sekunden), wie echte Schauer.
 
 ### Meer
-Jede Welle ist ein eigenes Ereignis mit drei Hüllkurven. Wellen überlappen sich, sind unterschiedlich groß und sitzen an verschiedenen Stellen im Stereobild.
-
-1. **Anrollen (3–4,5 s):** Tiefes, braunes Rauschen (unter 380 Hz) schwillt an. Das ist der Wasserkörper.
-2. **Kamm und Brechen:** In den letzten 1,3 s vor dem Brechen wächst ein Zischen. Beim Brechen öffnet ein Tiefpass von 500 Hz bis 7,5 kHz, also hell und breit. Danach klingt er in etwa 1–1,5 s ab.
-3. **Auslaufen (6–9 s):** Schaum und Rückströmung. Ein leises Zischen bleibt, dazu bis zu 900 kleine Plips pro Sekunde (2–6,5 kHz). Das sind die platzenden Bläschen im Schaum. Dieses Knistern im Auslaufen hat der alten Version gefehlt.
-4. **Darunter:** Ein ruhiger Brandungsteppich (rosa Rauschen unter 650 Hz) bleibt ständig leise da, damit zwischen den Wellen keine Stille entsteht.
-
-Alle 5–9,5 s beginnt die nächste Welle, die vorige läuft noch aus.
+*Wieder die ursprüngliche Version.*
+- Rosa und braunes Rauschen laufen durch einen Tiefpass, der mit jeder Welle auf- und wieder zugeht (300 Hz bis 3,8 kHz).
+- **Anrollen (2,5–4 s):** Lautstärke und Helligkeit wachsen, bis die Welle bricht.
+- **Auslaufen (4–7 s):** Die Welle wird schnell leiser und dumpfer, danach bis zu 1,5 s Ruhe auf leisem Grundpegel.
+- Jede Welle ist anders groß; eine langsame Stereobewegung lässt die Brandung durch den Raum rollen.
 
 ### Gewitter
-Echter Donner hat den Großteil seiner Energie unter 80 Hz. Genau dort kann ein kleiner Lautsprecher nichts mehr abstrahlen. Deshalb ist der Donner für die Lampe neu gestimmt:
-
-- **Grollen** zwischen etwa 120 und 500 Hz statt unter 200 Hz, mit 3–5 Nachschwellungen. Dieser Bereich ist laut genug für den Lautsprecher.
-- **Rollen:** 4–9 kurze Stöße im Bereich 180–1 400 Hz in den ersten 3,5 Sekunden. Das ist das typische „Krrr-wumm-wumm“.
-- **Knall:** Bei 45 % der Blitze (nahe Einschläge) gibt es einen hellen Riss mit Echo nach 0,18 s.
-- Ein Donner kommt alle 20–70 s, ist 7–14 s lang und kommt von links oder rechts.
+*Wieder die ursprüngliche Version.*
+- **Grollen:** tiefes Rauschen unter 90–220 Hz, das 6–13 s lang ausrollt, mit 2–4 Nachschwellungen.
+- **Ferne Donner** setzen weich ein (0,6–1,8 s), **nahe** (30 %) plötzlich und mit einem leisen hellen Riss über 1,5 kHz.
+- Ein Donner kommt alle 25–90 s (der erste nach spätestens 20 s) und kommt von links oder rechts.
 - Lange Donner werden in einem eigenen Thread vorbereitet, damit der Pi beim Berechnen nicht stockt.
+- Hinweis: Viel Energie liegt unter 80 Hz; auf einem kleinen Lautsprecher klingt der Donner deshalb leise und fern.
 
 ### Kaminfeuer
-- **Grundrauschen:** braunes Rauschen unter 420 Hz für das Brennen der Flammen, dazu ein feines Zischen über 3 kHz.
-- **Einzelnes Knistern:** etwa 45 Ticks pro Sekunde (1,8–6,5 kHz, 0,2–1,2 ms), ab und zu ein lauter.
-- **Knister-Salven:** etwa 2 pro Sekunde, jeweils 3–11 Ticks in 30–180 ms. Das ist das „tsk-tsk-tsk“ von Harz und Feuchtigkeit im Holz, an dem man Feuer sofort erkennt.
-- **Knacken:** alle 3 s ein tieferer Knall (500–1 400 Hz) von einem Scheit, der springt.
-- Die Aktivität schwankt: mal brennt es ruhig, mal knistert es viel.
-- Gegenüber der ersten Version ist das Knistern etwa 18 dB lauter im Verhältnis zum Grundrauschen.
+*Wieder die ursprüngliche Version.*
+- **Grundrauschen:** braunes Rauschen unter 500 Hz, das Brennen der Flammen.
+- **Knistern:** einzelne Knackser über 1,8 kHz, mal 2, mal 40 pro Sekunde. Die Aktivität wandert alle 1–2 s, so wechseln ruhige und lebhafte Phasen.
+- Einige Knackser sind deutlich lauter (Pareto-Verteilung): ein Scheit, der springt.
 
 ### Vögel
 Ein Morgenchor aus mehreren „Arten“, alle 1–4,5 s eine neue Strophe:
@@ -84,6 +77,7 @@ Ein Morgenchor aus mehreren „Arten“, alle 1–4,5 s eine neue Strophe:
 - Etwa 70 Luftblasen pro Sekunde (Plips 0,5–2,2 kHz, steil nach oben gleitend), dazu kleine Spritzer.
 
 ### Wind, Ventilator, White, Pink, Brown Noise
+*Wie in der ursprünglichen Version.*
 - **Wind:** Rauschen durch einen Bandpass, dessen Frequenz (250–900 Hz) und Lautstärke langsam wandern.
 - **Ventilator:** rosa Rauschen unter 1,4 kHz, ganz leicht pulsierend (7,3 Hz, wie Rotorblätter), mit leisem Brummen bei 98 Hz.
 - **White Noise:** alle Frequenzen gleich laut. Klingt hell.
@@ -129,4 +123,6 @@ Der Wecker läuft im Gerät selbst und spielt immer, egal ob gerade Sounds laufe
 
 ## CPU-Last
 
-Auf einem PC braucht der Regen allein etwa 2 % eines Kerns. Auf dem Pi 3 A+ rechne ich grob mit dem Zehnfachen, also 20–50 % eines Kerns für ein Preset mit 2–3 Ebenen (geschätzt, auf dem Pi noch nicht gemessen). Ebenen auf 0 % werden gar nicht berechnet. Beim Start kalibriert jeder Generator einmal seinen Pegel, das dauert auf dem Pi ein paar Sekunden.
+Auf einem PC braucht der Regen allein etwa 2 % eines Kerns. Auf dem Pi 3 A+ rechne ich grob mit dem Zehnfachen, also 20–50 % eines Kerns für ein Preset mit 2–3 Ebenen (geschätzt, auf dem Pi noch nicht gemessen). Ebenen auf 0 % werden gar nicht berechnet. Blätterrauschen und Bach kalibrieren beim Start einmal ihren Pegel, das dauert auf dem Pi ein paar Sekunden.
+
+Der Python-Ersatz in Home Assistant (ohne scipy) rechnet dieselben Filter exakt, aber blockweise mit numpy. Vier Klänge gleichzeitig (Regen, Meer, Wind, Feuer) brauchen dort auf einem PC etwa 13 % eines Kerns.

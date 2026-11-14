@@ -52,15 +52,17 @@ type DuskDawnConfigEntry = ConfigEntry[SpotRuntime]
 
 
 def load_engine_class() -> tuple[type, str]:
-    """Prefer the Rust core, fall back to the pure-Python engine."""
-    try:
-        from dusk_dawn_core import Engine  # type: ignore[import-not-found]  # noqa: PLC0415
+    """Prefer the Rust core (installed or bundled in native/), else pure Python."""
+    from .native import load_core  # noqa: PLC0415
 
-        return Engine, "rust"
-    except ImportError:
-        from .engine import Engine  # noqa: PLC0415
+    core, origin = load_core()
+    if core is not None:
+        _LOGGER.info("Dusk & Dawn uses the Rust sound engine (%s: %s)", origin, core.__file__)
+        return core.Engine, "rust"
+    from .engine import Engine  # noqa: PLC0415
 
-        return Engine, "python"
+    _LOGGER.info("Dusk & Dawn uses the Python sound engine (%s)", origin)
+    return Engine, "python"
 
 
 def ffmpeg_binary(hass: HomeAssistant) -> str:

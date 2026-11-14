@@ -1,9 +1,10 @@
 //! Sparse one-shot events: thunder and birds (ports of `Thunder`, `Birds` and
 //! `EventGenerator` in dsp.py).
 //!
-//! * Thunder is built into a buffer exactly like the reference (including the
-//!   peak normalisations), but incrementally: a few samples of the *next* event
-//!   are prepared on every render call, so a 14 s thunder roll never causes a
+//! * Thunder (the original design from dsp.py at commit 73c0381) is built into
+//!   a buffer exactly like the reference (including the peak normalisation),
+//!   but incrementally: a few samples of the *next* event
+//!   are prepared on every render call, so a 13 s thunder roll never causes a
 //!   spike in render time (the reference uses a background thread for this).
 //! * Birds are synthesised on the fly by a small pool of voices, so overlapping
 //!   songs need no buffers at all.
@@ -55,19 +56,19 @@ enum Stage {
 struct ThunderParams {
     dur: f64,
     n: usize,
-    close: bool,
     attack: f64,
-    swells: [(f64, f64); 5], // centre, width
+    swells: [(f64, f64); 4], // centre, width
     nswell: usize,
-    bursts: [(f64, f64, f64); 9], // centre, amplitude * exp(-c/3), tau
-    nburst: usize,
-    roll_n: usize,
     crack_n: usize,
+    /// Final factor on top of the peak normalisation: random level times the
+    /// pan of the reference's left channel, see [`Thunder::trigger`].
     gain: f64,
 }
 
-/// Thunder you can hear on a small speaker: a sharp crack for close strikes,
-/// a rolling, crackling middle part and a long rumble that fades away.
+/// Distant rolling thunder, sometimes with a closer crack (`Thunder` in the
+/// original dsp.py): integrated noise through a 90..220 Hz Butterworth
+/// low-pass under an attack/decay envelope with a few secondary swells; close
+/// strikes add a faint high-passed crack. Each roll is peak-normalised.
 pub struct Thunder {
     sr: f64,
     rng: Rng,
@@ -76,7 +77,6 @@ pub struct Thunder {
     p: ThunderParams,
     i: usize,
     build: Vec<f32>,
-    roll: Vec<f32>,
     crack: Vec<f32>,
     play: Vec<f32>,
     play_len: usize,
@@ -84,24 +84,19 @@ pub struct Thunder {
     play_scale: f64,
     integ: OnePole,
     rumble_lp: Biquad,
-    roll_hp: Biquad,
-    roll_lp: Biquad,
     crack_hp: Biquad,
-    peak_r: f64,
-    peak_roll: f64,
-    peak_c: f64,
     peak: f64,
 }
 
-const THUNDER_MAX_S: f64 = 14.0;
-const ROLL_MAX_S: f64 = 9.0;
-const CRACK_S: f64 = 1.5;
+const THUNDER_MAX_S: f64 = 13.0;
+/// The crack decays with exp(-t / 0.25): after 3 s it is below -100 dB.
+const CRACK_S: f64 = 3.0;
 /// Samples of build work per rendered sample.
 const BUILD_SPEED: usize = 8;
 
 impl Thunder {
     pub fn new(rng: Rng, sr: f64) -> Self {
-        Self::with_every(rng, sr, (20.0, 70.0))
+        Self::with_every(rng, sr, (25.0, 90.0))
     }
 
     pub fn with_every(mut rng: Rng, sr: f64, every: (f64, f64)) -> Self {
@@ -114,20 +109,14 @@ impl Thunder {
             p: ThunderParams::default(),
             i: 0,
             build: Vec::new(),
-            roll: Vec::new(),
             crack: Vec::new(),
             play: Vec::new(),
             play_len: 0,
             play_pos: 0,
             play_scale: 0.0,
-            integ: OnePole::integrator(0.97),
+            integ: OnePole::integrator(0.98),
             rumble_lp: Biquad::default(),
-            roll_hp: Biquad::default(),
-            roll_lp: Biquad::default(),
             crack_hp: Biquad::default(),
-            peak_r: 0.0,
-            peak_roll: 0.0,
-            peak_c: 0.0,
             peak: 0.0,
         }
     }
@@ -137,7 +126,6 @@ impl Thunder {
             let cap = (THUNDER_MAX_S * self.sr) as usize + 1;
             self.build = vec![0.0; cap];
             self.play = vec![0.0; cap];
-            self.roll = vec![0.0; (ROLL_MAX_S * self.sr) as usize + 1];
             self.crack = vec![0.0; (CRACK_S * self.sr) as usize + 1];
         }
     }
@@ -145,45 +133,29 @@ impl Thunder {
     fn start_event(&mut self) {
         let (sr, rng) = (self.sr, &mut self.rng);
         let mut p = ThunderParams::default();
-        p.dur = rng.uniform(7.0, THUNDER_MAX_S);
+        p.dur = rng.uniform(6.0, 13.0);
         p.n = ((p.dur * sr) as usize).min(self.build.len());
-        p.close = rng.random() < 0.45;
-        let fc = rng.uniform(260.0, 520.0);
-        p.attack = if p.close {
-            rng.uniform(0.02, 0.15)
+        let close = rng.random() < 0.3;
+        let fc = rng.uniform(90.0, 220.0);
+        p.attack = if close {
+            rng.uniform(0.05, 0.4)
         } else {
-            rng.uniform(0.5, 1.5)
+            rng.uniform(0.6, 1.8)
         };
-        p.nswell = rng.integers(3, 6) as usize;
+        p.nswell = rng.integers(2, 5) as usize;
         for k in 0..p.nswell {
-            p.swells[k] = (rng.uniform(0.6, p.dur * 0.65), rng.uniform(0.25, 0.9));
+            p.swells[k] = (rng.uniform(0.5, p.dur * 0.7), rng.uniform(0.3, 1.2));
         }
-        let t0 = if p.close { 0.0 } else { p.attack * 0.6 };
-        p.nburst = rng.integers(4, 10) as usize;
-        let mut last = 0.0f64;
-        for k in 0..p.nburst {
-            let c = t0 + rng.uniform(0.0, 3.5);
-            let amp = rng.uniform(0.3, 1.0) * (-c / 3.0).exp();
-            let tau = rng.uniform(0.04, 0.2);
-            p.bursts[k] = (c, amp, tau);
-            last = last.max(c + 20.0 * tau);
-        }
-        p.roll_n = ((last * sr) as usize).min(p.n).min(self.roll.len());
-        p.crack_n = if p.close {
-            ((CRACK_S * sr) as usize).min(p.n).min(self.crack.len())
-        } else {
-            0
-        };
-        p.gain = rng.uniform(0.45, 0.85);
+        p.crack_n = if close { p.n.min(self.crack.len()) } else { 0 };
+        // The reference pans the two channels with (1 - pan, 1 + pan) and then
+        // normalises to the peak of both. The louder channel peaks at about
+        // (1 + |pan|) times the unpanned peak; the left channel is rendered.
+        let pan = rng.uniform(-0.5, 0.5);
+        p.gain = rng.uniform(0.35, 0.8) * (1.0 - pan) / (1.0 + pan.abs());
         self.p = p;
         self.integ.reset();
         self.rumble_lp = Biquad::new(Kind::Lp, fc, sr, std::f64::consts::FRAC_1_SQRT_2);
-        self.roll_hp = Biquad::new(Kind::Hp, 180.0, sr, std::f64::consts::FRAC_1_SQRT_2);
-        self.roll_lp = Biquad::new(Kind::Lp, 1400.0, sr, std::f64::consts::FRAC_1_SQRT_2);
-        self.crack_hp = Biquad::new(Kind::Hp, 900.0, sr, std::f64::consts::FRAC_1_SQRT_2);
-        self.peak_r = 0.0;
-        self.peak_roll = 0.0;
-        self.peak_c = 0.0;
+        self.crack_hp = Biquad::new(Kind::Hp, 1500.0, sr, std::f64::consts::FRAC_1_SQRT_2);
         self.peak = 0.0;
         self.i = 0;
         self.stage = Stage::Generate;
@@ -199,18 +171,11 @@ impl Thunder {
                 Stage::Generate => {
                     let end = self.i.saturating_add(budget).min(self.p.n);
                     for i in self.i..end {
+                        // butter(2, fc) == RBJ low-pass with Q = 1/sqrt(2)
                         let r = self.rumble_lp.process(self.integ.process(self.rng.noise()));
-                        self.peak_r = self.peak_r.max(r.abs());
                         self.build[i] = r as f32;
-                        if i < self.p.roll_n {
-                            let x = self.roll_lp.process(self.roll_hp.process(self.rng.noise()));
-                            self.peak_roll = self.peak_roll.max(x.abs());
-                            self.roll[i] = x as f32;
-                        }
                         if i < self.p.crack_n {
-                            let x = self.crack_hp.process(self.rng.noise());
-                            self.peak_c = self.peak_c.max(x.abs());
-                            self.crack[i] = x as f32;
+                            self.crack[i] = self.crack_hp.process(self.rng.noise()) as f32;
                         }
                     }
                     budget -= end - self.i;
@@ -224,33 +189,20 @@ impl Thunder {
                     let end = self.i.saturating_add(budget).min(self.p.n);
                     let p = self.p;
                     let sr = self.sr;
-                    let inv_r = 1.0 / self.peak_r.max(1e-12);
-                    let inv_roll = 0.9 / self.peak_roll.max(1e-12);
-                    let inv_c = 0.9 / self.peak_c.max(1e-12);
-                    let decay = p.dur / 3.0;
+                    let decay = p.dur / 3.2;
                     for i in self.i..end {
                         let t = i as f64 / sr;
                         let mut env = (t / p.attack).min(1.0) * (-t / decay).exp();
+                        // rolling: a few secondary swells
                         for &(c, w) in &p.swells[..p.nswell] {
                             let x = (t - c) / w;
-                            if x.abs() < 4.5 {
-                                env *= 1.0 + 1.2 * (-x * x).exp();
+                            if x.abs() < 6.0 {
+                                env *= 1.0 + 0.9 * (-x * x).exp();
                             }
                         }
-                        let mut y = self.build[i] as f64 * inv_r * env;
-                        if i < p.roll_n {
-                            let mut renv = 0.0;
-                            for &(c, amp, tau) in &p.bursts[..p.nburst] {
-                                let d = (t - c).abs();
-                                if d < 20.0 * tau {
-                                    renv += amp * (-d / tau).exp();
-                                }
-                            }
-                            y += self.roll[i] as f64 * inv_roll * renv;
-                        }
+                        let mut y = self.build[i] as f64 * env;
                         if i < p.crack_n {
-                            let e = (-t / 0.12).exp() + 0.5 * (-(t - 0.18).abs() / 0.05).exp();
-                            y += self.crack[i] as f64 * inv_c * e;
+                            y += self.crack[i] as f64 * (-t / 0.25).exp() * 0.02;
                         }
                         self.peak = self.peak.max(y.abs());
                         self.build[i] = y as f32;
@@ -592,7 +544,7 @@ mod tests {
             }
         }
         assert!(energy > 0.0);
-        assert!(peak <= 0.85 + 1e-6 && peak > 0.3, "peak {peak}");
+        assert!(peak <= 0.8 + 1e-6 && peak > 0.1, "peak {peak}");
     }
 
     #[test]

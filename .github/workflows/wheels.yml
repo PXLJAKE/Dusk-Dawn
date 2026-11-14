@@ -3,7 +3,8 @@
 # One abi3 wheel per platform covers every CPython >= 3.12:
 #   manylinux_2_28  x86_64, aarch64     (HA Core in a venv on Debian/Ubuntu, ...)
 #   musllinux_1_2   x86_64, aarch64, armv7   (HA OS / HA Container are Alpine based)
-# plus an sdist.
+# plus an sdist, and the two extension modules bundled with the integration
+# (job `bundled`, see there).
 #
 # Runs on tags `core-v*` (e.g. core-v0.1.0, must match core/Cargo.toml) and manually.
 name: Core wheels
@@ -26,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # test_parity.py loads its reference generators from git history
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -81,6 +84,57 @@ jobs:
         with:
           name: wheels-musllinux-${{ matrix.target }}
           path: core/dist/*.whl
+
+  # The integration ships the core itself, because it is not on PyPI:
+  #   custom_components/dusk_dawn/native/x86_64/dusk_dawn_core.abi3.so
+  #   custom_components/dusk_dawn/native/aarch64/dusk_dawn_core.abi3.so
+  # Home Assistant OS and the HA container images are Alpine (musl), so these
+  # are musllinux_1_2 abi3 builds (CPython >= 3.12), cross-compiled with zig and
+  # the small `bundle` profile (fat LTO, opt-level 3, panic = abort, stripped).
+  # custom_components/dusk_dawn/native/__init__.py loads the one for
+  # platform.machine() when no dusk_dawn_core wheel is installed.
+  # On tags both files are attached to the GitHub release; commit them to
+  # native/ as well, since HACS installs the integration from the repository.
+  bundled:
+    name: bundled .so (musl x86_64 + aarch64)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # attach the files to the release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+      - name: Build with maturin + zig
+        run: |
+          python -m pip install maturin ziglang
+          for arch in x86_64 aarch64; do
+            maturin build --profile bundle --zig --target "${arch}-unknown-linux-musl" \
+              --compatibility musllinux_1_2 --out "dist-${arch}"
+            mkdir -p "../native/${arch}"
+            python -m zipfile -e dist-${arch}/*.whl "unpacked-${arch}"
+            cp "unpacked-${arch}/dusk_dawn_core/dusk_dawn_core.abi3.so" "../native/${arch}/"
+            cp "unpacked-${arch}/dusk_dawn_core/dusk_dawn_core.abi3.so" "../dusk_dawn_core-musl-${arch}.abi3.so"
+          done
+          ls -l ../native/*/ ../*.so
+      - name: Only libc is needed
+        run: |
+          for f in ../native/*/dusk_dawn_core.abi3.so; do
+            readelf -d "$f" | grep NEEDED
+            test "$(readelf -d "$f" | grep -c NEEDED)" = 1
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundled-native
+          path: native/
+      - name: Attach to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dusk_dawn_core-musl-*.abi3.so
 
   sdist:
     name: sdist
