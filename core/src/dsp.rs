@@ -59,6 +59,49 @@ impl Biquad {
         self.a2 = (1.0 - alpha) / a0;
     }
 
+    /// Raw coefficients (`a0` = 1).
+    pub fn coeffs(b0: f64, b1: f64, b2: f64, a1: f64, a2: f64) -> Self {
+        Biquad {
+            b0,
+            b1,
+            b2,
+            a1,
+            a2,
+            ..Default::default()
+        }
+    }
+
+    /// Pure Data `lop~` (one-pole low-pass).
+    pub fn pd_lop(f: f64, sr: f64) -> Self {
+        let k = (2.0 * PI * f / sr).min(1.0);
+        Self::coeffs(k, 0.0, 0.0, -(1.0 - k), 0.0)
+    }
+
+    /// Pure Data `hip~` (one-pole high-pass).
+    pub fn pd_hip(f: f64, sr: f64) -> Self {
+        let c = (1.0 - 2.0 * PI * f / sr).max(0.0);
+        let g = (1.0 + c) / 2.0;
+        Self::coeffs(g, -g, 0.0, -c, 0.0)
+    }
+
+    /// Pure Data `bp~` (two-pole resonator).
+    pub fn pd_bp(f: f64, q: f64, sr: f64) -> Self {
+        let mut b = Biquad::default();
+        b.set_pd_bp(f, q, sr);
+        b
+    }
+
+    /// Change to Pure Data `bp~` coefficients, keeping the state.
+    pub fn set_pd_bp(&mut self, f: f64, q: f64, sr: f64) {
+        let om = 2.0 * PI * f / sr;
+        let r = if q > 0.0 { (1.0 - om / q).max(0.0) } else { 0.0 };
+        self.b0 = 2.0 * (1.0 - r) * ((1.0 - r) + r * om);
+        self.b1 = 0.0;
+        self.b2 = 0.0;
+        self.a1 = -2.0 * r * om.cos();
+        self.a2 = r * r;
+    }
+
     #[inline(always)]
     pub fn process(&mut self, x: f64) -> f64 {
         let y = self.b0 * x + self.z1;
@@ -258,6 +301,20 @@ impl Grains {
     /// * `heavy` > 0 adds a long tail to the gain distribution
     /// * `mult`: overall output factor
     pub fn render(&mut self, out: &mut [f64], rate: f64, gain: (f64, f64), heavy: f64, mult: f64) {
+        self.render_tail(out, rate, gain, heavy, None, mult)
+    }
+
+    /// Like [`Grains::render`]; `tail` = (alpha, cap, offset) multiplies each
+    /// gain by `min(pareto(alpha), cap) + offset`.
+    pub fn render_tail(
+        &mut self,
+        out: &mut [f64],
+        rate: f64,
+        gain: (f64, f64),
+        heavy: f64,
+        tail: Option<(f64, f64, f64)>,
+        mult: f64,
+    ) {
         let n = out.len();
         let k = self.rng.poisson(rate.max(0.0) * n as f64);
         for _ in 0..k {
@@ -265,6 +322,9 @@ impl Grains {
             let mut g = self.rng.uniform(gain.0, gain.1);
             if heavy > 0.0 {
                 g *= 1.0 + self.rng.pareto(heavy).min(4.0);
+            }
+            if let Some((a, cap, off)) = tail {
+                g *= self.rng.pareto(a).min(cap) + off;
             }
             let ki = self.rng.integers(0, self.kernels.len() as i64) as usize;
             let ker = &self.kernels[ki];
@@ -330,6 +390,33 @@ pub fn tick(rng: &mut Rng, sr: f64, tau: f64, f0: f64, q: f64) -> Vec<f64> {
         })
         .collect();
     normalize(k)
+}
+
+/// Rain 1c raindrop tick: 4-12 ms noise burst band-passed at 1.8-6 kHz.
+pub fn drop_tick(rng: &mut Rng, sr: f64) -> Vec<f64> {
+    let m = ((sr * rng.uniform(0.004, 0.012)) as usize).max(8);
+    let mut bq = Biquad::new(Kind::Bp, rng.uniform(1800.0, 6000.0), sr, rng.uniform(1.5, 3.0));
+    let tau = m as f64 / 5.0;
+    (0..m)
+        .map(|i| bq.process(rng.normal() * (-(i as f64) / tau).exp()))
+        .collect()
+}
+
+/// Rain 1c 'plip': 12-30 ms sine gliding up from 0.9-2.6 kHz.
+pub fn drop_plip(rng: &mut Rng, sr: f64) -> Vec<f64> {
+    let m = ((sr * rng.uniform(0.012, 0.03)) as usize).max(8);
+    let f0 = rng.uniform(900.0, 2600.0);
+    let rise = rng.uniform(0.3, 0.9);
+    let last = (m - 1) as f64 / sr;
+    let tau = m as f64 / sr / 4.0;
+    let mut ph = 0.0;
+    (0..m)
+        .map(|i| {
+            let t = i as f64 / sr;
+            ph += 2.0 * PI * f0 * (1.0 + t / last * rise) / sr;
+            ph.sin() * (-t / tau).exp()
+        })
+        .collect()
 }
 
 /// Leaf grain: soft-edged, band-limited noise snippet.

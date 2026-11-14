@@ -1,9 +1,11 @@
 //! The continuous sound generators (noise colours, fan, rain, leaves, stream,
 //! wind, waves, fire), rendered as one mono channel.
 //!
-//! White, pink and brown noise, fan, rain, wind, waves and fire are exact
+//! White, pink and brown noise, fan, the rain bed, wind and waves are exact
 //! ports of the original generators (`device/sleepgen/dsp.py` at commit
-//! 73c0381): same filters, same random structure, same envelopes. The
+//! 73c0381): same filters, same random structure, same envelopes. Rain adds
+//! the "Regen 1c" single drops and fire is the Farnell model ("Feuer G"),
+//! both as in the current device/sleepgen/dsp.py. The
 //! reference renders two independent channels; here one channel is rendered
 //! at the same per-channel loudness (TARGET_RMS), because the engine output is
 //! mono. Leaves and stream are newer grain-based designs.
@@ -200,11 +202,10 @@ fn mean(x: &[f64]) -> f64 {
 }
 
 // ------------------------------------------------------------------ rain
-/// Steady rain bed plus individual drops hitting surfaces (`Rain` in the
-/// original dsp.py): pink noise band-limited to 500..7000 Hz, plus sparse
-/// Pareto-weighted impulses through a 2.8 kHz band-pass, all under a slowly
-/// wandering intensity.
-pub struct Rain {
+/// The original rain bed (`Rain` in dsp.py at 73c0381): pink noise
+/// band-limited to 500..7000 Hz, plus sparse Pareto-weighted impulses through
+/// a 2.8 kHz band-pass, all under a slowly wandering intensity.
+pub struct RainBed {
     rng: Rng,
     pink: Pink,
     hp: Biquad,
@@ -214,24 +215,7 @@ pub struct Rain {
     intensity: SmoothRandom,
 }
 
-impl Rain {
-    pub const DROPS_PER_S: f64 = 900.0;
-
-    pub fn new(mut rng: Rng, sr: f64) -> Calibrated<Rain> {
-        let r = Rain {
-            pink: Pink::new(rng.fork()),
-            hp: Biquad::new(Kind::Hp, 500.0, sr, 0.707),
-            lp: Biquad::new(Kind::Lp, 7000.0, sr, 0.707),
-            drops: Biquad::new(Kind::Bp, 2800.0, sr, 0.9),
-            p: Self::DROPS_PER_S / sr,
-            intensity: SmoothRandom::new(rng.fork(), 0.75, 1.15, 6.0, sr),
-            rng,
-        };
-        Calibrated::new(r, sr, CALIBRATE_S)
-    }
-}
-
-impl Raw for Rain {
+impl Raw for RainBed {
     fn raw(&mut self, out: &mut [f64]) {
         for o in out.iter_mut() {
             let bed = self.lp.process(self.hp.process(self.pink.sample()));
@@ -243,6 +227,63 @@ impl Raw for Rain {
             let drop = self.drops.process(hit);
             *o = (bed * 1.6 + drop * 0.35) * self.intensity.next_value();
         }
+    }
+}
+
+/// Rain ("Regen 1c", `Rain` in device/sleepgen/dsp.py): the original bed at
+/// 0.8 plus clearly audible single drops, 14 ticks/s and 6 pitched 'plips'/s
+/// with a Pareto-weighted loudness.
+pub struct Rain {
+    bed: Calibrated<RainBed>,
+    ticks: Grains,
+    plips: Grains,
+    sr: f64,
+}
+
+impl Rain {
+    pub const DROPS_PER_S: f64 = 900.0;
+    const TICKS_PER_S: f64 = 14.0;
+    const PLIPS_PER_S: f64 = 6.0;
+    const PLIP_GAIN: f64 = 0.35;
+    const MIX: f64 = 1.21;
+    const KERNELS: usize = 64;
+
+    pub fn new(mut rng: Rng, sr: f64) -> Rain {
+        let mut krng = rng.fork();
+        let ticks = (0..Self::KERNELS).map(|_| drop_tick(&mut krng, sr)).collect();
+        let plips = (0..Self::KERNELS).map(|_| drop_plip(&mut krng, sr)).collect();
+        let bed = RainBed {
+            pink: Pink::new(rng.fork()),
+            hp: Biquad::new(Kind::Hp, 500.0, sr, 0.707),
+            lp: Biquad::new(Kind::Lp, 7000.0, sr, 0.707),
+            drops: Biquad::new(Kind::Bp, 2800.0, sr, 0.9),
+            p: Self::DROPS_PER_S / sr,
+            intensity: SmoothRandom::new(rng.fork(), 0.75, 1.15, 6.0, sr),
+            rng: rng.fork(),
+        };
+        Rain {
+            bed: Calibrated::new(bed, sr, CALIBRATE_S),
+            ticks: Grains::new(rng.fork(), ticks),
+            plips: Grains::new(rng.fork(), plips),
+            sr,
+        }
+    }
+}
+
+impl Source for Rain {
+    fn render(&mut self, out: &mut [f64]) {
+        self.bed.render(out);
+        for v in out.iter_mut() {
+            *v *= 0.8 * Self::MIX;
+        }
+        // 0.7 = mean channel gain of the stereo original
+        let tail = Some((2.5, 3.0, 0.3));
+        let g = 0.7 * Self::MIX;
+        self.ticks
+            .render_tail(out, Self::TICKS_PER_S / self.sr, (g, g), 0.0, tail, 1.0);
+        let gp = g * Self::PLIP_GAIN;
+        self.plips
+            .render_tail(out, Self::PLIPS_PER_S / self.sr, (gp, gp), 0.0, tail, 1.0);
     }
 }
 
@@ -499,27 +540,121 @@ impl Raw for Waves {
 }
 
 // ------------------------------------------------------------------ fire
-/// Crackling fireplace: low roar plus random crackles and pops (`Fire` in the
-/// original dsp.py). Brown noise below 500 Hz, plus random-sign impulses at a
-/// wandering rate of 2..40 per second through a 1.8 kHz high-pass.
+const FIRE_HOP: usize = 512;
+
+/// One fire voice after Andy Farnell, *Designing Sound*, Practical 11
+/// (see `Fire` in device/sleepgen/dsp.py).
+struct FireVoice {
+    lop: Biquad,
+    hip1k: Biquad,
+    res30: Biquad,
+    hip25a: Biquad,
+    hip25b: Biquad,
+    crackle: Biquad,
+    post: Biquad,
+    /// running crackle envelopes: (position, length)
+    envs: [(usize, usize); 4],
+    n_envs: usize,
+    sq: f64,
+    prev_sq: Option<f64>,
+    count: usize,
+}
+
+impl FireVoice {
+    fn new(sr: f64, post: Biquad) -> Self {
+        FireVoice {
+            lop: Biquad::pd_lop(1.0, sr),
+            hip1k: Biquad::pd_hip(1000.0, sr),
+            res30: Biquad::pd_bp(30.0, 5.0, sr),
+            hip25a: Biquad::pd_hip(25.0, sr),
+            hip25b: Biquad::pd_hip(25.0, sr),
+            crackle: Biquad::pd_bp(1500.0, 1.0, sr),
+            post,
+            envs: [(0, 0); 4],
+            n_envs: 0,
+            sq: 0.0,
+            prev_sq: None,
+            count: 0,
+        }
+    }
+
+    #[inline]
+    fn sample(&mut self, rng: &mut Rng, sr: f64) -> f64 {
+        let nz = rng.random() * 2.0 - 1.0;
+        let lo = self.lop.process(nz);
+        self.sq += lo * lo;
+        let m = (lo * 10.0) * (lo * 10.0);
+        let mut y = self.hip1k.process(nz) * (m * m * 600.0) * 0.3;
+        y += self
+            .hip25b
+            .process(self.hip25a.process(self.res30.process(nz) * 100.0).clamp(-0.9, 0.9))
+            * 0.36;
+        let band = self.crackle.process(nz);
+        if self.n_envs > 0 {
+            let mut env: f64 = 0.0;
+            let mut k = 0;
+            while k < self.n_envs {
+                let (pos, len) = self.envs[k];
+                let v = if len > 1 {
+                    1.0 - pos as f64 / (len - 1) as f64
+                } else {
+                    1.0
+                };
+                env = env.max(v * v);
+                if pos + 1 >= len {
+                    self.n_envs -= 1;
+                    self.envs[k] = self.envs[self.n_envs];
+                } else {
+                    self.envs[k].0 = pos + 1;
+                    k += 1;
+                }
+            }
+            y += band * env * 0.2;
+        }
+        self.count += 1;
+        if self.count == FIRE_HOP {
+            self.count = 0;
+            if let Some(prev) = self.prev_sq {
+                let rms = ((prev + self.sq) / (2 * FIRE_HOP) as f64).sqrt();
+                let db = 100.0 + 20.0 * rms.max(1e-10).log10();
+                if (50.0..51.0).contains(&db) {
+                    let r = rng.integers(0, 30) as f64;
+                    self.crackle.set_pd_bp(1500.0 + 500.0 * r, 1.0, sr);
+                    if self.n_envs < self.envs.len() {
+                        self.envs[self.n_envs] = (0, ((sr * r / 1000.0) as usize).max(1));
+                        self.n_envs += 1;
+                    }
+                }
+            }
+            self.prev_sq = Some(self.sq);
+            self.sq = 0.0;
+        }
+        self.post.process(y)
+    }
+}
+
+/// Fireplace after Andy Farnell's fire model ("Feuer G", `Fire` in
+/// device/sleepgen/dsp.py): four voices, each with crackles, a little hiss and
+/// the low flapping of the flames (a clipped 30 Hz resonator), through four
+/// different colour filters, summed x0.2. Mono: one fire.
 pub struct Fire {
     sr: f64,
     rng: Rng,
-    brown: Brown,
-    lp: Biquad,
-    hp: Biquad,
-    activity: SmoothRandom,
+    voices: Vec<FireVoice>,
 }
 
 impl Fire {
     pub fn new(mut rng: Rng, sr: f64) -> Calibrated<Fire> {
+        let posts = [
+            Biquad::pd_hip(1000.0, sr),
+            Biquad::pd_bp(1200.0, 0.6, sr),
+            Biquad::pd_bp(2600.0, 0.4, sr),
+            Biquad::pd_bp(600.0, 0.2, sr),
+        ];
         let f = Fire {
             sr,
-            brown: Brown::new(rng.fork(), sr),
-            lp: Biquad::new(Kind::Lp, 500.0, sr, 0.707),
-            hp: Biquad::new(Kind::Hp, 1800.0, sr, 0.707),
-            activity: SmoothRandom::new(rng.fork(), 2.0, 40.0, 1.5, sr),
-            rng,
+            voices: posts.into_iter().map(|p| FireVoice::new(sr, p)).collect(),
+            rng: rng.fork(),
         };
         Calibrated::new(f, sr, CALIBRATE_S)
     }
@@ -527,16 +662,13 @@ impl Fire {
 
 impl Raw for Fire {
     fn raw(&mut self, out: &mut [f64]) {
-        let inv_sr = 1.0 / self.sr;
+        let (sr, rng) = (self.sr, &mut self.rng);
         for o in out.iter_mut() {
-            let roar = self.lp.process(self.brown.sample());
-            let rate = self.activity.next_value() * inv_sr;
-            let hit = if self.rng.random() < rate {
-                self.rng.uniform(-1.0, 1.0) * (self.rng.pareto(2.5).min(3.0) + 0.2)
-            } else {
-                0.0
-            };
-            *o = roar * 0.8 + self.hp.process(hit) * 0.5;
+            let mut y = 0.0;
+            for v in self.voices.iter_mut() {
+                y += v.sample(rng, sr);
+            }
+            *o = y * 0.2;
         }
     }
 }
