@@ -57,6 +57,9 @@ brace_angles = [20, 40, 140, 160, 200, 220, 320, 340];  // vertical stiffening r
 conduit_pos = [45, 0];    // cable tube beside the speakers (the ND105-4 is 67 mm deep, its magnet reaches the centre)
 
 /* [Lamp] */
+shade_cap   = true;     // kolben/twist/laterne: closed top with vents (print upside down)
+shade_vents = 12;       // number of vent holes in the cap
+shade_vent_d = 5;
 shade_wall  = 1.2;      // shade wall, open top and bottom (vase mode: line width 0.8-1.2 mm)
 shade_style = "plissee";  // "plissee" | "glocke" (on the stem) | "kolben" | "twist" | "laterne" (sit directly on the base)
 stem_od    = 20;      // fits a 20 mm brass tube, or print the stem part
@@ -320,6 +323,15 @@ module pleat_outline(inset) {
   n = pleats * 2; ro = shade_bot_d / 2 - inset; ri = ro - pleat_depth * 1.0;
   polygon([for (i = [0 : n - 1]) let(a = 360 * i / n, r = (i % 2 == 0) ? ro : ri) [r * cos(a), r * sin(a)]]);
 }
+module shade_cap_disc(h, prof, ribs, amp, twist) {
+  seg = ribs * 8;
+  R = prof(1);
+  difference() {
+    translate([0, 0, h - shade_wall]) linear_extrude(shade_wall)
+      polygon([for (j = [0:seg - 1]) let(a = 360 * j / seg, r = R - amp / 2 + amp / 2 * cos(ribs * (a + twist)) - 0.2) [r * cos(a), r * sin(a)]]);
+    for (a = [0:360 / shade_vents:359]) rotate(a) translate([R * 0.62, 0, h - shade_wall - 1]) cylinder(d = shade_vent_d, h = shade_wall + 2, $fn = 20);
+  }
+}
 module shade() {
   if (shade_style == "plissee") {
     // pleated cone
@@ -331,6 +343,9 @@ module shade() {
       }
   } else {
     ribbed(S[0], S[1], S[2], S[3], S[4]);
+    // globe shades: closed top with a few vent holes. Print upside down, top on the bed,
+    // so the cap needs no supports. Plissee/glocke stay open (spider sits in the top).
+    if (on_base && shade_cap) shade_cap_disc(S[0], S[1], S[2], S[3], S[4]);
   }
 }
 
@@ -493,7 +508,7 @@ if (part == "stem")          stem();
 if (part == "led_core")      led_core();
 if (part == "core_cap")      core_cap();
 if (part == "spider")        spider();
-if (part == "shade")         shade();
+if (part == "shade")         if (on_base && shade_cap) translate([0, 0, S_h]) rotate([180, 0, 0]) shade(); else shade();   // capped globes: STL comes upside down, ready to print
 if (part == "globe_seat")    globe_seat();
 if (part == "stem_short")    ring(stem_od, stem_id, short_stem);
 if (part == "knob")          knob();

@@ -9,7 +9,7 @@ Parametrisches OpenSCAD-Modell: [`soundlampe.scad`](soundlampe.scad). Fertige ST
 - **Fuß (Ø 190 × 160 mm):** Unten ein Elektronikfach, darüber eine dichte Lautsprecherkammer mit ca. 2,4 l brutto (ca. 2,1 l netto nach Abzug von Chassis, Rippen und Kabelrohr, passend zum Vas von ca. 2 l des ND105-4). Vorne sitzt der 4"-Breitbänder, hinten die Passivmembran, beide hinter senkrechten Lamellen im Stil alter Röhrenradios. Das Kabelrohr läuft seitlich (45 mm neben der Mitte) durch die Kammer, weil der Magnet des ND105-4 bis über die Mitte reicht. Im Deckel führt ein Kanal vom Rohr zum Stiel.
 - **Stiel:** Messingrohr 20 mm oder gedruckt. Das LED-Kabel läuft innen durch.
 - **Lichtkern:** Eine Spule (Ø 40 mm), um die der SK6812-Strip spiralförmig gewickelt wird. 0,5 m ergeben 4 Windungen.
-- **Schirm:** fünf Varianten zur Auswahl (Parameter `shade_style`), alle gerippt, als offene Hülle mit 1,2 mm Wand modelliert (oben und unten offen) und ohne Stützen druckbar, siehe unten.
+- **Schirm:** fünf Varianten zur Auswahl (Parameter `shade_style`), alle gerippt, als Hülle mit 1,2 mm Wand modelliert und ohne Stützen druckbar (Kugelschirme oben mit Lüftungslöchern, umgedreht gedruckt), siehe unten.
 - **Drehknopf:** seitlich rechts am Fuß (`knob_pos = "side"`), damit er bei den Kugelschirmen nicht unter dem Glas verschwindet. `knob_pos = "top"` setzt ihn wie früher in den Deckel.
 - **Gesamthöhe:** ca. 41 cm mit Plissee-Schirm, die Kugelschirme sind etwas niedriger
 
@@ -141,7 +141,7 @@ Einzelbilder liegen in [`renders/`](renders/). Neu rendern: `openscad -D 'part="
 | Kerndeckel | `core_cap_plissee.stl`, `core_cap_glocke.stl` oder `core_cap_globe.stl` (Kolben/Twist/Laterne) | PETG | aufrecht |
 | Spinne | `spider_plissee.stl` / `spider_glocke.stl` | PETG/PLA | flach, nur Plissee und Glocke |
 | Schirmsitz | `globe_seat_kolben.stl`, `globe_seat_twist.stl` oder `globe_seat_laterne.stl` | PETG | nur Kolben/Twist/Laterne, je Schirm eigene Größe, mit 3 × M3 auf den Deckel |
-| Schirm | `shade_plissee.stl`, `shade_glocke.stl`, `shade_kolben.stl`, `shade_twist.stl`, `shade_laterne.stl` | **transluzentes** PETG oder PLA (Natur, Elfenbein, „Glass“-PETG) | offene Hülle, 1,2 mm Wand (`shade_wall`). Normal drucken mit 2 Wänden à 0,6 mm, 0 Boden- und 0 Deckschichten, keine Stützen. Oder im **Vasenmodus** mit 1,2 mm Linienbreite. Ein geschlossener Deckel wäre bei 15 cm Durchmesser nicht ohne Stützen druckbar |
+| Schirm | `shade_plissee.stl`, `shade_glocke.stl`, `shade_kolben.stl`, `shade_twist.stl`, `shade_laterne.stl` | **transluzentes** PETG oder PLA (Natur, Elfenbein, „Glass“-PETG) | Hülle mit 1,2 mm Wand (`shade_wall`), keine Stützen. **Kolben, Twist, Laterne:** oben geschlossen mit 12 Lüftungslöchern (`shade_cap`, `shade_vents`). Die STL liegt schon umgedreht, der Deckel ist unten auf dem Bett. Normal drucken mit 2 Wänden à 0,6 mm, 0 Deckschichten, 2 Bodenschichten (das ist der Deckel). **Plissee, Glocke:** oben und unten offen (oben sitzt die Spinne), 0 Boden- und 0 Deckschichten oder Vasenmodus |
 | Knopf | `knob.stl` | PLA/PETG | aufrecht. Hell oder Messingfarbe sieht retro aus |
 
 ## Akustik und Material
