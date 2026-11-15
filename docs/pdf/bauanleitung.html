@@ -206,11 +206,12 @@ li { margin-bottom:1.2mm; }
 <section class="page">
   <div class="eyebrow">Montage</div>
   <h2>Zusammenbau Schritt für Schritt</h2>
+  <div class="note" style="margin-top:0"><b>Mit Bildern zu jedem Schritt</b>, Schrauben in Originalgröße und den Stiellängen je Schirm: <b>Soundlampe_Montageanleitung.pdf</b> (gleicher Ordner). Dort steht auch der Kugel-Fuß. Hier die Kurzfassung für den Zylinder.</div>
   <div class="two-l">
     <div class="fig"><img src="img/exploded.png" style="height:200mm"><div class="cap">Explosionszeichnung</div></div>
     <div>
       <ol class="steps">
-        <li><b>Drucken.</b> Fuß, Zwischenboden, Deckel, Kabelrohr und Bodenplatte in PETG (Fuß mit 4 mm Wand = 100 % Perimeter). Schirm im Vasenmodus aus transluzentem Filament.</li>
+        <li><b>Drucken.</b> Welche Teile, steht im Gehäuse-README unter „Was muss ich drucken?“. Fuß in PETG (4 mm Wand = 100 % Perimeter), Schirm aus transluzentem Filament.</li>
         <li><b>Gewindeeinsätze</b> M3 einschmelzen: 4 in die Dome für die Bodenplatte, 4 + 4 in die Schallwände. Den Zwischenboden als Bohrschablone auf den unteren Ring legen und 6 Löcher setzen.</li>
         <li><b>Lautsprecher:</b> Breitbänder von innen vorne, Passivmembran von innen hinten anschrauben, Flansche mit Moosgummi dichten. Kabel an den Breitbänder löten (rote Markierung = +).</li>
         <li><b>Drehgeber</b> von innen ins seitliche Loch, Mutter außen, Gewinde mit Silikon dichten. 5 Litzen anlöten.</li>
@@ -234,7 +235,7 @@ li { margin-bottom:1.2mm; }
     <li><b>Pi und DigiAMP+:</b> Pi auf die 4 kurzen Dome, Bolzen drauf, DigiAMP+ aufstecken und verschrauben. microSD (fertig eingerichtet, siehe Seite 10) einstecken.</li>
     <li><b>Verkabeln</b> nach dem Stromlaufplan: DC-Buchse → DigiAMP+ und LM2596. LM2596 → Platine. Platine → LED-Kabel. Jumperkabel vom Pi zu Platine und Drehgeber. Lautsprecher an die Klemme des DigiAMP+.</li>
     <li><b>Erster Test</b> mit offener Bodenplatte: Netzteil einstecken. Nach etwa einer Minute erscheint die Lampe in Home Assistant. Licht an, Sounds an, Knopf drehen und drücken.</li>
-    <li><b>Schließen:</b> Bodenplatte anschrauben, Gummifüße aufkleben, Schirmsitz bzw. Spinne montieren, Schirm aufsetzen.</li>
+    <li><b>Schließen:</b> Bodenplatte mit 4 × M3 × 8 anschrauben, Gummifüße aufkleben. Plissee/Glocke: Spinne auf den Kerndeckel, Schirm drüber. Kolben/Twist/Laterne: Schirmsitz mit 3 × M3 × 8 auf den Deckel, Schirm drüber.</li>
   </ol>
   <div class="fig"><img src="../../enclosure/renders/sheet_views.png" style="width:170mm"><div class="cap">Fertig: von vorne, von hinten, von oben</div></div>
   <div class="note"><b>Noch am echten Teil nachmessen:</b> den Lochkreis der Lautsprecherschrauben (im Modell 99 mm) und die Lochabstände deines LM2596. Abweichungen in <code>soundlampe.scad</code> eintragen und die STL neu erzeugen.</div>
