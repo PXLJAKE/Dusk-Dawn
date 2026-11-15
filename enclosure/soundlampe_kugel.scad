@@ -162,7 +162,7 @@ module sphere_lid() {
   }
 }
 
-module sphere_conduit() { ring(16, 10, chamber_top - k_chamber_bot + 0.0); }
+module sphere_conduit() { ring(16, 10, chamber_top - plinth_h + 1.5); }   // from the pocket in the plinth up to the lid
 
 // plinth: printed upside down (top plate on the bed)
 module plinth() {
@@ -174,13 +174,14 @@ module plinth() {
       translate([0, 0, plinth_h - plinth_top_t]) cylinder(r = pr - eps, h = plinth_top_t);
       // bosses for the bottom plate
       for (a = [0:90:270]) rotate(a) translate([pri - 4, 0, 0]) cylinder(d = 10, h = plinth_h, $fn = 32);
-      translate(conduit_pos) translate([0, 0, plinth_h]) ring(9.8, 6, 6);   // stub for the conduit
     }
     // screws up into the shell flange (heads inside the plinth)
     for (a = [45:90:315]) rotate(a) translate([open_r - 8, 0, plinth_h - plinth_top_t - eps]) cylinder(d = 3.4, h = 10, $fn = 20);
     // speaker cables and conduit, sealed with silicone after wiring
     for (p = [[30, 0], [-30, 0]]) translate([p[0], p[1], plinth_h - plinth_top_t - eps]) cylinder(d = 5, h = 10, $fn = 20);
     translate([conduit_pos[0], conduit_pos[1], plinth_h - plinth_top_t - eps]) cylinder(d = 6, h = 20);
+    // 1.5 mm pocket that locates the conduit (on the bed side when printed, so no overhang)
+    translate([conduit_pos[0], conduit_pos[1], plinth_h - 1.5]) cylinder(d = 16.4, h = 2, $fn = 48);
     // bottom plate inserts
     for (a = [0:90:270]) rotate(a) translate([pri - 4, 0, -eps]) cylinder(d = 4.2, h = 8, $fn = 24);
     // DC jack at the back, vent slots at the back
@@ -223,7 +224,7 @@ module kugel_assembly(with_shade = true, with_parts = false) {
   color(TC[0]) sphere_shell();
   color(TC[2]) translate([0, 0, plinth_h - 3]) ring(plinth_d + 2, plinth_d - 1, 3);   // accent ring
   color(TC[0]) translate([0, 0, chamber_top]) sphere_lid();
-  color(TC[1]) translate([conduit_pos[0], conduit_pos[1], k_chamber_bot]) sphere_conduit();
+  color(TC[1]) translate([conduit_pos[0], conduit_pos[1], plinth_h - 1.5]) sphere_conduit();
   if (with_parts) { k_dummy_speakers(); translate([0, 0, -3]) dummy_electronics(); }
   color(TC[4]) translate([kx + 1, 0, sph_zc + knob_dz]) rotate([0, 90, 0]) knob();
   color(TC[2]) translate([0, 0, stem_z]) ring(stem_od, stem_id, lamp_stem_len);
