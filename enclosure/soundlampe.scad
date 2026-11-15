@@ -57,6 +57,7 @@ brace_angles = [20, 40, 140, 160, 200, 220, 320, 340];  // vertical stiffening r
 conduit_pos = [45, 0];    // cable tube beside the speakers (the ND105-4 is 67 mm deep, its magnet reaches the centre)
 
 /* [Lamp] */
+shade_wall  = 1.2;      // shade wall, open top and bottom (vase mode: line width 0.8-1.2 mm)
 shade_style = "plissee";  // "plissee" | "glocke" (on the stem) | "kolben" | "twist" | "laterne" (sit directly on the base)
 stem_od    = 20;      // fits a 20 mm brass tube, or print the stem part
 stem_id    = 13;
@@ -269,16 +270,24 @@ pin_len  = on_base ? 4 : spider_z + 10 - (stem_top + core_h + 3);   // core cap 
 function shade_r(z) = S_prof(z / S_h) - S[3];
 
 // ribbed body of revolution as a polyhedron (solid; print in vase mode)
+// hollow ribbed shell, open at top and bottom: prints normally or in vase mode,
+// and slicers no longer show a closed lid
 module ribbed(h, prof, ribs, amp, twist = 0, steps = 90) {
   seg = ribs * 8;
-  pts = [for (i = [0:steps]) for (j = [0:seg - 1])
-           let(t = i / steps, a = 360 * j / seg, r = prof(t) - amp / 2 + amp / 2 * cos(ribs * (a + twist * t)))
-             [r * cos(a), r * sin(a), t * h]];
+  ro = function(t, a) prof(t) - amp / 2 + amp / 2 * cos(ribs * (a + twist * t));
+  pts = concat(
+    [for (i = [0:steps]) for (j = [0:seg - 1]) let(t = i / steps, a = 360 * j / seg, r = ro(t, a))
+       [r * cos(a), r * sin(a), t * h]],
+    [for (i = [0:steps]) for (j = [0:seg - 1]) let(t = i / steps, a = 360 * j / seg, r = ro(t, a) - shade_wall)
+       [r * cos(a), r * sin(a), t * h]]);
+  N = (steps + 1) * seg;
   P = function(i, j) i * seg + (j % seg);
+  Q = function(i, j) N + i * seg + (j % seg);
   faces = concat(
     [for (i = [0:steps - 1]) for (j = [0:seg - 1]) [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]],
-    [[for (j = [0:seg - 1]) P(0, j)]],
-    [[for (j = [seg - 1:-1:0]) P(steps, j)]]);
+    [for (i = [0:steps - 1]) for (j = [0:seg - 1]) [Q(i, j), Q(i, j + 1), Q(i + 1, j + 1), Q(i + 1, j)]],
+    [for (j = [0:seg - 1]) [P(0, j), P(0, j + 1), Q(0, j + 1), Q(0, j)]],
+    [for (j = [0:seg - 1]) [P(steps, j), Q(steps, j), Q(steps, j + 1), P(steps, j + 1)]]);
   polyhedron(pts, faces, convexity = 6);
 }
 
@@ -307,13 +316,19 @@ module globe_seat() {
   }
 }
 
+module pleat_outline(inset) {
+  n = pleats * 2; ro = shade_bot_d / 2 - inset; ri = ro - pleat_depth * 1.0;
+  polygon([for (i = [0 : n - 1]) let(a = 360 * i / n, r = (i % 2 == 0) ? ro : ri) [r * cos(a), r * sin(a)]]);
+}
 module shade() {
   if (shade_style == "plissee") {
     // pleated cone
     scale_f = shade_top_d / shade_bot_d;
     linear_extrude(height = shade_h, scale = scale_f, $fn = pleats * 4)
-      let(n = pleats * 2, ro = shade_bot_d / 2, ri = ro - pleat_depth * 1.0)
-        polygon([for (i = [0 : n - 1]) let(a = 360 * i / n, r = (i % 2 == 0) ? ro : ri) [r * cos(a), r * sin(a)]]);
+      difference() {
+        pleat_outline(0);
+        pleat_outline(shade_wall);   // hollow, open at top and bottom
+      }
   } else {
     ribbed(S[0], S[1], S[2], S[3], S[4]);
   }
