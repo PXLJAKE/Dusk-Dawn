@@ -314,6 +314,11 @@ module globe_seat() {
     union() {
       ring(seat_d, seat_d - 8, 12);
       ring(seat_d + 14, seat_d - 8, 2);          // flange the globe stands on
+      // 3 lugs inside the ring carry the M3 screws into the lid inserts
+      for (a = [0:120:240]) rotate(a + 30) hull() {
+        translate([seat_d/2 - 5, 0, 0]) cylinder(d = 9, h = 4, $fn = 32);
+        translate([seat_d/2 - 2, -4.5, 0]) cube([1, 9, 4]);
+      }
     }
     for (a = [0:120:240]) rotate(a + 30) translate([seat_d/2 - 5 + 0, 0, -eps]) cylinder(d = 3.4, h = 20, $fn = 20);
   }

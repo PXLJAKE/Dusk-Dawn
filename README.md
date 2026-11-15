@@ -18,7 +18,7 @@ Retro-Tischlampe fürs Bett mit eingebautem Lautsprecher: Regen, Meer, Gewitter,
 - **Aufbau der Lampe (Elektronikfach, Lichtkern, Zusammenbau):** [docs/AUFBAU.md](docs/AUFBAU.md)
 - **Sound-Design (wie die Klänge entstehen, Wecker):** [docs/SOUND_DESIGN.md](docs/SOUND_DESIGN.md)
 - **Stromlaufplan, Pinbelegung, Lochraster-Plan:** [docs/wiring/](docs/wiring/)
-- **PDFs:** [Bauanleitung](docs/pdf/Soundlampe_Bauanleitung.pdf) und [Präsentation](docs/pdf/Soundlampe_Praesentation.pdf)
+- **PDFs:** [Bauanleitung](docs/pdf/Soundlampe_Bauanleitung.pdf), [Montageanleitung mit Bildern](docs/pdf/Soundlampe_Montageanleitung.pdf) und [Präsentation](docs/pdf/Soundlampe_Praesentation.pdf)
 - **Gehäuse zum 3D-Druck:** [enclosure/](enclosure/README.md)
 
 | Ordner | Inhalt |

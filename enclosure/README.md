@@ -173,6 +173,8 @@ done
 
 ## Zusammenbau
 
+> **Bebilderte Montageanleitung** mit Schrauben je Schritt (in Originalgröße) und Stiellängen je Schirm: [`docs/pdf/Soundlampe_Montageanleitung.pdf`](../docs/pdf/Soundlampe_Montageanleitung.pdf). Bilder neu erzeugen: [`montage.scad`](montage.scad).
+
 1. Gewindeeinsätze setzen: 4 × in die Dome für die Bodenplatte und 4 + 4 × in die Schallwände für die Chassis-Schrauben. Für den Zwischenboden den Zwischenboden selbst als Bohrschablone auf den unteren Ring legen, 6 Löcher mit 4 mm vorbohren und Einsätze setzen. Alternativ den Zwischenboden nur einkleben und mit Silikon abdichten.
 2. Breitbänder von innen auf die vordere Schallwand schrauben, Passivmembran auf die hintere. Flansche jeweils mit Moosgummi abdichten.
 3. Lautsprecherkabel und Kabelrohr durch den Zwischenboden führen. Zwischenboden mit Dichtband einsetzen und verschrauben, Durchführungen mit Silikon schließen.
