@@ -158,7 +158,7 @@ module sphere_lid() {
       translate([0, 0, lid_t + 8 - 1.8]) cylinder(d1 = 3.4, d2 = 6.8, h = 1.8 + 2 * eps, $fn = 24);
     }
     // globe seat screws (globe shades)
-    for (a = [0:120:240]) rotate(a + 30) translate([seat_d / 2 - 5, 0, lid_t + 8 - 6]) cylinder(d = 4.2, h = 7, $fn = 20);
+    if (on_base) for (a = [0:120:240]) rotate(a + 30) translate([seat_d / 2 - 5, 0, lid_t + 8 - 6]) cylinder(d = 4.2, h = 7, $fn = 20);
   }
 }
 
