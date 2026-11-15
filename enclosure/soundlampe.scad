@@ -183,7 +183,7 @@ module top_lid() {
       translate([knob_offset[0], knob_offset[1], -eps]) cylinder(d = 14, h = lid_t + 8 - 1.6, $fn = 32); // thin top skin for the nut
     }
     // screw holes for the globe seat (globe shades)
-    for (a = [0:120:240]) rotate(a + 30) translate([seat_d/2 - 5, 0, lid_t + 8 - 6]) cylinder(d = 4.2, h = 7, $fn = 20);
+    if (on_base) for (a = [0:120:240]) rotate(a + 30) translate([seat_d/2 - 5, 0, lid_t + 8 - 6]) cylinder(d = 4.2, h = 7, $fn = 20);
   }
 }
 
