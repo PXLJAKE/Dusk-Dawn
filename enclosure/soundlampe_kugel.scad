@@ -51,6 +51,9 @@ inner_r_at = function(z) sqrt(max(0, sph_ri * sph_ri - (z - sph_zc) * (z - sph_z
 // OpenSCAD evaluates an overridden include variable at its original place, so this has to be
 // written with numbers: plinth_h + 2 * sph_r * cos(45). Change it together with those two.
 base_h = 44 + 2 * 102 * cos(45);       // chamber_top = base_h - lid_t, stem and globe seat follow
+// keep the plissee/glocke shade where it was on the cylinder: the base is 28 mm taller,
+// so the stem is 28 mm shorter (same overall height). Numbers again, as for base_h.
+stem_len = 150 - (44 + 2 * 102 * cos(45) - 160);
 buck_center = [0, -50];                // LM2596 moved inwards for the narrower plinth
 k_chamber_bot = plinth_h + flange_t;   // top of the bottom flange
 k_ledge_r = inner_r_at(chamber_top) - 7;
@@ -121,6 +124,8 @@ module sphere_shell() {
     }
     k_hole_field(-1);
     k_hole_field(+1);
+    // 45 deg chamfer on the inner top edge, the lid plug sits in it
+    translate([0, 0, band_top - 3]) cylinder(r1 = inner_r_at(band_top), r2 = inner_r_at(band_top) + 3, h = 3 + eps, $fn = 160);
     // encoder: flat seat outside, 7.4 mm bushing hole
     translate([kx - 2, 0, sph_zc + knob_dz]) rotate([0, 90, 0]) cylinder(d = 18, h = 20, $fn = 48);
     translate([kx - 12, 0, sph_zc + knob_dz]) rotate([0, 90, 0]) cylinder(d = 7.4, h = 20, $fn = 32);
@@ -134,8 +139,13 @@ module sphere_lid() {
   lid_r = inner_r_at(band_top) - 0.4;
   difference() {
     union() {
-      cylinder(r = lid_r, h = lid_t);                                       // plug in the top opening
-      translate([0, 0, lid_t]) cylinder(r1 = open_r + 1, r2 = open_r - 6, h = 8);  // cap over the rim
+      cylinder(r = lid_r, h = lid_t - 3);                                   // plug in the top opening,
+      translate([0, 0, lid_t - 3]) cylinder(r1 = lid_r, r2 = lid_r + 3, h = 3); // 45 deg into the chamfered rim
+      // cap: wide enough for the globe seat of every shade (twist is the widest),
+      // 45 deg underside so the lid prints flat without supports
+      cap_r = on_base ? max(lid_r + 4, seat_d / 2 + 3) : lid_r + 4;
+      rotate_extrude($fn = 160) polygon([[0, lid_t], [lid_r + 3, lid_t], [cap_r, lid_t + cap_r - lid_r - 3],
+        [cap_r, lid_t + 6.5], [cap_r - 1.5, lid_t + 8], [0, lid_t + 8]]);
       translate([0, 0, lid_t]) cylinder(d = stem_od + 12, h = 22);          // stem socket
     }
     translate([0, 0, lid_t + 4]) cylinder(d = stem_od + 0.4, h = 40);

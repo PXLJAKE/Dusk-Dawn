@@ -33,12 +33,17 @@ Datei: [`soundlampe_kugel.scad`](soundlampe_kugel.scad). Der Zylinderfuß oben b
 | `schwarz` | Mattschwarz | Mattschwarz | Messing |
 | `creme` | Cremeweiß | Eiche/Braun | Messing |
 
+Alle fünf Schirme passen auf die Kugel. Plissee und Glocke sitzen wie beim Zylinder auf dem Stiel, der dafür 28 mm kürzer ist (`stem.stl` aus dieser Datei neu erzeugen), damit der Schirm gleich hoch bleibt. Kolben, Twist und Laterne stehen mit dem Schirmsitz auf dem Deckel. Für den Twist ist der Deckel etwas breiter (`kugel_sphere_lid_twist.stl`), weil sein Sitz größer ist.
+
+![Alle Schirme auf der Kugel](renders/kugel_shades.png)
+
 ![Schnitt Kugel](renders/kugel_section.png)
 
 | Teil | Datei | Material | Hinweise |
 |---|---|---|---|
 | Kugelschale | `kugel_sphere_shell.stl` | PETG | aufrecht, 4 mm Wand = 100 % Perimeter, keine Stützen. Schallwände und Lochfelder sind angeformt |
-| Deckel | `kugel_sphere_lid.stl` | PETG | flach, 100 % Infill, mit Kanal vom Kabelrohr zum Stiel |
+| Deckel | `kugel_sphere_lid.stl` (Twist: `kugel_sphere_lid_twist.stl`) | PETG | flach, 100 % Infill, mit Kanal vom Kabelrohr zum Stiel |
+| Stiel | `kugel_stem.stl` | PETG | nur für Plissee/Glocke ohne Messingrohr (122 mm statt 150 mm) |
 | Kabelrohr | `kugel_sphere_conduit.stl` | PETG | aufrecht |
 | Sockel | `kugel_plinth.stl` | PETG | auf dem Kopf (Deckfläche auf dem Bett). Die Deckfläche ist zugleich der dichte Boden der Kammer |
 | Bodenplatte | `kugel_plinth_plate.stl` | PETG | flach, mit Domen für Pi, DigiAMP+ und LM2596 |
@@ -51,6 +56,8 @@ STL neu erzeugen:
 for p in sphere_shell sphere_lid sphere_conduit plinth plinth_plate; do
   openscad -D "part=\"$p\"" -o stl/kugel_$p.stl soundlampe_kugel.scad
 done
+openscad -D 'part="sphere_lid"' -D 'shade_style="twist"' -o stl/kugel_sphere_lid_twist.stl soundlampe_kugel.scad
+openscad -D 'part="stem"' -o stl/kugel_stem.stl soundlampe_kugel.scad
 openscad -D 'theme="walnuss"' -D 'shade_style="laterne"' -o renders/kugel.png soundlampe_kugel.scad   # Bild
 ```
 
