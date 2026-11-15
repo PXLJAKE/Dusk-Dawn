@@ -2,7 +2,7 @@
 
 ![Ansicht](renders/assembly.png)
 
-Parametrisches OpenSCAD-Modell: [`soundlampe.scad`](soundlampe.scad). Fertige STL-Dateien liegen in [`stl/`](stl/).
+Parametrisches OpenSCAD-Modell: [`soundlampe.scad`](soundlampe.scad). Fertige STL-Dateien liegen in [`stl/`](stl/). Als zweite Fuß-Version gibt es eine [Kugel](#zweite-fuß-version-kugel) (`soundlampe_kugel.scad`).
 
 - **Fuß (Ø 190 × 160 mm):** Unten ein Elektronikfach, darüber eine dichte Lautsprecherkammer mit ca. 2,4 l brutto (ca. 2,1 l netto nach Abzug von Chassis, Rippen und Kabelrohr, passend zum Vas von ca. 2 l des ND105-4). Vorne sitzt der 4"-Breitbänder, hinten die Passivmembran, beide hinter senkrechten Lamellen im Stil alter Röhrenradios. Das Kabelrohr läuft seitlich (45 mm neben der Mitte) durch die Kammer, weil der Magnet des ND105-4 bis über die Mitte reicht. Im Deckel führt ein Kanal vom Rohr zum Stiel.
 - **Stiel:** Messingrohr 20 mm oder gedruckt. Das LED-Kabel läuft innen durch.
@@ -10,6 +10,56 @@ Parametrisches OpenSCAD-Modell: [`soundlampe.scad`](soundlampe.scad). Fertige ST
 - **Schirm:** vier Varianten zur Auswahl (Parameter `shade_style`), alle gerippt und im Vasenmodus druckbar, siehe unten.
 - **Drehknopf:** seitlich rechts am Fuß (`knob_pos = "side"`), damit er bei den Kugelschirmen nicht unter dem Glas verschwindet. `knob_pos = "top"` setzt ihn wie früher in den Deckel.
 - **Gesamthöhe:** ca. 41 cm mit Plissee-Schirm, die Kugelschirme sind etwas niedriger
+
+## Zweite Fuß-Version: Kugel
+
+![Kugel in Walnuss mit Laterne](renders/kugel_walnuss.png)
+
+Datei: [`soundlampe_kugel.scad`](soundlampe_kugel.scad). Der Zylinderfuß oben bleibt unverändert. Die Kugel ist eine Alternative mit denselben Lautsprechern, derselben Elektronik und allen Schirmen. Stiel, Lichtkern, Kerndeckel, Schirmsitz, Spinne, Knopf und Schirme kommen aus `soundlampe.scad`.
+
+- **Form:** Kugel Ø 204 mm, oben und unten bei ±45° abgeschnitten, auf einem schlanken Sockel (Ø 150 × 44 mm) für die Elektronik. Höhe des Fußes 188 mm, mit Laterne ca. 41 cm.
+- **Akustik:** ca. 3,1 l brutto bzw. 2,8 l netto, also mehr Volumen als der Zylinder (2,1 l netto). Das gibt etwas mehr Bass. Eine Kugel hat keine parallelen Wände (weniger stehende Wellen), beugt den Schall an den Kanten weich und ist bei 4 mm Wand sehr steif, deshalb braucht sie keine Rippen. Breitbänder vorne, Passivmembran hinten, beide hinter einem runden Lochfeld mit Sechskantlöchern.
+- **Druck ohne Stützen:** Die Kugelschale druckt aufrecht, die untere Hälfte neigt sich höchstens 45° nach außen. Der Sockel druckt auf dem Kopf, Deckel und Bodenplatte flach. Druckbett mindestens 210 × 210 mm.
+- **Farbthemen:** Parameter `theme` nur für die Bilder (`walnuss`, `nachtblau`, `salbei`, `terrakotta`, `schwarz`, `creme`). Gedruckt wird einfach in den passenden Filamentfarben.
+
+![Farbthemen](renders/kugel_themes.png)
+
+| Thema | Kugel | Sockel | Akzent (Stiel, Ring) |
+|---|---|---|---|
+| `walnuss` | Holzbraun (z. B. Holz-PLA oder braunes PETG) | Dunkelbraun | Messing |
+| `nachtblau` | Graublau | Anthrazit | Messing |
+| `salbei` | Salbeigrün | Cremeweiß | Messing |
+| `terrakotta` | Terrakotta | Cremeweiß | Messing |
+| `schwarz` | Mattschwarz | Mattschwarz | Messing |
+| `creme` | Cremeweiß | Eiche/Braun | Messing |
+
+Alle fünf Schirme passen auf die Kugel. Plissee und Glocke sitzen wie beim Zylinder auf dem Stiel, der dafür 28 mm kürzer ist (`stem.stl` aus dieser Datei neu erzeugen), damit der Schirm gleich hoch bleibt. Kolben, Twist und Laterne stehen mit dem Schirmsitz auf dem Deckel. Für den Twist ist der Deckel etwas breiter (`kugel_sphere_lid_twist.stl`), weil sein Sitz größer ist.
+
+![Alle Schirme auf der Kugel](renders/kugel_shades.png)
+
+![Schnitt Kugel](renders/kugel_section.png)
+
+| Teil | Datei | Material | Hinweise |
+|---|---|---|---|
+| Kugelschale | `kugel_sphere_shell.stl` | PETG | aufrecht, 4 mm Wand = 100 % Perimeter, keine Stützen. Schallwände und Lochfelder sind angeformt |
+| Deckel | `kugel_sphere_lid.stl` (Twist: `kugel_sphere_lid_twist.stl`) | PETG | flach, 100 % Infill, mit Kanal vom Kabelrohr zum Stiel |
+| Stiel | `kugel_stem.stl` | PETG | nur für Plissee/Glocke ohne Messingrohr (122 mm statt 150 mm) |
+| Kabelrohr | `kugel_sphere_conduit.stl` | PETG | aufrecht |
+| Sockel | `kugel_plinth.stl` | PETG | auf dem Kopf (Deckfläche auf dem Bett). Die Deckfläche ist zugleich der dichte Boden der Kammer |
+| Bodenplatte | `kugel_plinth_plate.stl` | PETG | flach, mit Domen für Pi, DigiAMP+ und LM2596 |
+
+Zusammenbau wie beim Zylinder, mit drei Unterschieden: Die Kugelschale wird mit 4 × M3 von unten durch die Sockeldecke in Gewindeeinsätze im unteren Flansch geschraubt (mit Dichtband dazwischen). Der Deckel sitzt mit 4 × M3-Senkkopf auf dem inneren Absatz oben. Der LM2596 sitzt im Sockel weiter innen (`buck_center = [0, -50]`).
+
+STL neu erzeugen:
+
+```bash
+for p in sphere_shell sphere_lid sphere_conduit plinth plinth_plate; do
+  openscad -D "part=\"$p\"" -o stl/kugel_$p.stl soundlampe_kugel.scad
+done
+openscad -D 'part="sphere_lid"' -D 'shade_style="twist"' -o stl/kugel_sphere_lid_twist.stl soundlampe_kugel.scad
+openscad -D 'part="stem"' -o stl/kugel_stem.stl soundlampe_kugel.scad
+openscad -D 'theme="walnuss"' -D 'shade_style="laterne"' -o renders/kugel.png soundlampe_kugel.scad   # Bild
+```
 
 ## Schirm-Varianten
 
