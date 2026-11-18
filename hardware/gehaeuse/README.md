@@ -9,7 +9,7 @@ Ein OpenSCAD-Modell für beide Füße (Kugel, Zylinder) und alle fünf Schirme: 
 - **Keine sichtbaren Schrauben.** Die Kugel bleibt rund, das Lochfeld ist in die Wand gedruckt. Die Lautsprecher sitzen dahinter auf einer inneren Schallwand und werden von innen mit selbstschneidenden Schrauben direkt hineingeschraubt. Der Körper wird von unten aus dem Sockel verschraubt, die Bodenplatte unter den Gummifüßen.
 - **Nur selbstschneidende Linsenkopfschrauben** (BT3, BT2.6), keine Senkköpfe, keine Gewindeeinsätze.
 - **Bajonett-Deckel:** eine Drittel-Drehung, kein Werkzeug. Sein Rand ist das fehlende Stück Kugel, darunter ein 45°-Konus. Er druckt mit der Oberseite nach oben ohne Stützen.
-- **Knopf bündig in einer Mulde** (Ø 42 × 18 mm, Knopf Ø 30 mm mit Kugel-Oberfläche). Nur die Decke der Mulde braucht Tree Supports.
+- **Knopf in einer flachen Mulde** (Ø 33 × 5 mm, Knopf Ø 30 mm): er steckt nur ein paar Millimeter drin und steht 10 mm heraus. Nur die Decke der Mulde braucht Tree Supports.
 - **Schirme oben und unten offen.** Kolben, Twist und Laterne stehen direkt in einer Ringmulde im Deckel und beginnen mit genau dem Kugeldurchmesser und der Kugelneigung an dieser Stelle. Kein Adapterring, kein Absatz.
 - **Gleiche Teile für beide Füße:** Sockel, Bodenplatte, Deckel, Knopf, Stiele, Lichtkern, Kerndeckel, Spinnen, Schirme. Nur der Körper unterscheidet sich.
 

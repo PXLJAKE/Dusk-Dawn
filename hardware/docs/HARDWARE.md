@@ -30,7 +30,7 @@ Der Pi braucht etwas mehr Strom (ca. 1 W im Leerlauf). Dafür ist das Gerät ein
 | Speicherkarte | microSD 32 GB, A1 | 7 € |
 | LEDs | **SK6812 RGBW** Strip, 60 LED/m, **warmweiß (3000 K)**, 5 V, 0,5 m (30 LEDs) | 8 € |
 | Pegelwandler | 74AHCT125 (DIP) + 330 Ω Widerstand + 1000 µF/10 V Elko | 2 € |
-| Drehknopf | Drehgeber **EC11** mit Taster, 20 Rasten, 6-mm-D-Achse | 2 € |
+| Drehknopf | Drehgeber **EC11** mit Taster, 20 Rasten, 6-mm-D-Achse, 15 mm Welle | 2 € |
 | Kleinkram | Litzen, JST-Stecker, Schrumpfschlauch, Lochrasterstück | 6 € |
 
 ### Akustik

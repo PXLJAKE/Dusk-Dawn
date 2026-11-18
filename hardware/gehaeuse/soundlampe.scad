@@ -62,8 +62,9 @@ lock_a    = 40;                       // turn to lock
 /* [Knob] */
 knob_d    = 30;
 knob_h    = 14;
-pocket_d  = 42;                       // 6 mm finger gap all round
-pocket_depth = 18;
+knob_out  = 10;                       // the knob stands 10 mm proud, only about 4 mm sit in the inset
+pocket_d  = knob_d + 3;               // shallow inset, 1.5 mm gap round the knob
+pocket_depth = knob_h - knob_out + 1; // 1 mm under the knob
 
 /* [Electronics] */
 dc_jack_d   = 11;
@@ -308,16 +309,10 @@ module plate() {
 }
 
 // ------------------------------------------------------------------ knob, lamp parts
-module knob() {   // face = sphere cap of r102, sits flush in the pocket
+module knob() {   // knurled wheel with a 1 mm chamfer, stands knob_out proud of the inset
   difference() {
-    intersection() {
-      union() {
-        cylinder(d = knob_d, h = knob_h - 1.5, $fn = 120);
-        translate([0, 0, knob_h - sph_r]) sphere(r = sph_r, $fn = 360);
-      }
-      cylinder(d = knob_d, h = knob_h + 2, $fn = 120);
-    }
-    for (a = [0:6:354]) rotate(a) translate([knob_d / 2 + 0.2, 0, -eps]) cylinder(d = 1.6, h = knob_h - 3, $fn = 8);
+    union() { cylinder(d = knob_d, h = knob_h - 1, $fn = 120); translate([0, 0, knob_h - 1]) cylinder(d1 = knob_d, d2 = knob_d - 2, h = 1, $fn = 120); }
+    for (a = [0:6:354]) rotate(a) translate([knob_d / 2 + 0.2, 0, -eps]) cylinder(d = 1.6, h = knob_h - 1.5, $fn = 8);
     translate([0, 0, -eps]) difference() { cylinder(d = 6.2, h = 12, $fn = 32); translate([1.6, -4, -1]) cube([4, 8, 14]); }
     translate([0, 9, knob_h - 0.6]) cylinder(d = 2.5, h = 2, $fn = 16);
   }
@@ -386,7 +381,7 @@ module place_body()   color(TC[0]) render(convexity = 6) body();   // render(): 
 module place_plinth() color(TC[1]) plinth();
 module place_plate()  color(TC[1]) plate();
 module place_lid()    color(TC[0]) rotate(lock_a) lid();
-module place_knob()   color(TC[4]) translate([knob_x - knob_h + 0.01, 0, zc]) rotate([0, 90, 0]) knob();
+module place_knob()   color(TC[4]) translate([knob_x + knob_out - knob_h, 0, zc]) rotate([0, 90, 0]) knob();
 module place_lamp(with_shade = true) {
   color(TC[2]) translate([0, 0, stem_z]) stem();
   color("#e9e3d5") translate([0, 0, stem_top]) { led_core(); translate([0, 0, core_h]) core_cap(); }

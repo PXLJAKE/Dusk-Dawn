@@ -96,7 +96,7 @@ p3 = (step(1, "s1", "Lautsprecher von innen anschrauben", "Körper, Breitbänder
       step(2, "s2", "Drehgeber und Knopf", f"Drehgeber EC11 mit Mutter, {code('05_knopf')}", [],
            "<p>Drehgeber <b>von innen</b> (durch die offene Unterseite) durch das Loch im Boden der Knopfmulde stecken, die kleine Nase in "
            "ihr Loch. Mutter in der Mulde anziehen, Gewinde mit etwas Silikon dichten. 5 Litzen anlöten und nach unten führen. "
-           "Knopf auf die D-Welle stecken: er schließt bündig mit der Außenkontur ab, rundherum bleibt Platz für die Finger.</p>",
+           "Knopf auf die D-Welle stecken: er steckt ein paar Millimeter in der flachen Mulde und steht etwa 10 mm heraus.</p>",
            "gleich, die Mulde sitzt rechts in der Wand.", 92))
 
 p4 = (step(3, "s3", "Körper auf den Sockel", f"{code('02_sockel')}, Polyesterwatte, Silikon", [chip(4, BT3_10, "BT3 × 10")],

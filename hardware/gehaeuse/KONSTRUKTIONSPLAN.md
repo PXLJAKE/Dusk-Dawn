@@ -37,8 +37,7 @@ Teile pro Lampe (Kugel oder Zylinder mit Kugelschirm): Körper, Sockel, Bodenpla
 ## 3. Konstruktive Änderungen
 
 ### Eingelassener Drehknopf
-- Rechts im Körper sitzt eine runde **Mulde** (Ø 42 mm, 18 mm tief). Der Knopf (Ø 30 mm) schließt bündig mit der Außenkontur ab.
-- Rundherum bleiben 5 mm **Fingerspalt**, unten ist die Mulde zusätzlich ausgerundet. So lässt sich der Knopf greifen, drehen und drücken.
+- Rechts im Körper sitzt eine flache runde **Mulde** (Ø 33 mm, 5 mm tief), knapp größer als der Knopf (Ø 30 × 14 mm, gerändelt). Der Knopf steckt nur gut 4 mm darin und steht **10 mm** über die Außenkontur, so lässt er sich gut greifen, drehen und drücken. Drehgeber EC11 mit 15 mm Welle.
 - Der Drehgeber wird von innen durch den Muldenboden gesteckt und mit seiner Mutter in der Mulde festgezogen. Der Knopf deckt die Mutter ab.
 - Die Mulde ist ein geschlossener Becher, die Kammer bleibt dicht. Ihre Decke wird mit **Tree Supports** gedruckt.
 
