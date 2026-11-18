@@ -5,12 +5,12 @@ bindings (PyO3). It renders procedural sleep sounds: rain, waves, stream, wind,
 thunder, birds, leaves, fire, fan, and white, pink and brown noise. It also renders
 alarm tones (bells, classic, birds). Output is mono signed 16-bit little-endian PCM.
 
-The engine is a port of `device/sleepgen/dsp.py` and `engine.py`. White, pink and
+The engine is a port of `hardware/device/sleepgen/dsp.py` and `engine.py`. White, pink and
 brown noise, fan, rain, wind, waves, fire and thunder are the original designs
 (`dsp.py` at commit 73c0381: same filters, random structure and envelopes); birds,
 leaves and stream are the newer grain-based designs. It uses the same calibration to
 equal loudness (`TARGET_RMS = 0.125`), level smoothing and `tanh` soft limiter. The API is defined
-in `integration/CONTRACT.md`, section 1. The integration loads this module if it is
+in `docs/CONTRACT.md`, section 1. The integration loads this module if it is
 installed and otherwise falls back to its pure-Python engine:
 
 ```python

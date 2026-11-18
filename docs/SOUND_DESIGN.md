@@ -1,6 +1,6 @@
 # Sound-Design
 
-Die Soundlampe spielt keine Aufnahmen ab. Jeder Klang wird live auf dem Raspberry Pi berechnet (Code: [`device/sleepgen/dsp.py`](../device/sleepgen/dsp.py), Mischpult: [`engine.py`](../device/sleepgen/engine.py)). Das hat drei Vorteile:
+Die Soundlampe spielt keine Aufnahmen ab. Jeder Klang wird live auf dem Raspberry Pi berechnet (Code: [`hardware/device/sleepgen/dsp.py`](../hardware/device/sleepgen/dsp.py), Mischpult: [`engine.py`](../hardware/device/sleepgen/engine.py)). Das hat drei Vorteile:
 
 - **Keine Schleife.** Eine Aufnahme wiederholt sich irgendwann, und das Ohr findet die Stelle. Ein berechneter Klang wiederholt sich nie.
 - **Alles ist einstellbar.** Jede Ebene hat ihren eigenen Regler und lässt sich mit allen anderen mischen.

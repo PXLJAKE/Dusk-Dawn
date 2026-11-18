@@ -35,7 +35,7 @@ CANDLE_INTERVAL_S = 1.5
 def sunrise_point(p: float) -> tuple[int, int]:
     """Brightness (1..255) and colour temperature for sunrise progress ``p``.
 
-    Same curve as the DIY lamp (device/sleepgen/light.py): a faint warm glow
+    Same curve as the DIY lamp (hardware/device/sleepgen/light.py): a faint warm glow
     that slowly grows into bright neutral white.
     """
     p = min(max(p, 0.0), 1.0)

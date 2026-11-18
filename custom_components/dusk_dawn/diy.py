@@ -1,7 +1,7 @@
-"""Bridge to a DIY Soundlampe (device/sleepgen) over its existing MQTT topics.
+"""Bridge to a DIY Soundlampe (hardware/device/sleepgen) over its existing MQTT topics.
 
 The lamp renders sound and light effects itself, so nothing is streamed.
-Topics (see device/sleepgen/mqtt_ha.py), base ``sleepgen/<device_id>``:
+Topics (see hardware/device/sleepgen/mqtt_ha.py), base ``sleepgen/<device_id>``:
 
     sound/set ON|OFF          master/set 0..100        layer/<sound>/set 0..100
     timer/set "Aus"|"N min"   lamp/set <HA JSON light command>

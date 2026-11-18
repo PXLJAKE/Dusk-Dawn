@@ -2,7 +2,7 @@
 
 Dusk & Dawn bringt die Schlafgeräusche, das Aufwachlicht und den Wecker der Soundlampe als normale Integration in Home Assistant. Sie läuft mit **jedem Lautsprecher**, der in HA als Media Player auftaucht (Sonos, Google/Nest, Music Assistant, Squeezebox …), und **jeder Lampe**. Die DIY-Soundlampe ist dabei nur ein mögliches Gerät unter vielen. Helfer, Automationen oder YAML braucht man nicht mehr.
 
-![Seitenleiste](integration/desktop-sounds.png)
+![Seitenleiste](integration/desktop-alarms.png)
 
 ## Installation über HACS
 
@@ -42,4 +42,4 @@ Das Kaminfeuer folgt dem Feuer-Modell aus Andy Farnells Buch *Designing Sound* (
 
 - Tests: `python -m pytest tests` (braucht `pytest-homeassistant-custom-component`, siehe `tests/requirements_test.txt`), Klangkern: `cd core && cargo test`.
 - Vorschau der Seitenleiste ohne HA: `custom_components/dusk_dawn/frontend/dev.html` im Browser öffnen.
-- Schnittstellen zwischen Kern, Integration und Seitenleiste: [integration/CONTRACT.md](../integration/CONTRACT.md).
+- Schnittstellen zwischen Kern, Integration und Seitenleiste: [CONTRACT.md](CONTRACT.md).

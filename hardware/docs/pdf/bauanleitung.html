@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Soundlampe Bauanleitung</title>
+<style>
+@page { size: A4; margin: 0; }
+:root { --cream:#f5efe4; --paper:#fbf8f2; --navy:#232a40; --navy2:#3a4361; --brass:#b88a3e; --ink:#2b2b2b; --muted:#6b6658; --line:#ddd3bf; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family: Inter, sans-serif; color:var(--ink); font-size:9.6pt; line-height:1.48; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.page { width:210mm; height:297mm; position:relative; overflow:hidden; background:#fff; page-break-after:always; padding:16mm 16mm 18mm; }
+.page:last-child { page-break-after:auto; }
+h1,h2,h3 { font-family:"Bitstream Charter", Georgia, serif; color:var(--navy); font-weight:700; }
+h2 { font-size:21pt; margin:1mm 0 3mm; }
+h3 { font-size:12.5pt; margin:5mm 0 1.5mm; }
+p { margin-bottom:2mm; }
+.eyebrow { font-size:8pt; letter-spacing:.2em; text-transform:uppercase; color:var(--brass); font-weight:600; }
+.lead { font-size:10.5pt; color:var(--navy2); max-width:165mm; }
+table { width:100%; border-collapse:collapse; margin:2mm 0 3mm; font-size:8.8pt; }
+th { text-align:left; font-weight:600; color:var(--navy); border-bottom:.4mm solid var(--navy); padding:1.4mm 1.5mm; }
+td { border-bottom:.2mm solid var(--line); padding:1.3mm 1.5mm; vertical-align:top; }
+td b { color:var(--navy); }
+ul, ol { margin:1mm 0 3mm 5mm; }
+li { margin-bottom:1.2mm; }
+.note { background:var(--cream); border-left:1.2mm solid var(--brass); padding:2.5mm 4mm; margin:3mm 0; font-size:9.2pt; }
+.warn { background:#fdecea; border-left:1.2mm solid #d1352b; padding:2.5mm 4mm; margin:3mm 0; font-size:9.2pt; }
+.fig { text-align:center; margin:2mm 0; }
+.fig img { max-width:100%; }
+.cap { font-size:8pt; color:var(--muted); text-align:center; margin-top:1mm; }
+.two { display:grid; grid-template-columns:1fr 1fr; gap:7mm; }
+.two-l { display:grid; grid-template-columns:72mm 1fr; gap:7mm; align-items:start; }
+.foot { position:absolute; bottom:8mm; left:16mm; right:16mm; display:flex; justify-content:space-between; font-size:7.5pt; color:#9a947f; border-top:.2mm solid var(--line); padding-top:2mm; }
+.steps { counter-reset:s; list-style:none; margin-left:0; }
+.steps li { counter-increment:s; position:relative; padding-left:10mm; margin-bottom:2.6mm; }
+.steps li::before { content:counter(s); position:absolute; left:0; top:-.3mm; width:6.5mm; height:6.5mm; border-radius:50%; background:var(--navy); color:var(--cream); font-weight:700; font-size:8.5pt; display:flex; align-items:center; justify-content:center; }
+.check { color:#2e7d32; font-weight:700; }
+/* cover */
+.cover { background:var(--navy); color:var(--cream); padding:0; }
+.cover .top { padding:22mm 18mm 0; }
+.cover h1 { color:var(--cream); font-size:44pt; line-height:1; margin:4mm 0 4mm; }
+.cover .sub { font-size:13pt; color:#dcd6c9; max-width:120mm; }
+.cover .eyebrow { color:#d9b46c; }
+.cover .imgs { position:absolute; bottom:0; right:8mm; display:flex; align-items:flex-end; gap:0; }
+.cover .imgs img { height:150mm; filter:drop-shadow(0 4mm 6mm rgba(0,0,0,.35)); }
+.toc { margin-top:12mm; font-size:10pt; color:#dcd6c9; line-height:1.9; }
+.toc b { color:#d9b46c; display:inline-block; width:9mm; }
+</style></head><body>
+
+<!-- 1 Cover -->
+<section class="page cover">
+  <div class="top">
+    <div class="eyebrow">Bauanleitung · Version November 2026</div>
+    <h1>Soundlampe</h1>
+    <p class="sub">Schlafgeräusche, Musik, Wecker und Licht in einer Nachttischlampe. Alles, was du zum Bauen, Verkabeln und Einrichten brauchst.</p>
+    <div class="toc">
+      <div><b>2</b>Überblick: wie die Lampe aufgebaut ist</div>
+      <div><b>3</b>Einkaufsliste</div>
+      <div><b>4</b>Stromlaufplan</div>
+      <div><b>5</b>Pinbelegung und Lochraster-Platine</div>
+      <div><b>6</b>Elektronikfach</div>
+      <div><b>7</b>Lichtkern und LEDs</div>
+      <div><b>8</b>Zusammenbau Schritt für Schritt</div>
+      <div><b>10</b>Software und Home Assistant</div>
+      <div><b>11</b>Sound-Design</div>
+      <div><b>13</b>Wecker, Fehlersuche</div>
+    </div>
+  </div>
+  <div class="imgs"><img src="img/variant_laterne.png" alt=""></div>
+</section>
+
+<!-- 2 Überblick -->
+<section class="page">
+  <div class="eyebrow">Überblick</div>
+  <h2>Drei Etagen in einem Fuß</h2>
+  <div class="two-l">
+    <div class="fig"><img src="img/cutaway.png" style="height:118mm"><div class="cap">Aufgeschnitten: Elektronik unten, Lautsprecherkammer in der Mitte, Licht oben</div></div>
+    <div>
+      <p class="lead">Der Fuß (Kugel Ø 204 mm oder Zylinder Ø 190 mm, beide 188 mm hoch) ist innen in drei Bereiche geteilt. Jeder hat eine eigene Aufgabe, und keiner stört den anderen.</p>
+      <h3>Elektronikfach (unten)</h3>
+      <p>Raspberry Pi 3 A+ mit aufgestecktem DigiAMP+ (Verstärker), der LM2596 für 5 V, eine kleine Lochraster-Platine für die LED-Daten und die DC-Buchse. Lüftungsschlitze in der Bodenplatte, Gummifüße lassen Luft drunter.</p>
+      <h3>Lautsprecherkammer (Mitte, gut 2 l)</h3>
+      <p>Luftdicht. Vorne der Breitbänder Dayton ND105-4, hinten die Passivmembran ND105-PR. Die Membran schwingt mit und liefert Bass wie ein Bassreflexrohr, aber ohne Strömungsgeräusche. 4 mm Wand und 8 Rippen machen die Kammer steif, Dämmung nimmt den Plastikklang weg. An der Seite sitzt der Drehknopf.</p>
+      <h3>Licht (oben)</h3>
+      <p>Ein Messingstiel trägt den Lichtkern: eine Spule, um die 30 RGBW-LEDs als Spirale gewickelt sind. Darüber der Schirm aus transluzentem Filament. Das LED-Kabel läuft unsichtbar durch den Stiel, einen Kanal im Deckel und durch die Kammer nach unten. Die Durchführungen werden mit Silikon abgedichtet.</p>
+    </div>
+  </div>
+  <div class="fig" style="margin-top:4mm"><img src="../../gehaeuse/renders/explosion_beide.png" style="height:95mm"><div class="cap">Kugel und Zylinder: gleicher Sockel, gleicher Deckel, gleiche Gitter, Knopf und Lichtteile</div></div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>2</span></div>
+</section>
+
+<!-- 3 Einkaufsliste -->
+<section class="page">
+  <div class="eyebrow">Teile</div>
+  <h2>Einkaufsliste</h2>
+  <p class="lead">Alles, was du für eine Lampe brauchst. Die Kästchen sind zum Abhaken beim Bestellen.</p>
+  <table>
+    <tr><th></th><th>Teil</th><th>Genau dieses</th><th>Wofür</th></tr>
+    <tr><td>○</td><td><b>Raspberry Pi 3 Model A+</b></td><td>65 × 56 mm, WLAN</td><td>rechnet die Sounds, MQTT, Licht</td></tr>
+    <tr><td>○</td><td><b>Raspberry Pi DigiAMP+</b></td><td>2 × 35 W, 12–24 V</td><td>Verstärker, versorgt auch den Pi</td></tr>
+    <tr><td>○</td><td><b>Netzteil</b></td><td>19 V / 3,42 A, Stecker 5,5 × 2,5</td><td>Strom für alles</td></tr>
+    <tr><td>○</td><td><b>DC-Einbaubuchse</b></td><td>5,5 × 2,5 mm</td><td>hinten unten am Fuß</td></tr>
+    <tr><td>○</td><td><b>LM2596-Modul</b></td><td>Step-down, ca. 43 × 21 mm</td><td>19 V → 5,1 V für die LEDs</td></tr>
+    <tr><td>○</td><td><b>LED-Strip</b></td><td>SK6812 RGBWW warmweiß, 60/m, IP30, 5 V</td><td>0,5 m = 30 LEDs am Lichtkern</td></tr>
+    <tr><td>○</td><td><b>74AHCT125</b></td><td>DIP-14, am besten mit Sockel</td><td>hebt das LED-Signal auf 5 V</td></tr>
+    <tr><td>○</td><td><b>Elko</b></td><td>1000 µF / 10 V (oder 16 V)</td><td>puffert die LED-Versorgung</td></tr>
+    <tr><td>○</td><td><b>Widerstand</b></td><td>330 Ω aus dem Sortiment</td><td>in der Datenleitung</td></tr>
+    <tr><td>○</td><td><b>Drehgeber</b></td><td>EC11 mit Taster</td><td>Lautstärke, Sounds an/aus, Wecker aus</td></tr>
+    <tr><td>○</td><td><b>Lochraster-Set</b></td><td>daraus ein Stück 30 × 70 mm schneiden</td><td>Pegelwandler-Platine</td></tr>
+    <tr><td>○</td><td><b>Abstandsbolzen</b></td><td>M2,5 × 11 mm, 4 Stück</td><td>DigiAMP+ auf dem Pi</td></tr>
+    <tr><td>○</td><td><b>Breitbänder + Passivmembran</b></td><td>Dayton ND105-4 und ND105-PR</td><td>Klang</td></tr>
+    <tr><td>○</td><td><b>Dichtband</b></td><td>Moosgummi 3 mm</td><td>Kammer abdichten</td></tr>
+    <tr><td>○</td><td><b>Litzen</b></td><td>0,5 mm² rot/schwarz (Strom), 0,14–0,25 mm² bunt (Signale)</td><td>Verkabelung</td></tr>
+    <tr><td>○</td><td><b>Jumperkabel</b></td><td>Buchse-Buchse, 10 cm</td><td>Anschluss an die Stiftleiste</td></tr>
+    <tr><td>○</td><td><b>microSD</b></td><td>32 GB, A1</td><td>Betriebssystem</td></tr>
+    <tr><td>○</td><td><b>Gewindeeinsätze, Schrauben</b></td><td>selbstschneidend BT3 × 12 (8), BT3 × 10 (7), BT2.6 × 6 (2), Abstandsbolzen M2,5 × 11 (4) + M2,5 × 5 (4), keine Gewindeeinsätze</td><td>Gehäuse, Platinen</td></tr>
+    <tr><td>○</td><td><b>Messingrohr</b></td><td>Ø 20 mm, 150 mm (oder gedruckter Stiel)</td><td>Lampenstiel</td></tr>
+    <tr><td>○</td><td><b>Dämmung</b></td><td>Polyesterwatte ca. 20 g, Alubutyl 2 mm</td><td>Kammer</td></tr>
+    <tr><td>○</td><td><b>Filament</b></td><td>ca. 600 g PETG dunkel, 150 g transluzent</td><td>Fuß und Schirm</td></tr>
+  </table>
+  <div class="note"><b>Werkzeug:</b> Lötkolben mit feiner Spitze, Multimeter (für den LM2596 unbedingt), Seitenschneider, Abisolierzange, Heißluft oder Lötkolben-Aufsatz für die Gewindeeinsätze, Schrumpfschlauch.</div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>3</span></div>
+</section>
+
+<!-- 4 Stromlaufplan -->
+<section class="page">
+  <div class="eyebrow">Verkabelung</div>
+  <h2>Stromlaufplan</h2>
+  <p class="lead">Rot ist 19 V, orange 5,1 V, schwarz Masse (GND), blau Signale, lila Lautsprecher. Alle Massen sind miteinander verbunden.</p>
+  <div class="fig" style="margin:4mm -6mm"><img src="../wiring/stromlaufplan.svg"></div>
+  <h3>So fließt der Strom</h3>
+  <ol>
+    <li>Das <b>Netzteil</b> (19 V) steckt hinten in der <b>DC-Buchse</b>. Von dort gehen zwei Wege ab.</li>
+    <li>Weg 1: ein kurzes Kabel mit Hohlstecker 5,5 × 2,5 in die Buchse des <b>DigiAMP+</b>. Der DigiAMP+ macht daraus seine eigene Versorgung und gibt 5 V über die Stiftleiste an den <b>Pi</b> weiter.</li>
+    <li>Weg 2: an IN+ und IN– des <b>LM2596</b>. Er macht 5,1 V für die <b>LEDs</b>. Die 5,1 V gehen auf die Lochraster-Platine und von dort zum Strip.</li>
+    <li>Das <b>LED-Signal</b> kommt vom Pi (Pin 19), wird im 74AHCT125 auf 5 V gehoben und geht über 330 Ω zum Eingang DIN des Strips.</li>
+  </ol>
+  <div class="warn"><b>Wichtig:</b> Den LM2596 zuerst allein an 19 V anschließen und mit dem Multimeter am Ausgang auf <b>5,1 V</b> drehen (kleines Messing-Poti). Ab Werk liefert er oft deutlich mehr, das würde die LEDs zerstören. Und: kein USB-Netzteil am Pi anstecken, der Pi bekommt seinen Strom nur vom DigiAMP+.</div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>4</span></div>
+</section>
+
+<!-- 5 Pinout + Lochraster -->
+<section class="page">
+  <div class="eyebrow">Verkabelung</div>
+  <h2>Pinbelegung und Lochraster-Platine</h2>
+  <div class="fig"><img src="../wiring/pi_pinout.svg" style="width:140mm"></div>
+  <table>
+    <tr><th>Pin am Pi</th><th>Funktion</th><th>geht an</th></tr>
+    <tr><td><b>19</b> (GPIO10)</td><td>LED-Daten</td><td>Platine „DATA vom Pi“ → 74AHCT125 Pin 2</td></tr>
+    <tr><td><b>39</b></td><td>GND</td><td>Platine „GND vom Pi“</td></tr>
+    <tr><td><b>29</b> (GPIO5) / <b>31</b> (GPIO6)</td><td>Drehgeber A / B</td><td>EC11, die zwei äußeren Pins der 3er-Seite</td></tr>
+    <tr><td><b>30</b></td><td>GND</td><td>EC11 C (Mitte der 3er-Seite)</td></tr>
+    <tr><td><b>33</b> (GPIO13) / <b>34</b></td><td>Taster / GND</td><td>EC11, die zwei Pins der 2er-Seite</td></tr>
+  </table>
+  <div class="fig" style="margin:2mm -8mm 0"><img src="../wiring/lochraster.svg"></div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>5</span></div>
+</section>
+
+<!-- 6 Elektronikfach -->
+<section class="page">
+  <div class="eyebrow">Innenleben</div>
+  <h2>Elektronikfach</h2>
+  <div class="fig"><img src="img/detail_electronics.png" style="height:118mm"><div class="cap">Bodenplatte von schräg oben: Platine links, Pi mit DigiAMP+ in der Mitte, LM2596 vorne, DC-Buchse hinten</div></div>
+  <div class="two">
+    <div>
+      <h3>Der Turm aus Pi und Verstärker</h3>
+      <p>Der Pi 3 A+ wird auf die 4 kurzen Dome der Bodenplatte geschraubt. Auf seine Befestigungslöcher kommen 4 Abstandsbolzen M2,5 × 11 mm, darauf der DigiAMP+, der mit seiner Buchsenleiste auf die Stiftleiste des Pi gesteckt wird. Oben am DigiAMP+ ist die Stiftleiste durchgeführt. Dort kommen die Jumperkabel für LEDs und Drehknopf drauf.</p>
+      <p>Bis zur Sockeldecke bleiben etwa 7 mm Luft. Unter dem Pi sind 5 mm Luft für die Kühlung.</p>
+    </div>
+    <div>
+      <h3>LM2596 und Platine</h3>
+      <p>Der LM2596 sitzt vorne auf 4 Domen (zwei diagonale Schrauben reichen). Die Lochraster-Platine klebt mit Schaumklebeband links neben dem Pi. Die Kabel zum LED-Strip kommen von oben durch die Sockeldecke.</p>
+      <p>Die Lautsprecherkabel kommen durch die Sockeldecke und gehen an die Schraubklemme des DigiAMP+ (nur ein Kanal, z. B. links; die Software spielt mono).</p>
+    </div>
+  </div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>6</span></div>
+</section>
+
+<!-- 7 Lichtkern -->
+<section class="page">
+  <div class="eyebrow">Licht</div>
+  <h2>Lichtkern und LEDs</h2>
+  <div class="two-l">
+    <div class="fig"><img src="img/detail_led_core.png" style="height:120mm"><div class="cap">Von unten nach oben: Messingstiel mit Kabel, Lichtkern mit LED-Spirale, Kerndeckel</div></div>
+    <div>
+      <h3>Aufbau</h3>
+      <ul>
+        <li><b>Lichtkern:</b> hohle Spule, Ø 40 mm (Umfang 126 mm), steckt oben auf dem Stiel. Unten 6 Lüftungslöcher, oben im Kerndeckel 8. Warme Luft zieht so nach oben ab.</li>
+        <li><b>Spirale:</b> 0,5 m Strip mit 30 LEDs in 4 Windungen, 15 mm Steigung. Die LEDs zeigen nach außen und leuchten den Schirm rundum gleichmäßig an, ohne dunkle Streifen.</li>
+        <li><b>Richtung:</b> Anfang (DIN) unten. Die Pfeile auf dem Strip zeigen nach oben, vom Anschluss weg.</li>
+        <li><b>Kabel:</b> 3 Adern (rot 5 V, schwarz GND, blau Daten). Am Strip-Anfang durch ein Loch in den Kern, durch den Stiel, den Kanal im Deckel und die Kammer nach unten.</li>
+      </ul>
+      <h3>Strom und Wärme</h3>
+      <p>Warmweiß nutzt vor allem den weißen Kanal: etwa 20 mA pro LED, 0,6 A bei voller Helligkeit. Die Software begrenzt auf 70 %, damit es im Schirm kühl bleibt.</p>
+      <h3>Was das Licht kann</h3>
+      <ul>
+        <li>Warmweiß dimmbar, 1800–6500 K, dazu Farben</li>
+        <li><b>Sonnenaufgang:</b> 5–60 min von dunkelrot über orange zu warmweiß</li>
+        <li><b>Kerze:</b> jede LED flackert einzeln um 1800–2200 K</li>
+        <li><b>Einschlafen:</b> wird mit dem Sleep-Timer dunkler</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Schirme</h3>
+  <div class="fig"><img src="../../gehaeuse/renders/alle_varianten.png" style="width:170mm"><div class="cap">Plissee, Glocke, Kolben, Twist und Laterne. Kolben, Twist und Laterne stehen direkt in der Ringmulde des Deckels und laufen bündig aus der Kugel, Plissee und Glocke hängen an einer Spinne.</div></div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>7</span></div>
+</section>
+
+<!-- 8 Zusammenbau 1 -->
+<section class="page">
+  <div class="eyebrow">Montage</div>
+  <h2>Zusammenbau Schritt für Schritt</h2>
+  <div class="note" style="margin-top:0"><b>Mit Bildern zu jedem Schritt</b>, Schrauben in Originalgröße und den Stiellängen je Schirm: <b>Soundlampe_Montageanleitung.pdf</b> (gleicher Ordner). Hier die Kurzfassung, sie gilt für Kugel und Zylinder.</div>
+  <div class="two-l">
+    <div class="fig"><img src="img/exploded.png" style="height:200mm"><div class="cap">Explosionszeichnung</div></div>
+    <div>
+      <ol class="steps">
+        <li><b>Drucken.</b> Den passenden Ordner aus <code>hardware/pakete/</code> nehmen, dort liegen alle STL und die Druckeinstellungen. Schirm aus transluzentem Filament.</li>
+        <li><b>Lautsprecher von außen:</b> Breitbänder vorne, Passivmembran hinten mit je 4 × BT3 × 12 auf die flachen Schallwände schrauben, Flansche mit Moosgummi dichten. Kabel vorher anlöten (rot = +).</li>
+        <li><b>Gitter</b> bündig einklipsen. Sie verdecken Schrauben und Flansch, mit der Kerbe unten lassen sie sich wieder heraushebeln.</li>
+        <li><b>Drehgeber</b> von innen durch den Boden der Knopfmulde, Mutter in der Mulde anziehen, Knopf aufstecken. 5 Litzen anlöten.</li>
+        <li><b>Körper auf den Sockel:</b> Kabel durch die Löcher in der Sockeldecke, mit Silikon dichten, Körper von unten mit 4 × BT3 × 10 anschrauben.</li>
+        <li><b>Dämmen:</b> Alubutyl an die großen Kammerwände, Polyesterwatte locker hinein. Breitbänder und Membran frei lassen.</li>
+        <li><b>LED-Kabel:</b> Einen Draht als Zugband von oben durch Stiel, Deckelkanal und Kammer schieben, 3-adriges Kabel durchziehen. Deckel mit Moosgummi-Ring einsetzen und eine Drittel-Drehung im Uhrzeigersinn drehen (Bajonett, keine Schrauben).</li>
+      </ol>
+    </div>
+  </div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>8</span></div>
+</section>
+
+<!-- 9 Zusammenbau 2 -->
+<section class="page">
+  <div class="eyebrow">Montage</div>
+  <h2>Zusammenbau, Teil 2</h2>
+  <ol class="steps" start="8" style="counter-reset:s 7">
+    <li><b>Lichtkern:</b> Strip spiralförmig um den Kern kleben, Anschluss unten. Kabel anlöten (rot an +5V, schwarz an GND, blau an DIN), mit Schrumpfschlauch isolieren. Kern auf den Stiel, Kerndeckel drauf.</li>
+    <li><b>LM2596 einstellen:</b> allein an 19 V, Multimeter an OUT+ und OUT–, Poti drehen bis 5,1 V. Erst dann weiter.</li>
+    <li><b>Platine löten</b> nach dem Plan auf Seite 5. IC-Sockel einlöten, Chip zuletzt einstecken (Kerbe nach links).</li>
+    <li><b>Pi und DigiAMP+:</b> Pi auf die 4 kurzen Dome, Bolzen drauf, DigiAMP+ aufstecken und verschrauben. microSD (fertig eingerichtet, siehe Seite 10) einstecken.</li>
+    <li><b>Verkabeln</b> nach dem Stromlaufplan: DC-Buchse → DigiAMP+ und LM2596. LM2596 → Platine. Platine → LED-Kabel. Jumperkabel vom Pi zu Platine und Drehgeber. Lautsprecher an die Klemme des DigiAMP+.</li>
+    <li><b>Erster Test</b> mit offener Bodenplatte: Netzteil einstecken. Nach etwa einer Minute erscheint die Lampe in Home Assistant. Licht an, Sounds an, Knopf drehen und drücken.</li>
+    <li><b>Schließen:</b> Bodenplatte mit 3 × BT3 × 10 anschrauben, Gummifüße auf die Schraubenköpfe kleben. Plissee/Glocke: Spinne auf den Stift des Kerndeckels, Schirm drüber. Kolben/Twist/Laterne: Schirm in die Ringmulde des Deckels stellen.</li>
+  </ol>
+  <div class="fig"><img src="../../gehaeuse/renders/detail_knopf_deckel_kugel.png" style="width:150mm"><div class="cap">Schnitt: Knopf bündig in der Mulde, Deckel bündig in der Kugel, Schirm läuft ohne Absatz weiter</div></div>
+  <div class="note"><b>Noch am echten Teil nachmessen:</b> den Lochkreis der Lautsprecherschrauben und die Lochabstände deines LM2596. Abweichungen in <code>soundlampe.scad</code> eintragen und die STL neu erzeugen.</div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>9</span></div>
+</section>
+
+<!-- 10 Software + HA -->
+<section class="page">
+  <div class="eyebrow">Software</div>
+  <h2>Software und Home Assistant</h2>
+  <h3>Pi einrichten</h3>
+  <ol class="steps">
+    <li>Mit dem <b>Raspberry Pi Imager</b> „Raspberry Pi OS Lite (64-bit)“ auf die microSD schreiben. In den Einstellungen Hostname <code>soundlampe</code>, Benutzer, WLAN und SSH setzen.</li>
+    <li>Per SSH einloggen, Repo klonen und <code>sudo hardware/device/system/install.sh</code> ausführen. Das richtet den DigiAMP+-Treiber, SPI für die LEDs, Python, den Dienst <code>sleepgen</code> und den Musikplayer (squeezelite) ein.</li>
+    <li>In <code>/etc/sleepgen/config.yaml</code> den MQTT-Benutzer eintragen (siehe unten), dann <code>sudo reboot</code>.</li>
+  </ol>
+  <h3>Home Assistant anbinden</h3>
+  <table>
+    <tr><th>Schritt</th><th>Wie</th></tr>
+    <tr><td>MQTT</td><td>App <b>Mosquitto broker</b> installieren, Integration <b>MQTT</b> bestätigen</td></tr>
+    <tr><td>Benutzer für die Lampe</td><td>Einstellungen → Personen → Benutzer, z. B. <code>sleepgen</code>; Name, Passwort und HA-IP in <code>config.yaml</code></td></tr>
+    <tr><td>Steuerung</td><td>Integration <b>Dusk &amp; Dawn</b> über HACS installieren und beim Einrichten die Soundlampe als DIY-Gerät wählen. Dann gibt es Klänge, Wecker, Sonnenaufgang und Präsenz-Automatik in einer eigenen Seitenleiste.</td></tr>
+  </table>
+  <p>Sobald die Lampe läuft, legt sie alle Entitäten selbst an (MQTT Discovery): Sounds, Presets, Timer, ein Regler pro Klang, Lampe, Sonnenaufgang, Wecker, Weckton, Weckdauer und Wecklautstärke. Wer lieber ohne Integration arbeitet, findet im Ordner <code>homeassistant/</code> ein Paket mit Helfern, Automationen und Dashboard.</p>
+  <h3>Musik</h3>
+  <p>Der Pi läuft zusätzlich als Squeezelite-Player. Music Assistant findet ihn automatisch als Lautsprecher „Soundlampe“. Dann kannst du Spotify, Radio oder eigene Musik auf die Lampe schicken. Musik und Sounds laufen gleichzeitig, auf Wunsch pausieren die Sounds automatisch.</p>
+  <h3>Bedienung am Gerät</h3>
+  <table>
+    <tr><th>Knopf</th><th>macht</th></tr>
+    <tr><td>Drehen</td><td>Gerätelautstärke (auch Musik)</td></tr>
+    <tr><td>Kurz drücken</td><td>Sounds an/aus. <b>Klingelt der Wecker, stoppt er ihn.</b></td></tr>
+    <tr><td>Lange drücken (1,2 s)</td><td>Licht an/aus</td></tr>
+  </table>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>10</span></div>
+</section>
+
+<!-- 11 Sound-Design 1 -->
+<section class="page">
+  <div class="eyebrow">Klang</div>
+  <h2>Sound-Design</h2>
+  <p class="lead">Die Lampe spielt keine Aufnahmen ab. Jeder Klang wird live auf dem Pi berechnet. So gibt es keine hörbare Schleife, jede Ebene hat ihren eigenen Regler, und alles lässt sich mischen.</p>
+  <div class="two">
+    <div>
+      <h3>Teppich und Ereignisse</h3>
+      <p>Fast jeder Naturklang besteht aus zwei Teilen: einem <b>Teppich</b> aus gefiltertem Rauschen, der den Raum füllt, und vielen <b>kurzen Ereignissen</b>, an denen das Ohr den Klang erkennt. Langsame Zufallskurven bewegen beides, damit nichts statisch klingt.</p>
+    </div>
+    <div>
+      <h3>Drei Bausteine</h3>
+      <p><b>Plip:</b> kurzer Ton, der nach oben gleitet. So klingt eine Luftblase im Wasser, die kleiner wird: Tropfen, Blasen, Schaum.<br><b>Tick:</b> Rauschstoß von 0,2–12 ms: Prasseln, Knistern, Knacken.<br><b>Blatt:</b> weiches, helles Rauschschnipsel: Laub.</p>
+    </div>
+  </div>
+  <div class="fig"><img src="../sound/spektren.png"><div class="cap">Frequenzverteilung der zwölf Klänge. Unter ca. 75 Hz (grau) strahlt ein 4"-Lautsprecher kaum noch ab, deshalb liegt der Charakter von Donner und Wellen darüber.</div></div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>11</span></div>
+</section>
+
+<!-- 12 Sound-Design 2 -->
+<section class="page">
+  <div class="eyebrow">Klang</div>
+  <h2>Die Klänge im Einzelnen</h2>
+  <table>
+    <tr><th style="width:27mm">Klang</th><th>So entsteht er</th></tr>
+    <tr><td><b>Regen</b></td><td>Rauschteppich 0,6–6,5 kHz, dazu ~1 400 winzige Ticks/s (Prasseln auf Blättern und Dach), ~22 deutliche Tropfen/s (Plips in Pfützen, einige laut und nah) und 2–3 dicke Tropfen/s von der Dachkante. Die Stärke schwankt wie bei echten Schauern.</td></tr>
+    <tr><td><b>Meer</b></td><td>Jede Welle ist ein eigenes Ereignis: tiefes Anrollen (3–4,5 s), ein wachsendes Zischen, wenn der Kamm sich bricht, ein heller Bruch, dann 6–9 s Schaum mit bis zu 900 platzenden Bläschen/s. Wellen überlappen sich, sind verschieden groß, darunter liegt leise Brandung.</td></tr>
+    <tr><td><b>Gewitter</b></td><td>Grollen bei 120–500 Hz (dort, wo der Lautsprecher kräftig ist), 4–9 rollende Stöße in den ersten Sekunden und bei nahen Blitzen ein heller Knall mit Echo. Alle 20–70 s ein Donner, mal links, mal rechts.</td></tr>
+    <tr><td><b>Kaminfeuer</b></td><td>Brennen (tiefes Rauschen) und Zischen, darüber ~45 einzelne Knackser/s, ~2 Knister-Salven/s („tsk-tsk-tsk“) und alle paar Sekunden ein springendes Scheit. Das Knistern ist 18 dB lauter als in der ersten Version.</td></tr>
+    <tr><td><b>Vögel</b></td><td>Morgenchor, alle 1–4,5 s eine Strophe: Zwitschern (Fink), Triller (Zaunkönig), melodische Pfiffe mit Vibrato (Amsel), selten ein Kuckuck. 40 % klingen fern: leiser und dumpfer.</td></tr>
+    <tr><td><b>Blätter</b> <i>neu</i></td><td>Windböen bestimmen, wie viel los ist: von 60 bis 2 600 Blatt-Körner/s, dazu ein helles Rauschen, das mit der Böe anschwillt.</td></tr>
+    <tr><td><b>Bach</b> <i>neu</i></td><td>Schnell schwankendes Gluckern um 900 Hz, ~70 Luftblasen/s und kleine Spritzer.</td></tr>
+    <tr><td><b>Wind</b></td><td>Rauschen durch einen wandernden Bandpass (250–900 Hz), Lautstärke in Böen.</td></tr>
+    <tr><td><b>Ventilator</b></td><td>Rauschen unter 1,4 kHz, leicht pulsierend wie Rotorblätter, leises Brummen.</td></tr>
+    <tr><td><b>White / Pink / Brown</b></td><td>Hell / ausgeglichen / tief und weich. Brown Noise ist bei vielen der Favorit zum Einschlafen.</td></tr>
+  </table>
+  <h3>Presets</h3>
+  <table>
+    <tr><td><b>Regen</b> Regen, Brown</td><td><b>Gewitternacht</b> Regen, Gewitter, Wind</td><td><b>Meer</b> Meer, Wind, Brown</td></tr>
+    <tr><td><b>Kaminabend</b> Feuer, Regen</td><td><b>Waldmorgen</b> Vögel, Blätter, Bach, Wind</td><td><b>Wald</b> Blätter, Bach, Vögel</td></tr>
+  </table>
+  <div class="fig"><img src="../sound/verlaeufe.png" style="width:160mm"></div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>12</span></div>
+</section>
+
+<!-- 13 Mischpult, Wecker, Fehlersuche -->
+<section class="page">
+  <div class="eyebrow">Klang</div>
+  <h2>Mischpult, Wecker und Fehlersuche</h2>
+  <div class="fig"><img src="../sound/kurven.png"></div>
+  <div class="two">
+    <div>
+      <h3>Mischpult</h3>
+      <ul>
+        <li>Alle Klänge sind auf denselben Pegel kalibriert: 50 % Regen ist etwa so laut wie 50 % Meer.</li>
+        <li>Regler folgen dem Gehör (40 dB Umfang). Die untere Hälfte ist gut für leises Einschlafen nutzbar.</li>
+        <li>Start blendet über 8 s ein, Stopp über 2 s aus, Reglerbewegungen werden geglättet. Nichts knackt.</li>
+        <li>Sleep-Timer: Die letzten 10 Minuten werden langsam leiser, am Ende kaum merklich.</li>
+        <li>Ein weicher Begrenzer verhindert Übersteuern, auch wenn alle Regler auf 100 % stehen.</li>
+      </ul>
+      <h3>Wecker</h3>
+      <ul>
+        <li>Töne: <b>Glocken</b> (sanftes Arpeggio), <b>Klassisch</b> (Doppelpiepen), <b>Vogelchor</b>.</li>
+        <li>Beginnt leise und wird in 40 s auf die Wecklautstärke hochgefahren.</li>
+        <li>Hört nach der Weckdauer (1–60 min) von selbst auf, oder sofort beim Druck auf den Drehknopf.</li>
+        <li>Ist der Verstärker nachts sehr leise gestellt, hebt die Lampe ihn zum Klingeln auf mindestens 50 % und stellt danach den alten Wert wieder her.</li>
+        <li>Mit Aufwachlicht: Erst wird es langsam hell, zur Weckzeit klingelt es.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Fehlersuche</h3>
+      <table>
+        <tr><th>Problem</th><th>Lösung</th></tr>
+        <tr><td>LEDs bleiben dunkel</td><td>Pfeilrichtung am Strip (DIN unten)? 5,1 V am Strip? Chip richtig herum? Masse vom Pi mit der Platine verbunden?</td></tr>
+        <tr><td>LEDs flackern bunt</td><td>Masse fehlt, oder Datenleitung ohne 74AHCT125. Kurze Datenleitung, 330 Ω nah am Chip.</td></tr>
+        <tr><td>Kein Ton</td><td><code>aplay -l</code> muss den DigiAMP+ zeigen. Lautsprecher an der Klemme? Gerätelautstärke hoch?</td></tr>
+        <tr><td>Lampe nicht in HA</td><td>MQTT-Benutzer und IP in <code>config.yaml</code>, <code>journalctl -u sleepgen</code> ansehen.</td></tr>
+        <tr><td>Knopf dreht falsch</td><td><code>pin_a</code> und <code>pin_b</code> tauschen.</td></tr>
+        <tr><td>Brummen</td><td>Alle Massen sternförmig an einem Punkt, Lautsprecherkabel verdrillen.</td></tr>
+        <tr><td>Wecker zu leise</td><td>„Wecklautstärke“ im Dashboard hoch, oder <code>min_device_volume</code> in der Config.</td></tr>
+      </table>
+      <div class="note">Hörproben aller Klänge, Presets und Wecktöne liegen als MP3 im Projektordner <b>soundlampe/hoerproben</b>.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Soundlampe · Bauanleitung</span><span>13</span></div>
+</section>
+</body></html>

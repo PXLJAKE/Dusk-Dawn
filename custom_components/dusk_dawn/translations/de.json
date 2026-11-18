@@ -16,7 +16,7 @@
           "speakers": "Media-Player, die die Einschlafklänge abspielen (Stream).",
           "lights": "Lampen für Nachtlicht, Einschlaf-Dimmen und Sonnenaufgang.",
           "presence": "Optionaler Präsenz- oder Bewegungsmelder für automatischen Start und Stopp.",
-          "diy_device": "Nur für eine selbst gebaute Soundlampe (device/sleepgen): ihre MQTT-Geräte-ID, z. B. sleepgen. Sie spielt Klänge und Lichteffekte dann selbst, statt zu streamen."
+          "diy_device": "Nur für eine selbst gebaute Soundlampe (hardware/device/sleepgen): ihre MQTT-Geräte-ID, z. B. sleepgen. Sie spielt Klänge und Lichteffekte dann selbst, statt zu streamen."
         }
       }
     },
@@ -43,7 +43,7 @@
           "speakers": "Media-Player, die die Einschlafklänge abspielen (Stream).",
           "lights": "Lampen für Nachtlicht, Einschlaf-Dimmen und Sonnenaufgang.",
           "presence": "Optionaler Präsenz- oder Bewegungsmelder für automatischen Start und Stopp.",
-          "diy_device": "Nur für eine selbst gebaute Soundlampe (device/sleepgen): ihre MQTT-Geräte-ID, z. B. sleepgen. Sie spielt Klänge und Lichteffekte dann selbst, statt zu streamen."
+          "diy_device": "Nur für eine selbst gebaute Soundlampe (hardware/device/sleepgen): ihre MQTT-Geräte-ID, z. B. sleepgen. Sie spielt Klänge und Lichteffekte dann selbst, statt zu streamen."
         }
       }
     },
