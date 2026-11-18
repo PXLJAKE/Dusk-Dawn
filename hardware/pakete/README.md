@@ -9,7 +9,7 @@ Ein Ordner pro Variante. Jeder enthält alle STL-Dateien (schon richtig auf der 
 
 ![Alle Varianten](../gehaeuse/renders/alle_varianten.png)
 
-**Gleich in jedem Paket:** Sockel, Bodenplatte, Deckel, 2 × Gitter, Knopf, Lichtkern. **Je nach Fuß:** der Körper. **Je nach Schirm:** Schirm, Stiel (140 mm für Plissee/Glocke, 95 mm für Kolben/Twist/Laterne), Kerndeckel und bei Plissee/Glocke die Spinne.
+**Gleich in jedem Paket:** Sockel, Bodenplatte, Deckel, Knopf, Lichtkern. **Je nach Fuß:** der Körper. **Je nach Schirm:** Schirm, Stiel (140 mm für Plissee/Glocke, 95 mm für Kolben/Twist/Laterne), Kerndeckel und bei Plissee/Glocke die Spinne.
 
 Einen einzelnen Ordner herunterladen geht z. B. über *download-directory.github.io* mit dem Link zum Ordner, oder das ganze Repo als ZIP.
 

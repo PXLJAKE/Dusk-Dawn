@@ -5,13 +5,13 @@
 //
 // Render one part at a time:
 //   openscad -D 'base="kugel"' -D 'part="body"' -o body.stl soundlampe.scad
-// Parts:  body, plinth, plate, lid, grille, knob, stem, led_core, core_cap, spider, shade
+// Parts:  body, plinth, plate, lid, knob, stem, led_core, core_cap, spider, shade
 // Views:  assembly, exploded, section
 //
 // !!! Check driver / passive radiator dimensions against your datasheets !!!
 
 part        = "assembly";
-step        = 1;            // part = "step": assembly step 1..9 for the building guide
+step        = 1;            // part = "step": assembly step 1..8 for the building guide
 base        = "kugel";      // "kugel" | "zylinder"
 shade_style = "laterne";    // "plissee" | "glocke" (on the stem) | "kolben" | "twist" | "laterne" (on the lid)
 theme       = "walnuss";
@@ -27,8 +27,9 @@ sph_r     = 102;                      // kugel
 cyl_r     = 95;                       // zylinder
 cut_h     = sph_r * cos(45);
 zc        = plinth_h + cut_h;         // centre height of the speakers and the knob
-face_y    = 75;                       // flat speaker faces at y = +-75 (both bases)
-baffle_t  = 12;                       // face plate: pockets for grille and flange, then the screws
+// speakers sit behind the round wall: inner baffle at y = +-baf_in, the wall in front of it is the grille
+baf_in    = base == "kugel" ? 76 : 69;  // flange seat (inside face of the baffle); room for the 106 mm flange
+baf_t     = 7;                        // BT3 x 12 through the 4.5 mm flange bite 7 mm into the baffle
 
 /* [Driver (front, -Y) and passive radiator (back, +Y)] */
 drv_flange_d = 106;
@@ -39,10 +40,8 @@ pr_flange_d  = 106;
 pr_cutout_d  = 93;
 pr_bolt_d    = 99;
 
-/* [Grille] */
-grille_d  = 118;
-grille_t  = 2.4;
-grille_fit = 0.25;                    // radial clearance in the pocket
+/* [Hole field in the wall (the grille is printed with the body)] */
+grille_r  = 44;
 hole_d    = 4.2;
 hole_pitch = 5.6;
 
@@ -63,8 +62,9 @@ lock_a    = 40;                       // turn to lock
 /* [Knob] */
 knob_d    = 30;
 knob_h    = 14;
-pocket_d  = 42;                       // 6 mm finger gap all round
-pocket_depth = 18;
+knob_out  = 10;                       // the knob stands 10 mm proud, only about 4 mm sit in the inset
+pocket_d  = knob_d + 3;               // shallow inset, 1.5 mm gap round the knob
+pocket_depth = knob_h - knob_out + 1; // 1 mm under the knob
 
 /* [Electronics] */
 dc_jack_d   = 11;
@@ -187,7 +187,6 @@ module inner_cavity() {
   if (base == "kugel") translate([0, 0, zc]) sphere(r = sph_r - wall, $fn = 180);
   else translate([0, 0, plinth_h - 1]) cylinder(r = cyl_r - wall, h = top_z, $fn = 180);
 }
-module flats() { for (s = [-1, 1]) translate([-200, s > 0 ? face_y : -face_y - 100, 0]) cube([400, 100, 400]); }
 
 // solid top: 45 deg seat cone that runs straight out to the sphere at top_z - 4 (no flat rim, so the lid
 // has no overhanging lip), bayonet collar below it, 45 deg underside
@@ -201,14 +200,7 @@ module bottom_block() {   // flange / floor ring the body is screwed down with
   ring(2 * 130, 2 * 56, h + plinth_h);
   for (a = [45:90:315]) rotate(a) translate([screw_r, 0, 0]) cylinder(d = boss_d, h = plinth_h + 12, $fn = 32);
 }
-module face_plates() { for (s = [-1, 1]) translate([-200, s > 0 ? face_y - baffle_t : -face_y, 0]) cube([400, baffle_t, 400]); }
-module screw_bosses() {
-  for (s = [-1, 1]) for (a = [45:90:315]) let(bd = s < 0 ? drv_bolt_d : pr_bolt_d)
-    let(p = [cos(a) * bd / 2, s * (face_y - baffle_t), zc + sin(a) * bd / 2]) hull() {
-      translate(p) rotate([s * 90, 0, 0]) cylinder(d = boss_d, h = 8, $fn = 32);
-      translate(p + [-boss_d / 2, -s * 0.5 - 0.25, -boss_d / 2 - 8]) cube([boss_d, 0.5, 1]);   // 45 deg chin, prints without supports
-    }
-}
+module baffles() { for (s = [-1, 1]) translate([-200, s > 0 ? baf_in : -baf_in - baf_t, 0]) cube([400, baf_t, 400]); }
 knob_x = base == "kugel" ? sph_r : cyl_r;
 module knob_cup() {   // closed cup in the chamber, pointed underneath (45 deg) so only the pocket roof needs tree supports
   translate([knob_x - pocket_depth - 3, 0, zc]) rotate([0, 90, 0]) hull() {
@@ -222,25 +214,28 @@ module knob_pocket() {
   translate([knob_x - pocket_depth - 4, 0, zc + 8]) rotate([0, 90, 0]) cylinder(d = 3.2, h = 6, $fn = 16);  // anti-rotation tab
 }
 module face_cuts(s) {
-  y = s * face_y;
   cut = s < 0 ? drv_cutout_d : pr_cutout_d;
   bd = s < 0 ? drv_bolt_d : pr_bolt_d;
-  translate([0, y, zc]) rotate([s * 90, 0, 0]) {
-    translate([0, 0, -eps]) cylinder(d = grille_d + 2 * grille_fit, h = grille_t + eps, $fn = 160);            // grille pocket
-    translate([0, 0, grille_t - eps]) cylinder(d = drv_flange_d + 1.5, h = drv_flange_t + eps, $fn = 160);    // flange pocket
-    for (a = [90, 210, 330]) rotate(a) translate([grille_d / 2 + grille_fit, 0, grille_t / 2]) sphere(d = 1.6, $fn = 16);  // snap dimples
-  }
-  translate([0, y - s * (grille_t + drv_flange_t), zc]) intersection() { teardrop_y(cut, 40); rotate([90, 0, 0]) cylinder(d = grille_d - 6, h = 41, center = true); }   // roof stays under the grille
-  translate([0, y, zc - grille_d / 2]) cube([10, 3.4, 3], center = true);                                         // pry notch for the grille
-  for (a = [45:90:315]) translate([cos(a) * bd / 2, y, zc + sin(a) * bd / 2]) rotate([s * 90, 0, 0]) cylinder(d = bt3_pilot, h = 34, $fn = 16);
+  // opening in the baffle: teardrop, roof clipped flat (short bridge) so the baffle stays closed to the wall
+  translate([0, s * (baf_in + baf_t / 2), zc]) intersection() { teardrop_y(cut, baf_t + 2); rotate([90, 0, 0]) cylinder(r = 52, h = baf_t + 4, center = true); }
+  // pilot holes, screwed from inside the chamber
+  for (a = [45:90:315]) translate([cos(a) * bd / 2, s * (baf_in - 1), zc + sin(a) * bd / 2]) rotate([-s * 90, 0, 0]) cylinder(d = bt3_pilot, h = baf_t + 2, $fn = 16);
+  // room for flange and screw heads where the 45 deg roof of the chamber reaches down: 7 mm straight, then a 45 deg cone
+  translate([0, s * baf_in, zc]) rotate([s * 90, 0, 0]) { cylinder(r = drv_flange_d / 2 + 0.75, h = 7 + eps, $fn = 120); translate([0, 0, 7]) cylinder(r1 = drv_flange_d / 2 + 0.75, r2 = drv_flange_d / 2 - 7.25, h = 8, $fn = 120); }
+  // round hole field in the outer wall, flat-top hexagons: each roof is a 2.4 mm bridge
+  hole_field(s);
+}
+module hole_field(s) render(convexity = 4) {
+  for (x = [-grille_r:hole_pitch:grille_r]) for (j = [-9:9]) let(z = j * hole_pitch * 0.866, xx = x + (abs(j) % 2) * hole_pitch / 2)
+    if (xx * xx + z * z <= grille_r * grille_r) translate([xx, s * (baf_in + baf_t + 0.5), zc + z]) rotate([-s * 90, 0, 0]) cylinder(d = hole_d / cos(30), h = 40, $fn = 6);
 }
 module body() {
   difference() {
     union() {
-      difference() { outer_solid(); inner_cavity(); flats(); }
+      difference() { outer_solid(); inner_cavity(); }
       intersection() {
         outer_solid();
-        union() { top_block(); bottom_block(); difference() { face_plates(); flats(); } screw_bosses(); knob_cup();
+        union() { top_block(); bottom_block(); baffles(); knob_cup();
         }
       }
     }
@@ -274,18 +269,6 @@ module lid() {
     hull() { translate([-44, 0, T - 18]) sphere(d = 7, $fn = 24); translate([0, 0, T - 18]) sphere(d = 7, $fn = 24); }
     // two finger holes to turn the lid
     for (x = [-34, 34]) translate([x, 0, T - 6]) cylinder(d = 14, h = 7, $fn = 48);
-  }
-}
-
-// ------------------------------------------------------------------ grille (same for both bases, 2x)
-module grille() {
-  difference() {
-    union() {
-      cylinder(d = grille_d, h = grille_t, $fn = 160);
-      for (a = [90, 210, 330]) rotate(a) translate([grille_d / 2, 0, grille_t / 2]) sphere(d = 1.2, $fn = 16);
-    }
-    for (iy = [-12:12]) for (ix = [-12:12]) let(x = ix * hole_pitch + (abs(iy) % 2 ? hole_pitch / 2 : 0), y = iy * hole_pitch * 0.866)
-      if (x * x + y * y <= 46 * 46) translate([x, y, -1]) rotate(30) cylinder(d = hole_d / cos(30), h = grille_t + 2, $fn = 6);
   }
 }
 
@@ -326,16 +309,10 @@ module plate() {
 }
 
 // ------------------------------------------------------------------ knob, lamp parts
-module knob() {   // face = sphere cap of r102, sits flush in the pocket
+module knob() {   // knurled wheel with a 1 mm chamfer, stands knob_out proud of the inset
   difference() {
-    intersection() {
-      union() {
-        cylinder(d = knob_d, h = knob_h - 1.5, $fn = 120);
-        translate([0, 0, knob_h - sph_r]) sphere(r = sph_r, $fn = 360);
-      }
-      cylinder(d = knob_d, h = knob_h + 2, $fn = 120);
-    }
-    for (a = [0:6:354]) rotate(a) translate([knob_d / 2 + 0.2, 0, -eps]) cylinder(d = 1.6, h = knob_h - 3, $fn = 8);
+    union() { cylinder(d = knob_d, h = knob_h - 1, $fn = 120); translate([0, 0, knob_h - 1]) cylinder(d1 = knob_d, d2 = knob_d - 2, h = 1, $fn = 120); }
+    for (a = [0:6:354]) rotate(a) translate([knob_d / 2 + 0.2, 0, -eps]) cylinder(d = 1.6, h = knob_h - 1.5, $fn = 8);
     translate([0, 0, -eps]) difference() { cylinder(d = 6.2, h = 12, $fn = 32); translate([1.6, -4, -1]) cube([4, 8, 14]); }
     translate([0, 9, knob_h - 0.6]) cylinder(d = 2.5, h = 2, $fn = 16);
   }
@@ -400,12 +377,11 @@ module led_strip_spiral(turns = 4, pitch = 13, w = 10) {
 }
 
 // ------------------------------------------------------------------ placed parts
-module place_body()   color(TC[0]) body();
+module place_body()   color(TC[0]) render(convexity = 6) body();   // render(): the hole field is too big for the preview CSG
 module place_plinth() color(TC[1]) plinth();
 module place_plate()  color(TC[1]) plate();
 module place_lid()    color(TC[0]) rotate(lock_a) lid();
-module place_grilles() for (s = [-1, 1]) color(TC[0]) translate([0, s * face_y, zc]) rotate([s * -90, 0, 0]) translate([0, 0, -grille_t]) grille();
-module place_knob()   color(TC[4]) translate([knob_x - knob_h + 0.01, 0, zc]) rotate([0, 90, 0]) knob();
+module place_knob()   color(TC[4]) translate([knob_x + knob_out - knob_h, 0, zc]) rotate([0, 90, 0]) knob();
 module place_lamp(with_shade = true) {
   color(TC[2]) translate([0, 0, stem_z]) stem();
   color("#e9e3d5") translate([0, 0, stem_top]) { led_core(); translate([0, 0, core_h]) core_cap(); }
@@ -413,7 +389,7 @@ module place_lamp(with_shade = true) {
   if (with_shade) color(TC[3], 0.92) translate([0, 0, shade_z]) shade();
 }
 module assembly(with_shade = true) {
-  place_plinth(); place_plate(); place_body(); place_lid(); place_grilles(); place_knob();
+  place_plinth(); place_plate(); place_body(); place_lid(); place_knob();
   place_lamp(with_shade);
 }
 module section() {
@@ -435,62 +411,56 @@ module section_knob() {
 module exploded(e = 1) {
   translate([0, 0, -70 * e]) { place_plinth(); translate([0, 0, -60 * e]) { place_plate(); dummy_electronics(); } }
   place_body();
-  translate([0, -face_y + grille_t - 25 * e, zc]) rotate([90, 0, 0]) dummy_driver();
-  translate([0, face_y - grille_t + 25 * e, zc]) rotate([-90, 0, 0]) dummy_pr();
-  translate([0, -75 * e, 0]) place_grilles_one(-1);
-  translate([0, 75 * e, 0]) place_grilles_one(1);
+  // speakers are mounted from inside: shown beside the body, they go in through the open bottom
+  translate([-215 * e, 0, 0]) { drivers_in(); speaker_screws(30); }
+  guide([-215 * e + 60, 0, zc], [-70, 0, zc]);
   translate([45 * e, 0, 0]) place_knob();
   translate([0, 0, 55 * e]) place_lid();
   translate([0, 0, 110 * e]) place_lamp(false);
   if (on_lid) color(TC[3], 0.92) translate([0, 0, shade_z + 230 * e]) shade();
   else { color(TC[3]) translate([0, 0, spider_z + 125 * e]) spider(); color(TC[3], 0.92) translate([0, 0, shade_z + 150 * e]) shade(); }
   // screws with red lines to their holes
-  for (s = [-1, 1]) for (a = [45:90:315]) let(bd = s < 0 ? drv_bolt_d : pr_bolt_d, p = [cos(a) * bd / 2, s * (face_y - grille_t - 3), zc + sin(a) * bd / 2])
-    { translate(p + [0, s * 55 * e, 0]) rotate([-s * 90, 0, 0]) screw(12); guide(p + [0, s * 25 * e, 0], p + [0, s * 52 * e, 0]); }
   for (a = [45:90:315]) let(p = [cos(a) * screw_r, sin(a) * screw_r, plinth_h])
     { translate(p + [0, 0, -70 * e - plinth_top_t - 6]) rotate([180, 0, 0]) screw(10); guide(p + [0, 0, -70 * e - 6], p); }
   for (a = plate_screw_a) let(p = [cos(a) * plate_screw_r, sin(a) * plate_screw_r, 0])
     { translate(p + [0, 0, -130 * e - 25]) rotate([180, 0, 0]) screw(10); guide(p + [0, 0, -130 * e - 25], p + [0, 0, -70 * e]); }
 }
 // building guide: one picture per step, earlier parts in place, the new parts pulled out along red lines
-module drivers_in() {
-  translate([0, -face_y + grille_t + 3, zc]) rotate([90, 0, 0]) dummy_driver();
-  translate([0, face_y - grille_t - 3, zc]) rotate([-90, 0, 0]) dummy_pr();
+module drivers_in(e = 0) {
+  translate([0, -baf_in + 3 + e, zc]) rotate([90, 0, 0]) dummy_driver();
+  translate([0, baf_in - 3 - e, zc]) rotate([-90, 0, 0]) dummy_pr();
 }
-module speaker_screws(e) for (s = [-1, 1]) for (a = [45:90:315]) let(bd = s < 0 ? drv_bolt_d : pr_bolt_d, p = [cos(a) * bd / 2, s * (face_y - grille_t - 3), zc + sin(a) * bd / 2])
-  { translate(p + [0, s * e, 0]) rotate([-s * 90, 0, 0]) screw(12); if (e > 0) guide(p + [0, s * 3, 0], p + [0, s * (e - 3), 0]); }
+// pan heads sit on the flange inside the chamber, the screws point outwards into the baffle
+module speaker_screws(e) for (s = [-1, 1]) for (a = [45:90:315]) let(bd = s < 0 ? drv_bolt_d : pr_bolt_d, p = [cos(a) * bd / 2, s * (baf_in - drv_flange_t), zc + sin(a) * bd / 2])
+  { translate(p - [0, s * e, 0]) rotate([s * 90, 0, 0]) screw(12); if (e > 0) guide(p - [0, s * 2, 0], p - [0, s * (e - 3), 0]); }
+module cut_open() difference() { children(); translate([0, -300, -10]) cube([300, 600, 700]); }
 module base_screws(e) for (a = [45:90:315]) let(p = [cos(a) * screw_r, sin(a) * screw_r, plinth_h])
   { translate(p + [0, 0, -plinth_top_t - 6 - e]) rotate([180, 0, 0]) screw(10); if (e > 0) guide(p + [0, 0, -plinth_top_t - 6 - e], p); }
 module plate_screws(e) for (a = plate_screw_a) let(p = [cos(a) * plate_screw_r, sin(a) * plate_screw_r, 0])
   { translate(p + [0, 0, -e]) rotate([180, 0, 0]) screw(10); if (e > 0) guide(p + [0, 0, -e], p + [0, 0, 20]); }
 module step_view(n) {
-  if (n == 1) { place_body(); translate([0, -45, 0]) translate([0, -face_y + grille_t, zc]) rotate([90, 0, 0]) dummy_driver();
-                translate([0, 45, 0]) translate([0, face_y - grille_t, zc]) rotate([-90, 0, 0]) dummy_pr(); speaker_screws(75); }
-  if (n == 2) { place_body(); drivers_in(); speaker_screws(0); translate([0, -60, 0]) place_grilles_one(-1); translate([0, 60, 0]) place_grilles_one(1);
-                guide([0, -face_y - 2, zc], [0, -face_y - 55, zc]); guide([0, face_y + 2, zc], [0, face_y + 55, zc]); }
-  if (n == 3) { place_body(); drivers_in(); place_grilles(); dummy_encoder(); translate([60, 0, 0]) place_knob(); guide([knob_x - 2, 0, zc], [knob_x + 45, 0, zc]); }
-  if (n == 4) { place_body(); drivers_in(); place_grilles(); place_knob(); translate([0, 0, -70]) { place_plinth(); base_screws(40); } }
-  if (n == 5) { place_plate(); dummy_electronics();
+  if (n == 1) { cut_open() place_body(); drivers_in(28); speaker_screws(40); }
+  if (n == 2) { place_body(); dummy_encoder(); translate([60, 0, 0]) place_knob(); guide([knob_x - 2, 0, zc], [knob_x + 45, 0, zc]); }
+  if (n == 3) { place_body(); place_knob(); translate([0, 0, -70]) { place_plinth(); base_screws(40); } }
+  if (n == 4) { place_plate(); dummy_electronics();
                 for (p = [buck_holes[0], buck_holes[3]]) translate([buck_center[0] + p[0], buck_center[1] + p[1], 40]) screw(6); }
-  if (n == 6) { assembly_base(); translate([0, 0, -70]) { place_plate(); dummy_electronics(); plate_screws(40); } }
-  if (n == 7) { assembly_base(); place_plate(); translate([0, 0, 70]) color(TC[0]) lid(); guide([0, 0, top_z + 2], [0, 0, top_z + 50]); }
-  if (n == 8) { assembly_base(); place_plate(); place_lid();
+  if (n == 5) { assembly_base(); translate([0, 0, -70]) { place_plate(); dummy_electronics(); plate_screws(40); } }
+  if (n == 6) { assembly_base(); place_plate(); translate([0, 0, 70]) color(TC[0]) lid(); guide([0, 0, top_z + 2], [0, 0, top_z + 50]); }
+  if (n == 7) { assembly_base(); place_plate(); place_lid();
                 translate([0, 0, 40]) color(TC[2]) translate([0, 0, stem_z]) stem();
                 translate([0, 0, 80]) color("#e9e3d5") translate([0, 0, stem_top]) { led_core(); led_strip_spiral(); }
                 translate([0, 0, 120]) color("#e9e3d5") translate([0, 0, stem_top + core_h]) core_cap();
                 guide([0, 0, top_z + 2], [0, 0, stem_top + 200]); }
-  if (n == 9) { assembly(with_shade = false);
+  if (n == 8) { assembly(with_shade = false);
                 if (!on_lid) { translate([0, 0, 90]) color(TC[3]) translate([0, 0, spider_z]) spider(); translate([0, 0, 170]) color(TC[3], 0.92) translate([0, 0, shade_z]) shade(); }
                 else translate([0, 0, 200]) color(TC[3], 0.92) translate([0, 0, shade_z]) shade();
                 guide([0, 0, stem_top + core_h + 5], [0, 0, shade_z + 160]); }
 }
-module assembly_base() { place_plinth(); place_body(); place_lid_off(); drivers_in(); place_grilles(); place_knob(); }
-module place_lid_off() {}
+module assembly_base() { place_plinth(); place_body(); place_knob(); }
 
 // screw pointing along -Z from its pan head at the origin
 module screw(len) color("#8d939b") { cylinder(d = 5.6, h = 2.2, $fn = 24); translate([0, 0, -len]) cylinder(d = 3, h = len, $fn = 16); }
 module guide(a, b) color("#d6402f") hull() { translate(a) sphere(d = 1.2, $fn = 8); translate(b) sphere(d = 1.2, $fn = 8); }
-module place_grilles_one(s) color(TC[0]) translate([0, s * face_y, zc]) rotate([s * -90, 0, 0]) translate([0, 0, -grille_t]) grille();
 
 // ------------------------------------------------------------------ output
 if (part == "assembly") assembly();
@@ -502,7 +472,6 @@ if (part == "body")     rotate([0, 0, 0]) translate([0, 0, -plinth_h]) body();
 if (part == "plinth")   translate([0, 0, plinth_h]) rotate([180, 0, 0]) plinth();   // top on the bed
 if (part == "plate")    plate();
 if (part == "lid")      translate([0, 0, -(top_z - 24)]) lid();
-if (part == "grille")   grille();
 if (part == "knob")     knob();                                                    // back on the bed, dome up
 if (part == "stem")     stem();
 if (part == "led_core") translate([0, 0, core_h + 1.5]) rotate([180, 0, 0]) led_core();   // upside down, lip on the bed

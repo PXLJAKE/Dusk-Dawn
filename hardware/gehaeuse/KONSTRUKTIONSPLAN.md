@@ -8,27 +8,27 @@ Dieser Plan gilt für beide Fuß-Versionen (Kugel und Zylinder) und alle fünf S
 |---|---|
 | Bauraum 256 × 256 × 256 mm | Größtes Teil ist der Zylinder-Körper mit Ø 190 × 144 mm. Alle Teile passen einzeln auf die Platte. |
 | Stützen nur gezielt | Wände höchstens 45° geneigt, Löcher in senkrechten Wänden als Tropfenform. **Tree Supports** (Baumstützen) nur an der Decke der Drehknopf-Mulde. Alle anderen Teile drucken ohne Stützen: Schraubdome haben 45°-Kinne, der Knopfbecher ist unten spitz, Lichtkern und Kerndeckel werden so gedreht gedruckt, dass nur kurze Brücken bleiben. Die Ausrichtung steckt schon in den STL der Pakete. |
-| Weniger Teile | Das Kabelrohr entfällt (Kabel läuft durch die Kammer, an Sockel und Kern mit Silikon abgedichtet), der Schirmsitz entfällt (der Deckel trägt den Schirm), Deckel, Sockel, Bodenplatte, Gitter, Knopf und Lichtteile sind für beide Füße **dieselben Teile**. |
-| Zugänglichkeit | Jede Schraube wird gerade von außen oder von unten angesetzt, bevor das nächste Teil sie verdeckt. Keine Schraube liegt tiefer als 15 mm in einer Tasche. |
+| Weniger Teile | Das Kabelrohr entfällt (Kabel läuft durch die Kammer, an Sockel und Kern mit Silikon abgedichtet), der Schirmsitz entfällt (der Deckel trägt den Schirm), Deckel, Sockel, Bodenplatte, Knopf und Lichtteile sind für beide Füße **dieselben Teile**. |
+| Zugänglichkeit | Jede Schraube wird gerade angesetzt, bevor das nächste Teil sie verdeckt. Die Lautsprecher-Schrauben werden vor dem Sockel durch die offene Unterseite (Ø 112 mm) mit einem kurzen Kreuzschraubendreher oder einer Bit-Ratsche angezogen, alle anderen von unten. |
 
-Teile pro Lampe (Kugel oder Zylinder mit Kugelschirm): Körper, Sockel, Bodenplatte, Deckel, 2 × Gitter, Knopf, Stiel, Lichtkern, Kerndeckel, Schirm. Plissee und Glocke brauchen zusätzlich die Spinne.
+Teile pro Lampe (Kugel oder Zylinder mit Kugelschirm): Körper, Sockel, Bodenplatte, Deckel, Knopf, Stiel, Lichtkern, Kerndeckel, Schirm. Plissee und Glocke brauchen zusätzlich die Spinne.
 
 ## 2. Verbindungen und Schrauben
 
 | Regel | Umsetzung |
 |---|---|
-| Keine Schraube von außen sichtbar | Lautsprecher-Schrauben liegen unter den Gittern, die Körper-Schrauben im Sockel, die Bodenplatten-Schrauben unter den Gummifüßen. Der Deckel hat keine Schrauben. |
+| Keine Schraube von außen sichtbar | Lautsprecher-Schrauben sitzen innen in der Kammer, die Körper-Schrauben im Sockel, die Bodenplatten-Schrauben unter den Gummifüßen. Der Deckel hat keine Schrauben. |
 | Keine Senkköpfe, selbstschneidende Kunststoffschrauben | Nur **BT3** (Ø 3 mm) und **BT2.6** mit Linsen- bzw. Flachkopf, z. B. aus dem Bambu Lab Maker's Supply. Vorbohrung im Modell: BT3 = 2,5 mm, BT2.6 = 2,1 mm, Schraubdom Ø 8 mm. |
 | Gewindeeinsätze auf ein Minimum | **Keine** Einschmelzmuttern mehr. Alle Schraubstellen sind Dome für selbstschneidende Schrauben. |
-| Lautsprecher ohne Einsätze | Breitbänder und Passivmembran werden **von außen** auf eine flache Schallwand geschraubt (4 × BT3 × 12 je Chassis, frontal erreichbar). Ein Gitter wird danach bündig eingeklipst und verdeckt Schrauben und Flansch. |
+| Lautsprecher ohne Einsätze | Die Außenwand bleibt rund, das Lochfeld ist direkt in die Wand gedruckt (Sechseck-Löcher mit flachem Dach, jedes Dach ist eine 2,4-mm-Brücke). Dahinter sitzt eine 7 mm starke **innere Schallwand**. Breitbänder und Passivmembran werden von innen mit Moosgummi daraufgelegt und mit 4 × BT3 × 12 je Chassis direkt in die Schallwand geschraubt (7 mm Gewindelänge im Kunststoff, keine Einsätze). Die Schrauben greifen Schrauben und Flansch. |
 | Freigang für Kopf und Werkzeug | Um jedes Schraubenloch sind mindestens 5 mm radial frei (Ø 11 mm um den Kopf). Bodenplatten-Schrauben sitzen in 1 mm tiefen Mulden, die die Gummifüße abdecken. |
-| Bajonett, Rast- und Steckverbindungen | **Deckel:** Bajonett mit 3 Nocken, eine Drittel-Drehung, kein Werkzeug. **Gitter:** eingeklipst mit 3 Rastnasen. **Kabel:** ohne Rohr, Durchführungen mit Silikon abgedichtet. **Stiel, Lichtkern, Kerndeckel, Spinne:** gesteckt. |
+| Bajonett, Rast- und Steckverbindungen | **Deckel:** Bajonett mit 3 Nocken, eine Drittel-Drehung, kein Werkzeug. **Kabel:** ohne Rohr, Durchführungen mit Silikon abgedichtet. **Stiel, Lichtkern, Kerndeckel, Spinne:** gesteckt. |
 
 ### Schrauben pro Lampe (beide Füße gleich)
 
 | Schraube | Anzahl | Wo |
 |---|---|---|
-| BT3 × 12, Linsenkopf | 8 | Breitbänder und Passivmembran auf die Schallwände |
+| BT3 × 12, Linsenkopf | 8 | Breitbänder und Passivmembran von innen in die Schallwände |
 | BT3 × 10, Linsenkopf | 4 | Körper auf den Sockel (von innen aus dem Sockel nach oben) |
 | BT3 × 10, Linsenkopf | 3 | Bodenplatte an den Sockel (unter den Gummifüßen) |
 | BT2.6 × 6, Linsenkopf | 2 | LM2596 auf die Bodenplatte |
@@ -37,8 +37,7 @@ Teile pro Lampe (Kugel oder Zylinder mit Kugelschirm): Körper, Sockel, Bodenpla
 ## 3. Konstruktive Änderungen
 
 ### Eingelassener Drehknopf
-- Rechts im Körper sitzt eine runde **Mulde** (Ø 42 mm, 18 mm tief). Der Knopf (Ø 30 mm) schließt bündig mit der Außenkontur ab.
-- Rundherum bleiben 5 mm **Fingerspalt**, unten ist die Mulde zusätzlich ausgerundet. So lässt sich der Knopf greifen, drehen und drücken.
+- Rechts im Körper sitzt eine flache runde **Mulde** (Ø 33 mm, 5 mm tief), knapp größer als der Knopf (Ø 30 × 14 mm, gerändelt). Der Knopf steckt nur gut 4 mm darin und steht **10 mm** über die Außenkontur, so lässt er sich gut greifen, drehen und drücken. Drehgeber EC11 mit 15 mm Welle.
 - Der Drehgeber wird von innen durch den Muldenboden gesteckt und mit seiner Mutter in der Mulde festgezogen. Der Knopf deckt die Mutter ab.
 - Die Mulde ist ein geschlossener Becher, die Kammer bleibt dicht. Ihre Decke wird mit **Tree Supports** gedruckt.
 
@@ -56,7 +55,7 @@ Teile pro Lampe (Kugel oder Zylinder mit Kugelschirm): Körper, Sockel, Bodenpla
 ### Weitere Vereinheitlichung
 - Kugel und Zylinder sind gleich hoch (188 mm). Damit sind auch die **Stiellängen** gleich: 140 mm für Plissee und Glocke, 95 mm für Kolben, Twist und Laterne.
 - Beide Körper stehen auf demselben schlanken **Sockel** (Ø 150 × 44 mm) mit Schattenfuge. Die Sockeldecke ist der Boden der Lautsprecherkammer.
-- Gitter, Deckel, Knopf, Sockel und Bodenplatte sind identisch.
+- Deckel, Knopf, Sockel und Bodenplatte sind identisch.
 
 ## 4. Ergebnis
 
