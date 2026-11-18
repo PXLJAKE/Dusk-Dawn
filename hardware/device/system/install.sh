@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Installs SleepGenerator on Raspberry Pi OS Lite (Bookworm, 64-bit) on a Pi 3 A+ or Pi Zero 2 W.
-# Run from the repo:  sudo ./device/system/install.sh
+# Run from the repo:  sudo ./hardware/device/system/install.sh
+# Sets up sleep sounds, Music Assistant (squeezelite), AirPlay 2 and Spotify Connect.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DEVICE_DIR="$(dirname "$HERE")"
@@ -37,6 +38,9 @@ echo "==> services"
 cp "$HERE/sleepgen.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable sleepgen squeezelite
+
+# AirPlay 2 and Spotify Connect (skip with AIRPLAY=0 / SPOTIFY=0)
+"$HERE/streaming.sh"
 
 echo
 echo "Done. Edit /etc/sleepgen/config.yaml (MQTT host, user, password) and reboot."

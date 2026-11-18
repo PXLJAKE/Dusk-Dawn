@@ -248,7 +248,7 @@ li { margin-bottom:1.2mm; }
   <h3>Pi einrichten</h3>
   <ol class="steps">
     <li>Mit dem <b>Raspberry Pi Imager</b> „Raspberry Pi OS Lite (64-bit)“ auf die microSD schreiben. In den Einstellungen Hostname <code>soundlampe</code>, Benutzer, WLAN und SSH setzen.</li>
-    <li>Per SSH einloggen, Repo klonen und <code>sudo hardware/device/system/install.sh</code> ausführen. Das richtet den DigiAMP+-Treiber, SPI für die LEDs, Python, den Dienst <code>sleepgen</code> und den Musikplayer (squeezelite) ein.</li>
+    <li>Per SSH einloggen, Repo klonen und <code>sudo hardware/device/system/install.sh</code> ausführen. Das richtet den DigiAMP+-Treiber, SPI für die LEDs, Python, den Dienst <code>sleepgen</code> und die Musik ein: squeezelite für Music Assistant, AirPlay 2 und Spotify Connect. Der AirPlay-Teil wird aus dem Quellcode gebaut und braucht rund 15 Minuten.</li>
     <li>In <code>/etc/sleepgen/config.yaml</code> den MQTT-Benutzer eintragen (siehe unten), dann <code>sudo reboot</code>.</li>
   </ol>
   <h3>Home Assistant anbinden</h3>
@@ -260,7 +260,7 @@ li { margin-bottom:1.2mm; }
   </table>
   <p>Sobald die Lampe läuft, legt sie alle Entitäten selbst an (MQTT Discovery): Sounds, Presets, Timer, ein Regler pro Klang, Lampe, Sonnenaufgang, Wecker, Weckton, Weckdauer und Wecklautstärke. Wer lieber ohne Integration arbeitet, findet im Ordner <code>homeassistant/</code> ein Paket mit Helfern, Automationen und Dashboard.</p>
   <h3>Musik</h3>
-  <p>Der Pi läuft zusätzlich als Squeezelite-Player. Music Assistant findet ihn automatisch als Lautsprecher „Soundlampe“. Dann kannst du Spotify, Radio oder eigene Musik auf die Lampe schicken. Musik und Sounds laufen gleichzeitig, auf Wunsch pausieren die Sounds automatisch.</p>
+  <p>Die Lampe ist ein vollwertiger Lautsprecher mit drei Wegen. Per <b>AirPlay 2</b> wählst du sie auf iPhone oder Mac im Kontrollzentrum aus, auch zusammen mit HomePods. Per <b>Spotify Connect</b> taucht sie in der Spotify-App unter „Geräte“ auf (Premium nötig). <b>Music Assistant</b> findet sie automatisch als Player „Soundlampe“ für Radio, NAS und Streamingdienste aus Home Assistant. Musik und Sounds laufen gleichzeitig, auf Wunsch pausieren die Sounds automatisch.</p>
   <h3>Bedienung am Gerät</h3>
   <table>
     <tr><th>Knopf</th><th>macht</th></tr>

@@ -66,13 +66,23 @@ journalctl -u sleepgen -f                          # Log des Dienstes
 
 Weitere Ideen für Automationen: Lampe als Nachtlicht bei Bewegung (gedimmt rot), Kerze bei Sonnenuntergang, Gewitter-Sound bei echtem Regen draußen, Sounds aus, wenn der Wecker auf dem Handy klingelt.
 
-## 3. Musik über Home Assistant (Music Assistant)
+## 3. Musik: AirPlay 2, Spotify Connect und Music Assistant
+
+Das Installationsskript richtet drei Wege ein, Musik auf die Lampe zu bringen. Alle laufen gleichzeitig mit den Schlafsounds, der Drehknopf regelt die Gesamtlautstärke.
+
+| Weg | Von wo | Wie |
+|---|---|---|
+| **AirPlay 2** | iPhone, iPad, Mac, Apple TV | Im Kontrollzentrum auf das AirPlay-Symbol tippen und „Soundlampe“ wählen. Mit AirPlay 2 auch zusammen mit HomePods oder anderen AirPlay-Lautsprechern (Multiroom). |
+| **Spotify Connect** | Spotify-App auf Handy, PC, Tablet | In Spotify unten auf „Geräte“ tippen und „Soundlampe“ wählen. Braucht Spotify Premium. |
+| **Music Assistant** | Home Assistant | Spotify, Radio, NAS, Tidal, YouTube Music … zentral aus HA, auch per Automation. |
+
+AirPlay 2 wird beim Installieren aus dem Quellcode gebaut (shairport-sync mit nqptp). Das dauert auf dem Pi 3 A+ etwa 15 Minuten. Wer einen Weg nicht braucht, lässt ihn weg: `sudo AIRPLAY=0 SPOTIFY=0 hardware/device/system/install.sh`. Nachträglich einrichten geht mit `sudo hardware/device/system/streaming.sh`.
+
+### Music Assistant einrichten
 
 1. Die App **Music Assistant** installieren und starten, dann die Integration hinzufügen.
 2. In Music Assistant unter Einstellungen → Player taucht **Soundlampe** automatisch auf (squeezelite/Slimproto). In Home Assistant heißt der Player dann z. B. `media_player.soundlampe`.
 3. Musikquellen in Music Assistant verbinden (Spotify, Radio, NAS …). Musik und Schlafsounds laufen gleichzeitig. Der Drehknopf regelt beides.
-
-Optional: Mit `shairport-sync` wird die Lampe zusätzlich ein AirPlay-Lautsprecher, mit `raspotify` ein Spotify-Connect-Gerät.
 
 ## 4. Eigene Aufnahmen
 

@@ -20,7 +20,7 @@ Bedienung, Entitäten, Aktionen und Grenzen: [docs/DUSK_AND_DAWN.md](docs/DUSK_A
 
 ## Eigene Hardware (optional)
 
-Wer keinen vorhandenen Lautsprecher nutzen will, baut sich die **Soundlampe**: eine Nachttischlampe mit Raspberry Pi, eingebautem Lautsprecher und LED-Lichtkern, wahlweise mit Kugel- oder Zylinderfuß und fünf Schirmen. Die Integration erkennt sie automatisch über MQTT.
+Wer keinen vorhandenen Lautsprecher nutzen will, baut sich die **Soundlampe**: eine Nachttischlampe mit Raspberry Pi, eingebautem Lautsprecher und LED-Lichtkern, wahlweise mit Kugel- oder Zylinderfuß und fünf Schirmen. Die Integration erkennt sie automatisch über MQTT. Musik spielt sie per **AirPlay 2**, **Spotify Connect** und über **Music Assistant**, gleichzeitig mit den Schlafgeräuschen.
 
 ![Alle Varianten](hardware/gehaeuse/renders/alle_varianten.png)
 
