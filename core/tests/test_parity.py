@@ -9,7 +9,7 @@ changes (this needs the full history, e.g. ``fetch-depth: 0`` in CI):
   Rust must match their loudness within 3 dB and their spectral centroid
   within 15 %.
 * rain ("Regen 1c") and fire ("Feuer G", after Farnell): the current
-  ``device/sleepgen/dsp.py`` of the working tree, same tolerances.
+  ``hardware/device/sleepgen/dsp.py`` of the working tree, same tolerances.
 * birds, leaves, stream: ``device/sleepgen`` at commit 3603211, the design the
   Rust versions were ported from (loudness within 3 dB).
 
@@ -94,9 +94,9 @@ def orig(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def current():
-    """``device/sleepgen/dsp.py`` of the working tree as a throwaway module."""
+    """``hardware/device/sleepgen/dsp.py`` of the working tree as a throwaway module."""
     pytest.importorskip("scipy")
-    spec = importlib.util.spec_from_file_location("current_dsp", REPO / "device" / "sleepgen" / "dsp.py")
+    spec = importlib.util.spec_from_file_location("current_dsp", REPO / "hardware" / "device" / "sleepgen" / "dsp.py")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)

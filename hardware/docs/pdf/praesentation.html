@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Soundlampe Präsentation</title>
+<style>
+@page { size: 297mm 210mm; margin: 0; }
+:root { --cream:#f5efe4; --paper:#fbf8f2; --navy:#232a40; --navy2:#3a4361; --brass:#b88a3e; --gold:#d9b46c; --ink:#2b2b2b; --muted:#6b6658; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family: Inter, sans-serif; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.s { width:297mm; height:210mm; position:relative; overflow:hidden; page-break-after:always; background:var(--cream); padding:16mm 18mm; }
+.s:last-child { page-break-after:auto; }
+.dark { background:var(--navy); color:var(--cream); }
+h1,h2 { font-family:"Bitstream Charter", Georgia, serif; font-weight:700; color:var(--navy); }
+.dark h1, .dark h2 { color:var(--cream); }
+h2 { font-size:30pt; line-height:1.05; margin:2mm 0 4mm; }
+.eyebrow { font-size:9pt; letter-spacing:.24em; text-transform:uppercase; color:var(--brass); font-weight:600; }
+.dark .eyebrow { color:var(--gold); }
+.lead { font-size:13pt; line-height:1.5; color:var(--navy2); }
+.dark .lead { color:#dcd6c9; }
+.split { display:grid; grid-template-columns:1fr 1fr; gap:12mm; height:100%; align-items:center; }
+.split-r { display:grid; grid-template-columns:118mm 1fr; gap:12mm; height:100%; align-items:center; }
+.img-c { text-align:center; }
+.img-c img { max-height:178mm; max-width:100%; }
+ul.pts { list-style:none; margin-top:5mm; }
+ul.pts li { font-size:11.5pt; line-height:1.45; margin-bottom:3.5mm; padding-left:6mm; position:relative; }
+ul.pts li::before { content:""; position:absolute; left:0; top:2.4mm; width:2.2mm; height:2.2mm; border-radius:50%; background:var(--brass); }
+ul.pts li b { color:var(--navy); }
+.dark ul.pts li b { color:var(--gold); }
+.num { position:absolute; bottom:8mm; right:18mm; font-size:8pt; color:#9a947f; }
+.grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:7mm 10mm; margin-top:6mm; }
+.card h3 { font-family:"Bitstream Charter",serif; font-size:14pt; color:var(--cream); margin-bottom:2mm; display:flex; gap:2.5mm; align-items:center; }
+.card h3 .n { font-family:Inter; font-size:8.5pt; color:var(--navy); background:var(--gold); width:6mm; height:6mm; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; }
+.card p { font-size:10.2pt; line-height:1.45; color:#dcd6c9; }
+.tag { display:inline-block; font-size:8.5pt; padding:1.3mm 3.5mm; border-radius:20mm; background:var(--navy); color:var(--cream); margin:0 1.5mm 1.5mm 0; }
+.specs { display:grid; grid-template-columns:repeat(4,1fr); gap:4mm; margin-top:7mm; }
+.spec { background:var(--paper); border-radius:3mm; padding:4mm; }
+.spec small { display:block; font-size:7.5pt; letter-spacing:.14em; text-transform:uppercase; color:var(--brass); font-weight:600; margin-bottom:1.2mm; }
+.spec div { font-size:12pt; font-weight:600; color:var(--navy); }
+.cap { font-size:9pt; color:var(--muted); margin-top:2mm; text-align:center; }
+.dark .cap { color:#9fa3b8; }
+.callouts { margin-top:4mm; }
+.co { display:flex; gap:3mm; margin-bottom:3.4mm; font-size:10.8pt; line-height:1.4; }
+.co .k { flex:0 0 7mm; height:7mm; border-radius:50%; background:var(--navy); color:var(--cream); font-weight:700; font-size:9pt; display:flex; align-items:center; justify-content:center; }
+.co b { color:var(--navy); }
+</style></head><body>
+
+<!-- 1 Titel -->
+<section class="s dark">
+  <div class="split">
+    <div>
+      <div class="eyebrow">DIY-Projekt · Nachttisch</div>
+      <h1 style="font-size:60pt;line-height:1;margin:6mm 0 6mm">Soundlampe</h1>
+      <p class="lead" style="max-width:120mm">Eine Nachttischlampe, die Einschlafgeräusche macht, Musik spielt, weckt und mit dem Sonnenaufgang hell wird. Selbst entworfen, im 3D-Drucker gedruckt und über Home Assistant vom Handy aus gesteuert.</p>
+      <div style="margin-top:9mm">
+        <span class="tag" style="background:var(--gold);color:var(--navy)">12 Klänge live erzeugt</span>
+        <span class="tag" style="background:var(--gold);color:var(--navy)">Wecker</span>
+        <span class="tag" style="background:var(--gold);color:var(--navy)">Aufwachlicht</span>
+        <span class="tag" style="background:var(--gold);color:var(--navy)">Musik</span>
+        <span class="tag" style="background:var(--gold);color:var(--navy)">Home Assistant</span>
+      </div>
+    </div>
+    <div class="img-c"><img src="img/variant_laterne.png" style="height:168mm"></div>
+  </div>
+</section>
+
+<!-- 2 Was sie kann -->
+<section class="s dark">
+  <div class="eyebrow">Was sie kann</div>
+  <h2>Ein Gerät statt vier</h2>
+  <div class="grid3">
+    <div class="card"><h3><span class="n">1</span>Klänge zum Einschlafen</h3><p>Regen, Gewitter, Meer, Kaminfeuer, Vögel, Blätterrauschen, Bach, Wind, Ventilator und drei Rauscharten. Frei mischbar, mit fertigen Presets wie „Gewitternacht“ oder „Waldmorgen“. Endlos, ohne hörbare Schleife.</p></div>
+    <div class="card"><h3><span class="n">2</span>Sleep-Timer</h3><p>Die letzten 10 Minuten werden ganz langsam leiser. Es gibt keinen Moment, in dem der Klang plötzlich fehlt. Auf Wunsch dimmt das Licht mit.</p></div>
+    <div class="card"><h3><span class="n">3</span>Wecker</h3><p>Glocken, klassisches Piepen oder Vogelchor, sanft lauter werdend. Hört nach der eingestellten Zeit auf, ein Druck auf den Knopf stoppt ihn sofort.</p></div>
+    <div class="card"><h3><span class="n">4</span>Licht</h3><p>Warmweiß von 1800 bis 6500 K, Kerzenflackern, Sonnenaufgang zur Weckzeit und ein Einschlaflicht, das mit dem Timer dunkler wird.</p></div>
+    <div class="card"><h3><span class="n">5</span>Musik</h3><p>Erscheint in Music Assistant als Lautsprecher: Spotify, Radio, eigene Musik. Sounds und Musik gleichzeitig, auf Wunsch pausieren die Sounds automatisch.</p></div>
+    <div class="card"><h3><span class="n">6</span>Smart Home</h3><p>Eigene Seitenleiste in Home Assistant (Dusk &amp; Dawn). Startet auf Wunsch von selbst, wenn abends jemand im dunklen Schlafzimmer ist, und geht aus, wenn das Zimmer leer ist.</p></div>
+  </div>
+  <div class="num">2</div>
+</section>
+
+<!-- 3 Schirme -->
+<section class="s">
+  <div class="eyebrow">Design</div>
+  <h2>Fünf Schirme zur Auswahl</h2>
+  <p class="lead" style="max-width:220mm">Alle Schirme sind eigene, parametrische Entwürfe. Sie werden im Vasenmodus aus durchscheinendem Filament gedruckt. Die feinen Rippen streuen das Licht weich wie Riffelglas.</p>
+  <div class="img-c" style="margin-top:6mm"><img src="../../gehaeuse/renders/alle_varianten.png" style="width:255mm"></div>
+  <div class="num">3</div>
+</section>
+
+<!-- 4 Laterne -->
+<section class="s">
+  <div class="split-r">
+    <div class="img-c"><img src="img/variant_laterne.png" style="height:168mm"></div>
+    <div>
+      <div class="eyebrow">Neu</div>
+      <h2>Laterne</h2>
+      <p class="lead">Drei gestapelte Wülste mit 72 feinen Rippen, wie altes Pressglas. 215 mm hoch.</p>
+      <ul class="pts">
+        <li><b>Druckbar ohne Stützen:</b> Die Form ist so berechnet, dass kein Überhang steiler als etwa 40° wird.</li>
+        <li><b>Licht von innen:</b> Die LED-Spirale sitzt mittig, jeder Wulst bekommt Licht ab, die Rippen machen daraus feine Streifen.</li>
+        <li><b>Steht direkt auf dem Fuß</b> in der Ringmulde des Deckels, ohne Adapter und ohne Absatz zur Kugel.</li>
+        <li><b>Anpassbar:</b> Höhe, Zahl der Wülste und Rippen sind Parameter im OpenSCAD-Modell.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="num">4</div>
+</section>
+
+<!-- 5 Blick hinein -->
+<section class="s">
+  <div class="split-r">
+    <div class="img-c"><img src="img/cutaway.png" style="height:178mm"></div>
+    <div>
+      <div class="eyebrow">Im Inneren</div>
+      <h2>Drei Etagen in einem Fuß</h2>
+      <div class="callouts">
+        <div class="co"><span class="k">1</span><div><b>Licht oben:</b> Messingstiel, Lichtkern mit 30 LEDs als Spirale, darüber der Schirm.</div></div>
+        <div class="co"><span class="k">2</span><div><b>Lautsprecherkammer, gut 2 l:</b> luftdicht, 4 mm Wand, 8 Rippen, gedämmt. 4"-Breitbänder vorne, Passivmembran hinten. Die Membran schwingt mit und bringt Bass wie ein Bassreflexrohr, aber ohne Strömungsgeräusche, was nachts wichtig ist.</div></div>
+        <div class="co"><span class="k">3</span><div><b>Bajonett-Deckel:</b> eine Drittel-Drehung, keine Schrauben. Sein Rand ist das fehlende Stück der Kugel, die Kontur läuft ohne Kante durch.</div></div>
+        <div class="co"><span class="k">4</span><div><b>Elektronik unten:</b> Raspberry Pi mit 35-W-Verstärker, Spannungswandler für die LEDs und eine kleine selbst gelötete Platine. Getrennt von der Kammer, mit Lüftungsschlitzen.</div></div>
+        <div class="co"><span class="k">5</span><div><b>Drehknopf an der Seite:</b> drehen für die Lautstärke, drücken für Sounds an/aus oder um den Wecker zu stoppen, halten für das Licht.</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="num">5</div>
+</section>
+
+<!-- 6 Schnitte -->
+<section class="s">
+  <div class="eyebrow">Konstruktion</div>
+  <h2>Aufgeschnitten</h2>
+  <p class="lead">Von der Seite, von vorne, durch die Kammer und durch das Elektronikfach. Das ganze Gehäuse ist ein parametrisches OpenSCAD-Modell.</p>
+  <div class="img-c" style="margin-top:8mm"><img src="../../gehaeuse/renders/explosion_beide.png" style="width:260mm"></div>
+  <div class="num">6</div>
+</section>
+
+<!-- 7 Elektronik -->
+<section class="s">
+  <div class="split">
+    <div class="img-c"><img src="img/detail_electronics.png" style="width:140mm"><div class="cap">Bodenplatte mit Elektronik</div></div>
+    <div>
+      <div class="eyebrow">Elektronikfach</div>
+      <h2>Das Gehirn</h2>
+      <ul class="pts">
+        <li><b>Raspberry Pi 3 A+</b> rechnet alle Klänge live, steuert das Licht und spricht per MQTT mit Home Assistant.</li>
+        <li><b>DigiAMP+</b> steckt obendrauf: sauberer DAC, 35-W-Verstärker und Stromversorgung für den Pi in einem.</li>
+        <li><b>LM2596</b> macht aus den 19 V des Netzteils 5,1 V für die LEDs.</li>
+        <li><b>Lochraster-Platine</b> mit Pegelwandler 74AHCT125: hebt das 3,3-V-Signal des Pi auf 5 V, damit die LEDs nicht flackern.</li>
+        <li>Ein Netzteil für alles, ein Kabel nach hinten.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="num">7</div>
+</section>
+
+<!-- 8 Lichtkern -->
+<section class="s dark">
+  <div class="split-r">
+    <div class="img-c"><img src="img/detail_led_core.png" style="height:176mm"></div>
+    <div>
+      <div class="eyebrow">Licht</div>
+      <h2>Der Lichtkern</h2>
+      <ul class="pts">
+        <li><b>30 RGBW-LEDs</b> (SK6812, warmweiß) auf 0,5 m Strip, in 4 Windungen spiralförmig um eine Spule mit Ø 40 mm gewickelt.</li>
+        <li><b>Rundum gleichmäßig:</b> Die Spirale leuchtet den Schirm von innen ohne dunkle Streifen an.</li>
+        <li><b>Kamineffekt:</b> Lüftungslöcher unten im Kern und oben im Deckel lassen die Wärme abziehen.</li>
+        <li><b>Unsichtbare Kabel:</b> durch den Messingstiel, einen Kanal im Deckel und ein dichtes Rohr durch die Lautsprecherkammer.</li>
+        <li><b>Effekte:</b> Sonnenaufgang von Dunkelrot zu Warmweiß, Kerzenflackern mit jeder LED einzeln, Einschlaflicht.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="num">8</div>
+</section>
+
+<!-- 9 Explosion -->
+<section class="s">
+  <div class="split-r" style="grid-template-columns:90mm 1fr">
+    <div class="img-c"><img src="img/exploded.png" style="height:180mm"></div>
+    <div>
+      <div class="eyebrow">Bauteile</div>
+      <h2>Alles druckbar</h2>
+      <p class="lead">Körper, Sockel, Bodenplatte, Deckel, zwei Gitter, Knopf, Stiel, Lichtkern und Schirm kommen aus einem normalen 3D-Drucker. Dazu ein Messingrohr, Lautsprecher und Elektronik für rund 200 €.</p>
+      <div class="specs" style="grid-template-columns:repeat(2,1fr)">
+        <div class="spec"><small>Größe</small><div>Ø 19 × ca. 40 cm</div></div>
+        <div class="spec"><small>Material</small><div>PETG + transluzent</div></div>
+        <div class="spec"><small>Filament</small><div>ca. 750 g</div></div>
+        <div class="spec"><small>Kosten</small><div>ca. 200–225 €</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="num">9</div>
+</section>
+
+<!-- 10 Klang -->
+<section class="s">
+  <div class="eyebrow">Sound-Design</div>
+  <h2>Keine Aufnahmen, alles live berechnet</h2>
+  <div class="split" style="height:auto;grid-template-columns:1.35fr 1fr;align-items:start">
+    <div class="img-c"><img src="../sound/spektren.png" style="width:100%"><div class="cap">So verteilt sich jeder Klang auf die Frequenzen</div></div>
+    <div>
+      <ul class="pts" style="margin-top:0">
+        <li><b>Nie eine Schleife:</b> Jeder Tropfen, jede Welle, jedes Knacken ist neu.</li>
+        <li><b>Teppich und Ereignisse:</b> Gefiltertes Rauschen füllt den Raum. Tausende kurze Klangkörner wie Tropfen, Blasen und Knistern machen den Klang erkennbar.</li>
+        <li><b>Wasser klingt nach Wasser,</b> weil jede Blase kurz schwingt und dabei in der Tonhöhe steigt.</li>
+        <li><b>Für den Lautsprecher gestimmt:</b> Donner und Wellen liegen dort, wo ein 4"-Chassis kräftig ist.</li>
+        <li><b>Mischbar:</b> ein Regler pro Klang, alle auf denselben Pegel kalibriert.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="num">10</div>
+</section>
+
+<!-- 11 Smart Home -->
+<section class="s dark">
+  <div class="eyebrow">Smart Home</div>
+  <h2>Steuerung vom Handy</h2>
+  <div class="grid3">
+    <div class="card"><h3><span class="n">☾</span>Gute Nacht</h3><p>Ein Tipp startet den Lieblingsklang mit Timer und warmem, gedimmtem Licht.</p></div>
+    <div class="card"><h3><span class="n">◉</span>Präsenzmelder</h3><p>Abends im dunklen Schlafzimmer starten die Sounds von selbst. Ist 15 Minuten niemand mehr da, geht alles aus.</p></div>
+    <div class="card"><h3><span class="n">☀</span>Aufwachen</h3><p>Der Sonnenaufgang beginnt so, dass er zur Weckzeit fertig ist. Dann klingelt der Wecker, auf Wunsch nur werktags.</p></div>
+    <div class="card"><h3><span class="n">♪</span>Music Assistant</h3><p>Die Lampe ist ein normaler Lautsprecher im Haus: Spotify, Radio, Playlists.</p></div>
+    <div class="card"><h3><span class="n">⚙</span>Alles einstellbar</h3><p>Jeder Klang, Timer, Lichtfarbe, Wecklautstärke und -dauer, direkt im Dashboard.</p></div>
+    <div class="card"><h3><span class="n">⌂</span>Lokal</h3><p>Kein Cloud-Konto, keine App eines Herstellers. Alles läuft im eigenen WLAN über MQTT.</p></div>
+  </div>
+  <div class="num">11</div>
+</section>
+
+<!-- 12 Daten -->
+<section class="s">
+  <div class="split-r">
+    <div class="img-c"><img src="img/variant_kolben.png" style="height:160mm"></div>
+    <div>
+      <div class="eyebrow">Auf einen Blick</div>
+      <h2>Technische Daten</h2>
+      <div class="specs" style="grid-template-columns:repeat(2,1fr)">
+        <div class="spec"><small>Rechner</small><div>Raspberry Pi 3 A+</div></div>
+        <div class="spec"><small>Verstärker</small><div>DigiAMP+, 35 W</div></div>
+        <div class="spec"><small>Lautsprecher</small><div>4" + Passivmembran</div></div>
+        <div class="spec"><small>Kammer</small><div>gut 2 l, gedämmt</div></div>
+        <div class="spec"><small>Licht</small><div>30 × RGBW, 1800–6500 K</div></div>
+        <div class="spec"><small>Klänge</small><div>12 + eigene WAVs</div></div>
+        <div class="spec"><small>Steuerung</small><div>Knopf + Home Assistant</div></div>
+        <div class="spec"><small>Software</small><div>Python, Open Source</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="num">12</div>
+</section>
+</body></html>

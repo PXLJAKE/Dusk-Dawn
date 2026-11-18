@@ -34,7 +34,7 @@ jobs:
           python-version: "3.12"
       - name: Rust unit tests
         run: cargo test --release
-      - name: Build module and run parity tests against device/sleepgen
+      - name: Build module and run parity tests against hardware/device/sleepgen
         run: |
           python -m venv .venv
           . .venv/bin/activate

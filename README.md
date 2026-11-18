@@ -1,31 +1,37 @@
 # Dusk & Dawn – Schlafsounds, Wecker und Sonnenaufgang für Home Assistant
 
-**Schlafgeräusche für Home Assistant:** Regen, Meer, Gewitter, Kaminfeuer, Vögel, Wind, Ventilator, White/Pink/Brown Noise, frei mischbar, mit Sleep-Timer, Lichtwecker (Sonnenaufgang) und Wecker. Läuft als HACS-Integration mit eigener Seitenleiste auf jedem Lautsprecher (Sonos, Google Nest, Music Assistant …) und mit jeder Lampe. Dazu gibt es eine DIY-Soundlampe mit Raspberry Pi zum Selberbauen.
+**Schlafgeräusche für Home Assistant:** Regen, Meer, Gewitter, Kaminfeuer, Vögel, Wind, Ventilator, White/Pink/Brown Noise, frei mischbar, mit Sleep-Timer, Lichtwecker (Sonnenaufgang) und Wecker. Läuft als HACS-Integration mit eigener Seitenleiste auf jedem Lautsprecher (Sonos, Google Nest, Music Assistant …) und mit jeder Lampe.
 
 *Sleep sounds / white noise machine for Home Assistant: rain, ocean waves, thunderstorm, fireplace, birds, brown noise, sleep timer, sunrise alarm. HACS custom integration with sidebar panel, works with any media player and light.*
 
-## SleepGenerator – Soundlampe
+![Seitenleiste](docs/integration/desktop-alarms.png)
 
-Retro-Tischlampe fürs Bett mit eingebautem Lautsprecher: Regen, Meer, Gewitter, Wind, Kaminfeuer, Vögel, Ventilator und White/Pink/Brown Noise, frei mischbar, mit Sleep-Timer, Aufwachlicht und Musikplayer in Home Assistant.
+## Installation über HACS
 
-![Soundlampe](enclosure/renders/assembly.png)
+1. HACS öffnen → oben rechts ⋮ → **Benutzerdefinierte Repositories** → `https://github.com/PXLJAKE/Dusk-Dawn`, Typ **Integration**.
+2. „Dusk & Dawn“ suchen, **Herunterladen**, Home Assistant neu starten.
+3. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Dusk & Dawn**, Schlafplatz mit Lautsprecher, Lampen und optional Präsenzmelder anlegen.
 
-- **Neu: Dusk & Dawn, die Home-Assistant-Integration mit eigener Seitenleiste für beliebige Lautsprecher und Lampen:** [docs/DUSK_AND_DAWN.md](docs/DUSK_AND_DAWN.md)
+Bedienung, Entitäten, Aktionen und Grenzen: [docs/DUSK_AND_DAWN.md](docs/DUSK_AND_DAWN.md).
+
 - **Online-Demo:** https://claude.ai/artifact/DLmL7VoFJZXLVwC1FM6WSx
-- **Plan und Überblick:** [docs/PLAN.md](docs/PLAN.md)
-- **Komponenten und Verdrahtung:** [docs/HARDWARE.md](docs/HARDWARE.md)
-- **Einrichtung (Pi, Home Assistant, Music Assistant):** [docs/SETUP.md](docs/SETUP.md)
-- **Aufbau der Lampe (Elektronikfach, Lichtkern, Zusammenbau):** [docs/AUFBAU.md](docs/AUFBAU.md)
 - **Sound-Design (wie die Klänge entstehen, Wecker):** [docs/SOUND_DESIGN.md](docs/SOUND_DESIGN.md)
-- **Stromlaufplan, Pinbelegung, Lochraster-Plan:** [docs/wiring/](docs/wiring/)
-- **PDFs:** [Bauanleitung](docs/pdf/Soundlampe_Bauanleitung.pdf), [Montageanleitung mit Bildern](docs/pdf/Soundlampe_Montageanleitung.pdf) und [Präsentation](docs/pdf/Soundlampe_Praesentation.pdf)
-- **Gehäuse zum 3D-Druck:** [enclosure/](enclosure/README.md)
+- **Schnittstelle Integration ↔ Seitenleiste ↔ Gerät:** [docs/CONTRACT.md](docs/CONTRACT.md)
+
+## Eigene Hardware (optional)
+
+Wer keinen vorhandenen Lautsprecher nutzen will, baut sich die **Soundlampe**: eine Nachttischlampe mit Raspberry Pi, eingebautem Lautsprecher und LED-Lichtkern, wahlweise mit Kugel- oder Zylinderfuß und fünf Schirmen. Die Integration erkennt sie automatisch über MQTT.
+
+![Alle Varianten](hardware/gehaeuse/renders/alle_varianten.png)
+
+Alles dazu liegt in [`hardware/`](hardware/README.md), die fertigen Druckpakete je Variante in [`hardware/pakete/`](hardware/pakete/README.md).
+
+## Ordner
 
 | Ordner | Inhalt |
 |---|---|
-| `device/` | Software für den Raspberry Pi (3 A+ oder Zero 2 W): Sound-Engine, Lampe, Drehknopf, Home Assistant (MQTT) |
 | `custom_components/dusk_dawn/` | Home-Assistant-Integration Dusk & Dawn (über HACS installierbar) |
 | `core/` | Klangkern in Rust (Python-Paket `dusk_dawn_core`) |
-| `homeassistant/` | Paket und Dashboard für die Lampe ohne Integration (Entitäten an die eigenen anpassen) |
-| `enclosure/` | OpenSCAD-Modell, STL-Dateien, Renderbilder |
-| `demo/` | Online-Demo (eine HTML-Datei, Web Audio) |
+| `tests/` | Tests der Integration |
+| `docs/` | Doku zur Integration, Sound-Design, Online-Demo |
+| `hardware/` | Optional: Soundlampe zum Selberbauen (Software für den Pi, Gehäuse, Druckpakete, Anleitungen) |

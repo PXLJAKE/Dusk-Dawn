@@ -16,7 +16,7 @@
           "speakers": "Media players that play the sleep sounds (stream).",
           "lights": "Lights for night light, fall-asleep fade and sunrise.",
           "presence": "Optional occupancy/motion sensor for automatic start and stop.",
-          "diy_device": "Only for a self-built Soundlampe (device/sleepgen): its MQTT device ID, e.g. sleepgen. It then plays sounds and light effects itself instead of streaming."
+          "diy_device": "Only for a self-built Soundlampe (hardware/device/sleepgen): its MQTT device ID, e.g. sleepgen. It then plays sounds and light effects itself instead of streaming."
         }
       }
     },
@@ -43,7 +43,7 @@
           "speakers": "Media players that play the sleep sounds (stream).",
           "lights": "Lights for night light, fall-asleep fade and sunrise.",
           "presence": "Optional occupancy/motion sensor for automatic start and stop.",
-          "diy_device": "Only for a self-built Soundlampe (device/sleepgen): its MQTT device ID, e.g. sleepgen. It then plays sounds and light effects itself instead of streaming."
+          "diy_device": "Only for a self-built Soundlampe (hardware/device/sleepgen): its MQTT device ID, e.g. sleepgen. It then plays sounds and light effects itself instead of streaming."
         }
       }
     },

@@ -73,7 +73,7 @@ SOUND_ICONS: Final = {  # also in icons.json
     "brown": "mdi:waveform",
 }
 
-# Built-in presets, copied from device/sleepgen/config.py
+# Built-in presets, copied from hardware/device/sleepgen/config.py
 BUILTIN_PRESETS: Final = [
     {
         "id": "regen",
@@ -125,7 +125,7 @@ BUILTIN_PRESETS: Final = [
 BUILTIN_PRESET_IDS: Final = {p["id"] for p in BUILTIN_PRESETS}
 DEFAULT_PRESET: Final = "regen"
 
-# DIY Soundlampe (device/sleepgen) – MQTT names it uses
+# DIY Soundlampe (hardware/device/sleepgen) – MQTT names it uses
 DIY_BASE_TOPIC: Final = "sleepgen/{device}"
 DIY_TONES: Final = {"bells": "Glocken", "classic": "Klassisch", "birds": "Vogelchor"}
 DIY_EFFECTS: Final = {"sunrise": "Sonnenaufgang", "candle": "Kerze", "fade": "Einschlafen"}

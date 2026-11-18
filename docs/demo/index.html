@@ -1,0 +1,672 @@
+<title>Soundlampe Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a bedside "stage" with the lamp on the left (sticky on desktop), controls stacked on the right. */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --sunken: #e3e7ef;
+  --fg: #1b2233;
+  --muted: #5d6679;
+  --line: #d3d9e4;
+  --accent: #c7741c;
+  --accent-fg: #ffffff;
+  --stage: #1a2033;
+  --stage-fg: #e9ebf2;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1120; --surface: #151a2c; --sunken: #0f1424; --fg: #e6e8ef; --muted: #9098ad;
+    --line: #262d44; --accent: #f2a541; --accent-fg: #1a1205; --stage: #090c17; --stage-fg: #e6e8ef;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1120; --surface: #151a2c; --sunken: #0f1424; --fg: #e6e8ef; --muted: #9098ad;
+  --line: #262d44; --accent: #f2a541; --accent-fg: #1a1205; --stage: #090c17; --stage-fg: #e6e8ef;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 62ch; }
+h2 { font-family: var(--font-display); font-weight: 500; font-size: 19px; margin: 0; }
+.eyebrow { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.stage {
+  background: var(--stage); color: var(--stage-fg); border-radius: 20px; padding: 20px; display: grid; gap: 18px;
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px);
+}
+@media (max-width: 860px) { .stage { position: static; } }
+.lampbox { position: relative; aspect-ratio: 1 / 1.05; max-width: 100%; border-radius: 14px; overflow: hidden; background: #070912; }
+.lampbox svg { width: 100%; height: 100%; display: block; }
+.lampbox .clock { position: absolute; left: 14px; top: 12px; font-family: var(--font-mono); font-size: 12px; color: #8a91a6; }
+.lampbox .status { position: absolute; right: 14px; top: 12px; font-size: 12px; color: #8a91a6; }
+
+.transport { display: flex; align-items: center; gap: 14px; }
+.play {
+  width: 64px; height: 64px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-fg);
+  display: grid; place-items: center; cursor: pointer; flex: none;
+}
+.play svg { width: 26px; height: 26px; }
+.play:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.transport .meta { display: grid; gap: 2px; min-width: 0; }
+.transport .now { font-family: var(--font-display); font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.transport .sub { font-size: 13px; color: #9aa1b5; }
+
+.row { display: grid; gap: 8px; }
+.row label { display: flex; justify-content: space-between; font-size: 13px; color: #b9bfcf; }
+.stage .chips button { background: #1d2337; color: var(--stage-fg); border-color: #2c3450; }
+.stage .chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+input[type=range] { width: 100%; accent-color: var(--accent); height: 22px; margin: 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button {
+  font: 500 13px var(--font-body); padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); cursor: pointer;
+}
+.chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.panel-head .hint { font-size: 13px; color: var(--muted); }
+.stack { display: grid; gap: 16px; }
+
+.mixer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 22px; }
+@media (max-width: 560px) { .mixer { grid-template-columns: minmax(0, 1fr); } }
+.layer { display: grid; grid-template-columns: 26px minmax(0, 1fr) 44px; align-items: center; gap: 10px; padding: 6px 0; }
+.layer .ico { width: 26px; height: 26px; color: var(--muted); }
+.layer.on .ico { color: var(--accent); }
+.layer .name { font-size: 14px; font-weight: 500; display: flex; justify-content: space-between; gap: 8px; }
+.layer .name small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.layer .val { font-family: var(--font-mono); font-size: 13px; text-align: right; color: var(--muted); }
+.layer .meter { height: 3px; border-radius: 2px; background: var(--sunken); overflow: hidden; margin-top: 2px; }
+.layer .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .12s linear; }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
+@media (max-width: 560px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field > span { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
+.kelvin { background: linear-gradient(90deg, #ff8a2a, #ffc78a, #fff1e0, #e8f0ff); border-radius: 999px; height: 8px; }
+.switch { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+.switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+.btn {
+  font: 600 14px var(--font-body); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--sunken); color: var(--fg); cursor: pointer;
+}
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+input[type=time] { font: 500 15px var(--font-mono); padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunken); color: var(--fg); }
+.note { font-size: 13px; color: var(--muted); margin: 0; max-width: 70ch; }
+.progress { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #a3271a, #ff8a2a, #ffd9a8, #f4f6ff); }
+
+.case { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 18px; align-items: center; }
+.case img { width: 100%; height: auto; border-radius: 10px; background: #f7f7f7; }
+.case ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 14px; }
+@media (max-width: 560px) { .case { grid-template-columns: minmax(0, 1fr); } .case img { max-width: 220px; } }
+.ha { font-size: 13px; }
+.ha table { width: 100%; border-collapse: collapse; }
+.ha td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.ha td:first-child { color: var(--muted); padding-right: 14px; white-space: nowrap; }
+.ha .tablewrap { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { .layer .meter i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">DIY-Projekt · Online-Demo</span>
+    <h1>Soundlampe</h1>
+    <p>So fühlt sich die selbstgebaute Schlaflampe an: Geräusche mischen, Sleep-Timer mit sanftem Ausblenden, Lampenlicht und Aufwachlicht. Alle Klänge werden live im Browser erzeugt, genau wie später auf dem Gerät.</p>
+  </header>
+
+  <div class="layout">
+    <section class="stage" aria-label="Lampe und Wiedergabe">
+      <div class="lampbox">
+        <svg id="lamp" viewBox="0 0 400 420" role="img" aria-label="Retro-Lampe mit Lautsprechersockel">
+          <defs>
+            <radialGradient id="glow" cx="50%" cy="38%" r="60%">
+              <stop offset="0%" id="glow0" stop-color="#ffb347" stop-opacity="0.55"/>
+              <stop offset="60%" id="glow1" stop-color="#ffb347" stop-opacity="0.08"/>
+              <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="shadeGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" id="shade0" stop-color="#3a3f52"/>
+              <stop offset="100%" id="shade1" stop-color="#2a2f40"/>
+            </linearGradient>
+            <linearGradient id="baseGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#2b2f3d"/>
+              <stop offset="50%" stop-color="#4a5064"/>
+              <stop offset="100%" stop-color="#2b2f3d"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="400" height="420" fill="#070912"/>
+          <rect id="room" x="0" y="0" width="400" height="420" fill="url(#glow)"/>
+          <rect x="0" y="372" width="400" height="48" fill="#0c0f1a"/>
+          <ellipse id="pool" cx="200" cy="374" rx="150" ry="12" fill="#ffb347" opacity="0"/>
+          <!-- stem -->
+          <rect x="193" y="180" width="14" height="110" rx="3" fill="#3b4052"/>
+          <!-- bulb glow inside shade -->
+          <ellipse id="bulb" cx="200" cy="172" rx="34" ry="16" fill="#ffd9a8" opacity="0"/>
+          <!-- shade: tapered drum with ribs -->
+          <path d="M128 70 L272 70 L310 182 L90 182 Z" fill="url(#shadeGrad)" stroke="#000" stroke-opacity=".25"/>
+          <g id="ribs" stroke="#000" stroke-opacity=".12" stroke-width="2"></g>
+          <rect x="124" y="64" width="152" height="8" rx="4" fill="#4a5064"/>
+          <rect x="86" y="180" width="228" height="8" rx="4" fill="#4a5064"/>
+          <!-- base with speaker grille -->
+          <g id="base">
+            <path d="M110 290 L290 290 L304 372 L96 372 Z" fill="url(#baseGrad)"/>
+            <rect x="106" y="286" width="188" height="8" rx="4" fill="#5a6076"/>
+            <g id="grille" fill="#11141f"></g>
+            <circle id="knob" cx="268" cy="282" r="9" fill="#6b7186" stroke="#22263a" stroke-width="2"/>
+            <rect x="92" y="368" width="216" height="8" rx="4" fill="#1d2130"/>
+          </g>
+        </svg>
+        <span class="clock mono" id="clock">23:12</span>
+        <span class="status" id="lampStatus">Lampe aus</span>
+      </div>
+
+      <div class="transport">
+        <button class="play" id="play" aria-label="Sounds starten">
+          <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <div class="meta">
+          <span class="now" id="nowName">Regen</span>
+          <span class="sub" id="nowSub">Bereit · Tippen zum Starten</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="master"><span>Lautstärke (Drehknopf am Gerät)</span><span class="mono" id="masterVal">60 %</span></label>
+        <input type="range" id="master" min="0" max="100" value="60">
+      </div>
+
+      <div class="row">
+        <label><span>Sleep-Timer</span><span class="mono" id="timerVal">aus</span></label>
+        <div class="chips" id="timerChips" role="group" aria-label="Sleep-Timer"></div>
+      </div>
+
+      <label class="switch" for="fast"><input type="checkbox" id="fast" checked> Zeitraffer: 1 Minute dauert in der Demo 1 Sekunde</label>
+    </section>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="presetsH">
+        <div class="panel-head"><h2 id="presetsH">Presets</h2><span class="hint">Startpunkt wählen, dann frei mischen</span></div>
+        <div class="chips" id="presets"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="mixH">
+        <div class="panel-head"><h2 id="mixH">Mischpult</h2><span class="hint">10 Ebenen, jede mit eigener Lautstärke</span></div>
+        <div class="mixer" id="mixer"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="lightH">
+        <div class="panel-head"><h2 id="lightH">Lampe</h2><span class="hint">SK6812-Lichtring im Schirm, RGB + Warmweiß</span></div>
+        <div class="grid2">
+          <label class="switch" for="lampOn"><input type="checkbox" id="lampOn"> Lampe an</label>
+          <label class="switch" for="follow"><input type="checkbox" id="follow" checked> Licht folgt dem Sleep-Timer</label>
+          <div class="field"><span><label for="bri">Helligkeit</label><b class="mono" id="briVal">35 %</b></span><input type="range" id="bri" min="1" max="100" value="35"></div>
+          <div class="field"><span><label for="kel">Farbtemperatur</label><b class="mono" id="kelVal">2200 K</b></span><input type="range" id="kel" min="1800" max="6500" step="50" value="2200"><div class="kelvin" aria-hidden="true"></div></div>
+        </div>
+        <div class="field"><span>Effekt</span>
+          <div class="chips" id="effects" role="group" aria-label="Lichteffekt"></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="wakeH">
+        <div class="panel-head"><h2 id="wakeH">Aufwachlicht</h2><span class="hint">läuft auf dem Gerät über Home Assistant</span></div>
+        <div class="grid2">
+          <div class="field"><span><label for="alarm">Wecker</label></span><input type="time" id="alarm" value="06:45"></div>
+          <div class="field"><span><label for="sunDur">Sonnenaufgang</label><b class="mono" id="sunDurVal">30 min</b></span><input type="range" id="sunDur" min="5" max="60" step="5" value="30"></div>
+        </div>
+        <p class="note" id="sunNote">Das Licht beginnt um <b class="mono">06:15</b> mit einem schwachen tiefroten Schimmer und ist um 06:45 hell und neutralweiß. Danach können Vogelstimmen leise dazukommen.</p>
+        <div class="progress" aria-hidden="true"><i id="sunProg"></i></div>
+        <div class="btns">
+          <button class="btn primary" id="sunDemo">Sonnenaufgang abspielen</button>
+          <button class="btn" id="sunStop">Stoppen</button>
+          <label class="switch" for="birdsWake"><input type="checkbox" id="birdsWake" checked> Mit Vogelgezwitscher</label>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="caseH">
+        <div class="panel-head"><h2 id="caseH">Das Gehäuse</h2><span class="hint">3D-Druck, Ø 19 cm, 41 cm hoch</span></div>
+        <div class="case">
+          <img src="assembly.png" alt="Gerendertes Modell der Soundlampe: dunkler runder Lautsprecherfuß mit senkrechten Lamellen, Messingstiel und plissiertem hellen Schirm" width="1000" height="1400">
+          <ul>
+            <li><b>Fuß:</b> unten die Elektronik, darüber eine dichte 2,6-Liter-Kammer mit 4"-Breitbänder vorne und Passivmembran hinten</li>
+            <li><b>Drehknopf</b> oben auf dem Fuß: Lautstärke, Drücken für Sounds an/aus</li>
+            <li><b>Lichtkern</b> mit 30 SK6812-LEDs (RGB + Warmweiß) unter dem Schirm</li>
+            <li><b>Plissee-Schirm</b> im Vasenmodus aus transluzentem Filament</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="panel ha" aria-labelledby="haH">
+        <div class="panel-head"><h2 id="haH">In Home Assistant</h2><span class="hint">die Lampe meldet sich per MQTT selbst an</span></div>
+        <div class="tablewrap">
+        <table>
+          <tr><td>Sounds an/aus</td><td class="mono">switch.sleepgen_sound</td></tr>
+          <tr><td>Preset, Timer</td><td class="mono">select.sleepgen_preset · select.sleepgen_timer</td></tr>
+          <tr><td>Mischpult</td><td class="mono">number.sleepgen_layer_rain … _brown</td></tr>
+          <tr><td>Lampe + Effekte</td><td class="mono">light.sleepgen_lamp</td></tr>
+          <tr><td>Aufwachlicht</td><td class="mono">button.sleepgen_sunrise</td></tr>
+          <tr><td>Musik</td><td class="mono">media_player.soundlampe (Music Assistant)</td></tr>
+        </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  // ------------------------------------------------------------------ data
+  const LAYERS = [
+    { key: "rain", name: "Regen", note: "Tropfen + Rauschen", icon: "M7 4c0 3-3 5-3 7a3 3 0 006 0c0-2-3-4-3-7zm9 6c0 2-2 3.5-2 5a2 2 0 004 0c0-1.5-2-3-2-5zm-3-8c0 2-2 3.3-2 4.6a2 2 0 004 0C15 5.3 13 4 13 2z" },
+    { key: "thunder", name: "Gewitter", note: "rollender Donner", icon: "M13 2L5 13h6l-2 9 9-12h-6l3-8z" },
+    { key: "waves", name: "Meereswellen", note: "Brandung", icon: "M2 15c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4-2 2 2 4 2M2 10c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" },
+    { key: "wind", name: "Wind", note: "Böen", icon: "M3 8h11a3 3 0 10-3-3M3 12h16a3 3 0 11-3 3M3 16h7" },
+    { key: "fire", name: "Kaminfeuer", note: "Knistern", icon: "M12 2s5 5 5 10a5 5 0 01-10 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 1-6 1-8z" },
+    { key: "birds", name: "Vögel", note: "vereinzelt", icon: "M3 13c3 0 5-2 7-5 1 3 3 4 6 4l5-3-2 5c-2 4-6 6-11 5l-3 2 1-4c-2-1-3-2-3-4z" },
+    { key: "fan", name: "Ventilator", note: "gleichmäßig", icon: "M12 12m-2 0a2 2 0 104 0 2 2 0 10-4 0M12 10c0-5 1-7 3-7s2 3-3 7zm2 2c5 0 7 1 7 3s-3 2-7-3zm-2 2c0 5-1 7-3 7s-2-3 3-7zm-2-2c-5 0-7-1-7-3s3-2 7 3z" },
+    { key: "white", name: "White Noise", note: "hell", icon: "M3 12h2l2-6 3 12 3-14 3 16 2-8h3" },
+    { key: "pink", name: "Pink Noise", note: "ausgewogen", icon: "M3 12h3l2-4 3 8 3-10 3 10 2-4h2" },
+    { key: "brown", name: "Brown Noise", note: "tief, weich", icon: "M3 12h4l2-2 3 4 3-5 3 5 2-2h1" },
+  ];
+  const PRESETS = {
+    "Regen": { rain: 0.8, brown: 0.3 },
+    "Gewitternacht": { rain: 0.8, thunder: 0.75, wind: 0.35 },
+    "Meer": { waves: 0.85, wind: 0.25, brown: 0.2 },
+    "Kaminabend": { fire: 0.8, rain: 0.4 },
+    "Waldmorgen": { birds: 0.6, wind: 0.3 },
+    "Ventilator": { fan: 0.8 },
+    "Brown Noise": { brown: 0.8 },
+  };
+  const TIMERS = [0, 15, 30, 45, 60, 90];
+  const EFFECTS = ["Kein", "Sonnenaufgang", "Kerze", "Einschlafen"];
+  const FADE_OUT_MIN = 10;
+
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    levels: Object.fromEntries(LAYERS.map(l => [l.key, 0])),
+    preset: "Regen", master: 0.6, playing: false,
+    timerMin: 0, timerStart: 0,
+    lamp: { on: false, bri: 0.35, kelvin: 2200, effect: "Kein", effectStart: 0, effectFrom: 0.35, sunMin: 30 },
+  };
+  Object.assign(state.levels, PRESETS["Regen"]);
+
+  // Same curves as the device firmware (hardware/device/sleepgen/engine.py, light.py)
+  const volumeCurve = (v) => v <= 0 ? 0 : Math.pow(10, (v - 1) * 2) * Math.min(1, v * 10);
+  function kelvinToRgb(k) {
+    const t = Math.max(1000, Math.min(k, 12000)) / 100; let r, g, b;
+    if (t <= 66) { r = 255; g = 99.4708025861 * Math.log(t) - 161.1195681661; b = t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307; }
+    else { r = 329.698727446 * Math.pow(t - 60, -0.1332047592); g = 288.1221695283 * Math.pow(t - 60, -0.0755148492); b = 255; }
+    const c = (v) => Math.max(0, Math.min(v, 255)) / 255; return [c(r), c(g), c(b)];
+  }
+  function sunriseColor(p) {
+    p = Math.max(0, Math.min(p, 1));
+    const bri = 0.004 + 0.996 * Math.pow(p, 2.2);
+    let [r, g, b] = kelvinToRgb(1000 + 3000 * Math.pow(p, 0.8));
+    if (p < 0.25) { g *= 0.4 + 2.4 * p; b *= 4 * p; }
+    return [bri, [r, g, b]];
+  }
+  const minuteMs = () => ($("fast").checked ? 1000 : 60000);
+
+  // ------------------------------------------------------------------ audio
+  let ctx = null, masterGain, timerGain, limiter, analyser;
+  const nodes = {}; // per layer: { gain, analyser }
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function noiseBuffer(seconds, kind) {
+    const sr = ctx.sampleRate, n = Math.floor(seconds * sr);
+    const buf = ctx.createBuffer(2, n, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0;
+      for (let i = 0; i < n; i++) {
+        const w = Math.random() * 2 - 1;
+        if (kind === "white") d[i] = w * 0.22;
+        else if (kind === "pink") {
+          b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852;
+          b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+          d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.055; b6 = w * 0.115926;
+        } else { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.2; }
+      }
+      // crossfade the ends so the loop point is inaudible
+      const xf = Math.floor(sr * 0.5);
+      for (let i = 0; i < xf; i++) { const a = i / xf; d[i] = d[i] * a + d[n - xf + i] * (1 - a); }
+    }
+    return buf;
+  }
+  function sparseBuffer(seconds, ratePerSec, ampFn) {
+    const sr = ctx.sampleRate, n = Math.floor(seconds * sr), buf = ctx.createBuffer(2, n, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch), p = ratePerSec / sr;
+      for (let i = 0; i < n; i++) if (Math.random() < p) d[i] = ampFn();
+    }
+    return buf;
+  }
+  function loopSrc(buf) { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.start(ctx.currentTime + Math.random() * 0.01); return s; }
+  function biquad(type, f, q = 0.707) { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; }
+  function chain(...ns) { for (let i = 0; i < ns.length - 1; i++) ns[i].connect(ns[i + 1]); return ns[ns.length - 1]; }
+  function wander(param, lo, hi, minS, maxS) {
+    const step = () => { if (!ctx) return; param.setTargetAtTime(rnd(lo, hi), ctx.currentTime, rnd(minS, maxS) / 3); setTimeout(step, rnd(minS, maxS) * 1000); };
+    step();
+  }
+
+  function buildAudio() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const bufs = { white: noiseBuffer(9, "white"), pink: noiseBuffer(11, "pink"), brown: noiseBuffer(13, "brown") };
+    masterGain = ctx.createGain(); timerGain = ctx.createGain(); timerGain.gain.value = 1;
+    limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 12; limiter.attack.value = 0.005; limiter.release.value = 0.2;
+    analyser = ctx.createAnalyser(); analyser.fftSize = 1024;
+    masterGain.gain.value = 0;
+    chain(masterGain, limiter, timerGain, analyser, ctx.destination);
+
+    for (const l of LAYERS) {
+      const g = ctx.createGain(); g.gain.value = 0;
+      const an = ctx.createAnalyser(); an.fftSize = 512;
+      g.connect(an); g.connect(masterGain);
+      nodes[l.key] = { gain: g, analyser: an, input: ctx.createGain() };
+      nodes[l.key].input.connect(g);
+    }
+    const inp = (k) => nodes[k].input;
+
+    loopSrc(bufs.white).connect(inp("white"));
+    loopSrc(bufs.pink).connect(inp("pink"));
+    loopSrc(bufs.brown).connect(inp("brown"));
+
+    // fan: lowpassed pink, slow wobble, faint motor hum
+    { const lp = biquad("lowpass", 1400, 0.6), wob = ctx.createGain(); wob.gain.value = 1.4;
+      chain(loopSrc(bufs.pink), lp, wob, inp("fan"));
+      const lfo = ctx.createOscillator(), lfoAmt = ctx.createGain(); lfo.frequency.value = 7.3; lfoAmt.gain.value = 0.05; lfo.connect(lfoAmt).connect(wob.gain); lfo.start();
+      const hum = ctx.createOscillator(), humG = ctx.createGain(); hum.frequency.value = 98; humG.gain.value = 0.012; hum.connect(humG).connect(inp("fan")); hum.start(); }
+
+    // rain: bright bed + drops through a resonant band, intensity wanders
+    { const hp = biquad("highpass", 500), lp = biquad("lowpass", 7000), bed = ctx.createGain(); bed.gain.value = 1.5;
+      const inten = ctx.createGain(); inten.gain.value = 1; inten.connect(inp("rain"));
+      chain(loopSrc(bufs.pink), hp, lp, bed, inten);
+      const drops = sparseBuffer(13, 900, () => (Math.random() * 2 - 1) * Math.min(3, 1 / Math.pow(Math.random(), 0.33)));
+      const bp = biquad("bandpass", 2800, 0.9), dg = ctx.createGain(); dg.gain.value = 0.25;
+      chain(loopSrc(drops), bp, dg, inten);
+      wander(inten.gain, 0.75, 1.15, 4, 8); }
+
+    // wind: bandpass with wandering centre and level
+    { const lp = biquad("lowpass", 1800, 0.6), bp = biquad("bandpass", 500, 1.2), lvl = ctx.createGain(); lvl.gain.value = 0.8;
+      const mk = ctx.createGain(); mk.gain.value = 4.5;
+      chain(loopSrc(bufs.white), lp, bp, mk, lvl, inp("wind"));
+      wander(bp.frequency, 250, 900, 3, 6); wander(lvl.gain, 0.35, 1.2, 3, 7); }
+
+    // waves: noise through a lowpass that opens with every swell
+    { const mix = ctx.createGain(), lp = biquad("lowpass", 400, 0.6), env = ctx.createGain(); env.gain.value = 0.12;
+      loopSrc(bufs.pink).connect(mix); const bg = ctx.createGain(); bg.gain.value = 0.7; loopSrc(bufs.brown).connect(bg).connect(mix);
+      const mk = ctx.createGain(); mk.gain.value = 2.2;
+      chain(mix, lp, env, mk, inp("waves"));
+      let next = ctx.currentTime + 0.5;
+      const sched = () => {
+        if (!ctx) return;
+        while (next < ctx.currentTime + 2) {
+          const rise = rnd(2.5, 4), fall = rnd(4, 7), gap = rnd(0, 1.5), peak = rnd(0.6, 1), floor = 0.12;
+          env.gain.setTargetAtTime(peak, next, rise / 2.2);
+          lp.frequency.setTargetAtTime(300 + 3500 * Math.pow(peak, 1.5), next, rise / 2.2);
+          env.gain.setTargetAtTime(floor, next + rise, fall / 3.5);
+          lp.frequency.setTargetAtTime(350, next + rise, fall / 3);
+          next += rise + fall + gap;
+        }
+        setTimeout(sched, 500);
+      };
+      sched(); }
+
+    // fire: low roar + crackles that come in bursts
+    { const lp = biquad("lowpass", 500), roar = ctx.createGain(); roar.gain.value = 0.9;
+      chain(loopSrc(bufs.brown), lp, roar, inp("fire"));
+      const sr = ctx.sampleRate, n = sr * 15, buf = ctx.createBuffer(2, n, sr);
+      for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); let act = 10, prev = 0, y = 0;
+        for (let i = 0; i < n; i++) { if (i % 2000 === 0) act = Math.max(2, Math.min(40, act + rnd(-6, 6)));
+          const x = Math.random() < act / sr ? (Math.random() * 2 - 1) * Math.min(3, 0.2 + 1 / Math.pow(Math.random(), 0.4)) : 0;
+          y = 0.85 * (y + x - prev); prev = x; d[i] = y * 0.5; } }
+      const hp = biquad("highpass", 1800); chain(loopSrc(buf), hp, inp("fire")); }
+
+    scheduleEvents("thunder", 25, 90, makeThunder);
+    scheduleEvents("birds", 3, 12, makeBirds);
+  }
+
+  function scheduleEvents(key, minS, maxS, make) {
+    const tick = () => {
+      if (!ctx) return;
+      if (state.playing && state.levels[key] > 0) {
+        const s = ctx.createBufferSource(); s.buffer = make(); s.connect(nodes[key].input); s.start();
+      }
+      setTimeout(tick, rnd(minS, maxS) * 1000);
+    };
+    setTimeout(tick, rnd(2, 6) * 1000);
+  }
+  function makeThunder() {
+    const sr = ctx.sampleRate, dur = rnd(6, 13), n = Math.floor(dur * sr), buf = ctx.createBuffer(2, n, sr);
+    const close = Math.random() < 0.3, attack = close ? rnd(0.05, 0.4) : rnd(0.6, 1.8);
+    const swells = Array.from({ length: 2 + Math.floor(Math.random() * 3) }, () => [rnd(0.5, dur * 0.7), rnd(0.3, 1.2)]);
+    const fc = rnd(90, 220), a = Math.exp(-2 * Math.PI * fc / sr), pan = rnd(-0.5, 0.5), amp = rnd(0.35, 0.8);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch); let br = 0, y1 = 0, y2 = 0, peak = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i / sr; br = 0.98 * br + (Math.random() * 2 - 1);
+        y1 = (1 - a) * br + a * y1; y2 = (1 - a) * y1 + a * y2;
+        let env = Math.min(t / attack, 1) * Math.exp(-t / (dur / 3.2));
+        for (const [c, w] of swells) env *= 1 + 0.9 * Math.exp(-(((t - c) / w) ** 2));
+        let v = y2 * env; if (close) v += (Math.random() * 2 - 1) * Math.exp(-t / 0.25) * 0.02;
+        d[i] = v; peak = Math.max(peak, Math.abs(v));
+      }
+      const g = amp / (peak || 1) * (ch === 0 ? 1 - pan : 1 + pan);
+      for (let i = 0; i < n; i++) d[i] *= g;
+    }
+    return buf;
+  }
+  function makeBirds() {
+    const sr = ctx.sampleRate, base = rnd(2500, 5000), parts = [];
+    for (let k = 0, c = 3 + Math.floor(Math.random() * 6); k < c; k++) {
+      const d = rnd(0.04, 0.18), m = Math.floor(d * sr), sweep = rnd(-0.35, 0.35), vib = rnd(0.5, 3), vf = rnd(30, 90);
+      const note = new Float32Array(m); let ph = 0;
+      for (let i = 0; i < m; i++) { const t = i / sr; ph += 2 * Math.PI * base * (1 + sweep * t / d) / sr;
+        note[i] = Math.sin(ph + vib * Math.sin(2 * Math.PI * vf * t)) * Math.sin(Math.PI * t / d) ** 2; }
+      parts.push(note, new Float32Array(Math.floor(rnd(0.02, 0.12) * sr)));
+    }
+    const len = parts.reduce((s, p) => s + p.length, 0), buf = ctx.createBuffer(2, len, sr), amp = rnd(0.05, 0.14), pan = rnd(-0.8, 0.8);
+    const L = buf.getChannelData(0), R = buf.getChannelData(1); let o = 0;
+    for (const p of parts) { for (let i = 0; i < p.length; i++) { L[o + i] = p[i] * amp * (1 - pan); R[o + i] = p[i] * amp * (1 + pan); } o += p.length; }
+    return buf;
+  }
+
+  function applyLevels(smooth = 0.08) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    for (const l of LAYERS) nodes[l.key].gain.gain.setTargetAtTime(volumeCurve(state.levels[l.key]), t, smooth);
+    const target = state.playing ? volumeCurve(state.master) : 0;
+    masterGain.gain.setTargetAtTime(target, t, state.playing ? 2.5 : 0.6);
+  }
+
+  // ------------------------------------------------------------------ UI build
+  const mixer = $("mixer");
+  for (const l of LAYERS) {
+    const row = document.createElement("div"); row.className = "layer"; row.id = "row-" + l.key;
+    row.innerHTML = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${l.icon}"/></svg>
+      <div><div class="name"><label for="lv-${l.key}">${l.name}</label><small>${l.note}</small></div>
+      <input type="range" id="lv-${l.key}" min="0" max="100" value="0"><div class="meter"><i id="m-${l.key}"></i></div></div>
+      <span class="val" id="v-${l.key}">0</span>`;
+    mixer.appendChild(row);
+    row.querySelector("input").addEventListener("input", (e) => {
+      state.levels[l.key] = e.target.value / 100; state.preset = null; render(); applyLevels();
+    });
+  }
+  const presets = $("presets");
+  for (const name of Object.keys(PRESETS)) {
+    const b = document.createElement("button"); b.textContent = name; b.dataset.p = name;
+    b.addEventListener("click", () => { setPreset(name); if (!state.playing) start(); });
+    presets.appendChild(b);
+  }
+  function setPreset(name) {
+    for (const l of LAYERS) state.levels[l.key] = PRESETS[name][l.key] || 0;
+    state.preset = name; render(); applyLevels(0.5);
+  }
+  const tchips = $("timerChips");
+  for (const m of TIMERS) {
+    const b = document.createElement("button"); b.textContent = m ? m + " min" : "Aus"; b.dataset.m = m;
+    b.addEventListener("click", () => setTimer(m)); tchips.appendChild(b);
+  }
+  const echips = $("effects");
+  for (const e of EFFECTS) {
+    const b = document.createElement("button"); b.textContent = e; b.dataset.e = e;
+    b.addEventListener("click", () => setEffect(e)); echips.appendChild(b);
+  }
+  // shade ribs + speaker grille
+  { const ribs = $("ribs"); for (let i = 1; i < 24; i++) { const x0 = 128 + i * 6, x1 = 90 + i * (220 / 24);
+      const ln = document.createElementNS("http://www.w3.org/2000/svg", "line"); ln.setAttribute("x1", x0); ln.setAttribute("y1", 72); ln.setAttribute("x2", x1); ln.setAttribute("y2", 180); ribs.appendChild(ln); }
+    const gr = $("grille"); for (let i = 0; i < 15; i++) { const x = 136 + i * 9.2;
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect"); r.setAttribute("x", x); r.setAttribute("y", 304); r.setAttribute("width", 3.2); r.setAttribute("height", 56); r.setAttribute("rx", 1.6); gr.appendChild(r); } }
+
+  // ------------------------------------------------------------------ actions
+  async function start() {
+    if (!ctx) buildAudio();
+    if (ctx.state === "suspended") await ctx.resume();
+    if (!Object.values(state.levels).some(v => v > 0)) setPreset("Regen");
+    state.playing = true; applyLevels(); render();
+    try { if (navigator.wakeLock) navigator.wakeLock.request("screen").catch(() => {}); } catch (e) {}
+  }
+  function stop() { state.playing = false; state.timerMin = 0; applyLevels(); render(); }
+  $("play").addEventListener("click", () => state.playing ? stop() : start());
+  $("master").addEventListener("input", (e) => { state.master = e.target.value / 100; applyLevels(); render(); });
+
+  function setTimer(m) {
+    state.timerMin = m; state.timerStart = performance.now();
+    if (m && !state.playing) start();
+    if (m && $("follow").checked && state.lamp.on) beginEffect("Einschlafen", m);
+    render();
+  }
+  function beginEffect(e, minutes) {
+    const L = state.lamp; L.effect = e; L.effectStart = performance.now(); L.effectFrom = L.on ? L.bri : 0.6;
+    if (e === "Sonnenaufgang") L.effectMin = state.lamp.sunMin;
+    else if (e === "Einschlafen") L.effectMin = minutes || 30;
+    if (e !== "Kein") L.on = true;
+    render();
+  }
+  function setEffect(e) { beginEffect(e, state.timerMin || 30); }
+  $("lampOn").addEventListener("change", (e) => { state.lamp.on = e.target.checked; if (!state.lamp.on) state.lamp.effect = "Kein"; render(); });
+  $("bri").addEventListener("input", (e) => { state.lamp.bri = e.target.value / 100; state.lamp.on = true; if (state.lamp.effect !== "Kerze") state.lamp.effect = "Kein"; render(); });
+  $("kel").addEventListener("input", (e) => { state.lamp.kelvin = +e.target.value; state.lamp.on = true; if (state.lamp.effect !== "Kerze") state.lamp.effect = "Kein"; render(); });
+  $("sunDur").addEventListener("input", (e) => { state.lamp.sunMin = +e.target.value; render(); });
+  $("alarm").addEventListener("input", render);
+  $("sunDemo").addEventListener("click", () => { beginEffect("Sonnenaufgang"); wakeBirdsPending = $("birdsWake").checked; });
+  $("sunStop").addEventListener("click", () => { state.lamp.effect = "Kein"; state.lamp.on = false; render(); });
+  let wakeBirdsPending = false;
+
+  // ------------------------------------------------------------------ render
+  const fmtMin = (m) => { const mm = Math.floor(m), ss = Math.floor((m - mm) * 60); return `${mm}:${String(ss).padStart(2, "0")}`; };
+  function render() {
+    for (const l of LAYERS) {
+      const v = Math.round(state.levels[l.key] * 100);
+      $("lv-" + l.key).value = v; $("v-" + l.key).textContent = v;
+      $("row-" + l.key).classList.toggle("on", v > 0);
+    }
+    for (const b of presets.children) b.setAttribute("aria-pressed", String(b.dataset.p === state.preset));
+    for (const b of tchips.children) b.setAttribute("aria-pressed", String(+b.dataset.m === state.timerMin));
+    for (const b of echips.children) b.setAttribute("aria-pressed", String(b.dataset.e === state.lamp.effect));
+    $("masterVal").textContent = Math.round(state.master * 100) + " %";
+    const active = LAYERS.filter(l => state.levels[l.key] > 0).map(l => l.name);
+    $("nowName").textContent = state.preset || (active.length ? "Eigene Mischung" : "Nichts ausgewählt");
+    $("nowSub").textContent = state.playing ? (active.join(" · ") || "still") : "Bereit · Tippen zum Starten";
+    $("play").setAttribute("aria-label", state.playing ? "Sounds stoppen" : "Sounds starten");
+    $("playIcon").innerHTML = state.playing ? '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+    const L = state.lamp;
+    $("lampOn").checked = L.on;
+    $("bri").value = Math.round(L.bri * 100); $("briVal").textContent = Math.round(L.bri * 100) + " %";
+    $("kel").value = L.kelvin; $("kelVal").textContent = L.kelvin + " K";
+    $("sunDurVal").textContent = L.sunMin + " min";
+    const [h, m] = ($("alarm").value || "06:45").split(":").map(Number);
+    const startMin = ((h * 60 + m - L.sunMin) % 1440 + 1440) % 1440;
+    const hhmm = (x) => `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+    $("sunNote").innerHTML = `Das Licht beginnt um <b class="mono">${hhmm(startMin)}</b> mit einem schwachen tiefroten Schimmer und ist um <b class="mono">${hhmm(h * 60 + m)}</b> hell und neutralweiß. Danach können Vogelstimmen leise dazukommen.`;
+  }
+
+  // per-frame: timer, lamp, meters
+  const glow0 = $("glow0"), glow1 = $("glow1"), shade0 = $("shade0"), shade1 = $("shade1"), bulb = $("bulb"), pool = $("pool");
+  const flick = { v: 0.5 };
+  const levelBuf = new Float32Array(512);
+  function rms(an) { an.getFloatTimeDomainData(levelBuf); let s = 0; for (let i = 0; i < levelBuf.length; i++) s += levelBuf[i] * levelBuf[i]; return Math.sqrt(s / levelBuf.length); }
+  const toCss = ([r, g, b]) => `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+
+  function frame(now) {
+    // sleep timer with the device's x^2.5 fade over the last 10 minutes
+    let timerTxt = "aus";
+    if (state.timerMin) {
+      const remMin = state.timerMin - (now - state.timerStart) / minuteMs();
+      if (remMin <= 0) { stop(); if (ctx) timerGain.gain.setTargetAtTime(1, ctx.currentTime + 2, 0.1); }
+      else {
+        timerTxt = fmtMin(remMin) + " übrig";
+        const x = Math.min(remMin / Math.min(FADE_OUT_MIN, state.timerMin), 1);
+        if (ctx) timerGain.gain.setTargetAtTime(Math.pow(x, 2.5), ctx.currentTime, 0.1);
+      }
+    } else if (ctx && timerGain.gain.value < 0.999 && !state.playing) {
+      timerGain.gain.setTargetAtTime(1, ctx.currentTime, 0.5);
+    }
+    $("timerVal").textContent = timerTxt;
+
+    // lamp
+    const L = state.lamp; let bri = L.on ? L.bri : 0, rgb = kelvinToRgb(L.kelvin), status = L.on ? "Lampe an" : "Lampe aus";
+    let sunP = 0;
+    if (L.effect === "Sonnenaufgang") {
+      const p = (now - L.effectStart) / (L.effectMin * minuteMs()); sunP = Math.min(p, 1);
+      [bri, rgb] = sunriseColor(p); status = `Sonnenaufgang ${Math.round(sunP * 100)} %`;
+      if (p >= 1) { L.effect = "Kein"; L.bri = 1; L.kelvin = 4000; render();
+        if (wakeBirdsPending) { wakeBirdsPending = false; setPreset("Waldmorgen"); state.master = 0.35; start(); } }
+    } else if (L.effect === "Einschlafen") {
+      const p = (now - L.effectStart) / (L.effectMin * minuteMs());
+      rgb = kelvinToRgb(2700 - 900 * Math.min(p, 1)); bri = L.effectFrom * Math.pow(Math.max(0, 1 - p), 2); status = "Einschlaflicht";
+      if (p >= 1) { L.effect = "Kein"; L.on = false; render(); }
+    } else if (L.effect === "Kerze" && L.on) {
+      flick.v = Math.min(1, Math.max(0, flick.v + rnd(-0.12, 0.12)));
+      bri = L.bri * (0.55 + 0.45 * flick.v); rgb = kelvinToRgb(1800 + 400 * flick.v); status = "Kerzenlicht";
+    }
+    $("sunProg").style.width = (L.effect === "Sonnenaufgang" ? sunP * 100 : 0) + "%";
+    const col = toCss(rgb), vis = Math.pow(bri, 0.6);
+    glow0.setAttribute("stop-color", col); glow0.setAttribute("stop-opacity", (0.65 * vis).toFixed(3));
+    glow1.setAttribute("stop-color", col); glow1.setAttribute("stop-opacity", (0.12 * vis).toFixed(3));
+    const mixc = (a, t) => toCss(rgb.map((c, i) => a[i] * (1 - t) + c * t));
+    shade0.setAttribute("stop-color", mixc([0.23, 0.25, 0.32], Math.min(1, vis * 0.9)));
+    shade1.setAttribute("stop-color", mixc([0.16, 0.18, 0.25], Math.min(1, vis * 1.05)));
+    bulb.setAttribute("fill", col); bulb.setAttribute("opacity", (0.9 * vis).toFixed(3));
+    pool.setAttribute("fill", col); pool.setAttribute("opacity", (0.35 * vis).toFixed(3));
+    $("lampStatus").textContent = status;
+
+    // meters + grille pulse
+    if (ctx && analyser) {
+      for (const l of LAYERS) {
+        const v = state.playing ? Math.min(1, rms(nodes[l.key].analyser) * 4 * Math.sqrt(volumeCurve(state.master))) : 0;
+        $("m-" + l.key).style.width = (v * 100).toFixed(1) + "%";
+      }
+    }
+    const d = new Date(); $("clock").textContent = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    requestAnimationFrame(frame);
+  }
+  render();
+  requestAnimationFrame(frame);
+})();
+</script>

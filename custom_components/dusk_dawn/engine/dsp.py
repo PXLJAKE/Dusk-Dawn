@@ -1,4 +1,4 @@
-"""Procedural sound generators – pure-Python/numpy port of ``device/sleepgen/dsp.py``.
+"""Procedural sound generators – pure-Python/numpy port of ``hardware/device/sleepgen/dsp.py``.
 
 Home Assistant ships numpy but not scipy, so the IIR filters of the device
 version (``scipy.signal.lfilter``) are replaced by :class:`IIR` and
