@@ -61,7 +61,7 @@ Quellen: [Tom's Guide – Hatch Restore 3](https://www.tomsguide.com/wellness/sl
 | Sound-Engine (10 Klänge, Mixer, Timer, Fades) | fertig, getestet (`hardware/device/tests`) |
 | Lampe (Farbtemperatur, RGB, Sonnenaufgang, Kerze, Einschlafen) | fertig, getestet |
 | Home Assistant (MQTT-Discovery, Paket mit Aufwachlicht, Dashboard) | fertig; MQTT mit echtem Broker getestet, HA-Paket noch nicht in einer echten HA-Instanz |
-| Musik (squeezelite + Music Assistant) | Installationsskript fertig, auf echter Hardware noch nicht getestet |
+| Musik (AirPlay 2, Spotify Connect, Music Assistant) | Installationsskript fertig, auf echter Hardware noch nicht getestet |
 | Drehknopf, LED-Treiber, DigiAMP+ | Code fertig, braucht die echte Hardware zum Test |
 | Gehäuse | OpenSCAD + STL fertig. Chassismaße vor dem Druck mit dem Datenblatt abgleichen |
 | Online-Demo | veröffentlicht |
@@ -78,7 +78,7 @@ Quellen: [Tom's Guide – Hatch Restore 3](https://www.tomsguide.com/wellness/sl
 | **4 – Licht + Knopf** | LED-Strip, Pegelwandler, Drehgeber anschließen | Sonnenaufgang läuft, Knopf regelt die Lautstärke |
 | **5 – Musik** | Music Assistant einrichten | Spotify/Radio läuft auf der Lampe |
 | **6 – Gehäuse** | drucken, abdichten, montieren | steht fertig am Bett |
-| **7 – Extras** | eigene Automationen, eigene Aufnahmen, AirPlay | nach Lust und Laune |
+| **7 – Extras** | eigene Automationen, eigene Aufnahmen | nach Lust und Laune |
 
 ---
 

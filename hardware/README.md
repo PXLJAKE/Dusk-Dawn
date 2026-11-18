@@ -1,6 +1,6 @@
 # Soundlampe – eigene Hardware für Dusk & Dawn
 
-Optionaler Zusatz zur Integration: eine Nachttischlampe mit Lautsprecher, die die Klänge selbst berechnet (ohne Verzögerung, Wecker auch ohne WLAN) und über MQTT in Home Assistant erscheint.
+Optionaler Zusatz zur Integration: eine Nachttischlampe mit Lautsprecher, die die Klänge selbst berechnet (ohne Verzögerung, Wecker auch ohne WLAN) und über MQTT in Home Assistant erscheint. Musik spielt sie per AirPlay 2, Spotify Connect und Music Assistant.
 
 ![Explosionszeichnung](gehaeuse/renders/explosion_beide.png)
 

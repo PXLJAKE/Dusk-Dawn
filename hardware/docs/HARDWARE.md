@@ -10,6 +10,7 @@ Der ESP32 kann Sounds abspielen. Für die gewünschten Extras reicht er aber nic
 |---|---|---|
 | Mehrere Klang-Ebenen live mischen | knapp, viel Handarbeit | problemlos (ca. 10 % CPU für 10 Ebenen) |
 | **Musikplayer in Home Assistant** (Music Assistant, Spotify, Radio) | nur einfache Stream-Wiedergabe | ja: squeezelite, Music Assistant erkennt die Lampe automatisch |
+| **AirPlay 2 und Spotify Connect** | AirPlay 1 mit Mühe, kein AirPlay 2 | ja: shairport-sync und raspotify, die Lampe taucht direkt auf iPhone, Mac und in Spotify auf |
 | Sounds und Musik gleichzeitig | nein | ja (ALSA dmix) |
 | Guter Klang | MAX98357A 3 W, rauscht leise | DigiAMP+ mit 2 × 35 W, sauberer DAC, Lautstärke in Hardware |
 | Lampe, Aufwachlicht, Home Assistant | ja | ja, alles in einem Programm |
