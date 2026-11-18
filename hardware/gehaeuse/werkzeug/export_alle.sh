@@ -7,7 +7,7 @@ job() { read n b s p <<< "$1"; openscad -D "base=\"$b\"" -D "shade_style=\"$s\""
 export -f job; export OUT
 {
   echo "body_kugel kugel laterne body"; echo "body_zylinder zylinder laterne body"
-  for p in plinth plate lid grille knob led_core; do echo "$p kugel laterne $p"; done
+  for p in plinth plate lid knob led_core; do echo "$p kugel laterne $p"; done
   for s in plissee glocke kolben twist laterne; do echo "shade_$s kugel $s shade"; echo "stem_$s kugel $s stem"; echo "core_cap_$s kugel $s core_cap"; done
   echo "spider_plissee kugel plissee spider"; echo "spider_glocke kugel glocke spider"
 } | xargs -P"$(nproc)" -I{} bash -c 'job "{}"'

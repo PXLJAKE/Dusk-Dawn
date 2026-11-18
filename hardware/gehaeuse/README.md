@@ -6,12 +6,12 @@ Ein OpenSCAD-Modell für beide Füße (Kugel, Zylinder) und alle fünf Schirme: 
 
 ## Das Wichtigste
 
-- **Keine sichtbaren Schrauben.** Die Lautsprecher werden von außen auf flache Schallwände geschraubt und von eingeklipsten Gittern verdeckt. Der Körper wird von unten aus dem Sockel verschraubt, die Bodenplatte unter den Gummifüßen.
+- **Keine sichtbaren Schrauben.** Die Kugel bleibt rund, das Lochfeld ist in die Wand gedruckt. Die Lautsprecher sitzen dahinter auf einer inneren Schallwand und werden von innen mit selbstschneidenden Schrauben direkt hineingeschraubt. Der Körper wird von unten aus dem Sockel verschraubt, die Bodenplatte unter den Gummifüßen.
 - **Nur selbstschneidende Linsenkopfschrauben** (BT3, BT2.6), keine Senkköpfe, keine Gewindeeinsätze.
 - **Bajonett-Deckel:** eine Drittel-Drehung, kein Werkzeug. Sein Rand ist das fehlende Stück Kugel, darunter ein 45°-Konus. Er druckt mit der Oberseite nach oben ohne Stützen.
 - **Knopf bündig in einer Mulde** (Ø 42 × 18 mm, Knopf Ø 30 mm mit Kugel-Oberfläche). Nur die Decke der Mulde braucht Tree Supports.
 - **Schirme oben und unten offen.** Kolben, Twist und Laterne stehen direkt in einer Ringmulde im Deckel und beginnen mit genau dem Kugeldurchmesser und der Kugelneigung an dieser Stelle. Kein Adapterring, kein Absatz.
-- **Gleiche Teile für beide Füße:** Sockel, Bodenplatte, Deckel, Gitter, Knopf, Stiele, Lichtkern, Kerndeckel, Spinnen, Schirme. Nur der Körper unterscheidet sich.
+- **Gleiche Teile für beide Füße:** Sockel, Bodenplatte, Deckel, Knopf, Stiele, Lichtkern, Kerndeckel, Spinnen, Schirme. Nur der Körper unterscheidet sich.
 
 ![Schnitt durch Knopf und Deckel](renders/detail_knopf_deckel_kugel.png)
 
@@ -30,7 +30,7 @@ Ein OpenSCAD-Modell für beide Füße (Kugel, Zylinder) und alle fünf Schirme: 
 openscad -D 'base="kugel"' -D 'shade_style="laterne"' -D 'part="assembly"' soundlampe.scad
 ```
 
-`part`: `assembly`, `exploded`, `section`, `section_knob`, `step` (mit `step=1…9`, Bilder der Montageanleitung) oder ein Einzelteil: `body`, `plinth`, `plate`, `lid`, `grille`, `knob`, `stem`, `led_core`, `core_cap`, `spider`, `shade`.
+`part`: `assembly`, `exploded`, `section`, `section_knob`, `step` (mit `step=1…8`, Bilder der Montageanleitung) oder ein Einzelteil: `body`, `plinth`, `plate`, `lid`, `knob`, `stem`, `led_core`, `core_cap`, `spider`, `shade`.
 
 ## Neu exportieren
 
