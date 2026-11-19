@@ -17,7 +17,7 @@ Das lädt [CamillaDSP](https://github.com/HEnquist/camilladsp), richtet eine vir
 ```bash
 sudo sleepgen-eq schlaf     # Standard: Hochpass 65 Hz, Zischen -3 dB, Höhen -3 dB, +1,5 dB Wärme bei 120 Hz
 sudo sleepgen-eq neutral    # Hochpass 60 Hz, Zischen -2 dB, sonst flach
-sudo sleepgen-eq musik      # Hochpass 60 Hz, Zischen -2,5 dB, +2,5 dB Bass-Wärme
+sudo sleepgen-eq musik      # Hochpass 55 Hz, Zischen -2,5 dB, +4,5 dB Bass unter 130 Hz (-6,5 dB Vorpegel gegen Übersteuern)
 sudo sleepgen-eq aus        # ohne EQ, direkt auf die DigiAMP+ (Notausgang)
 ```
 
