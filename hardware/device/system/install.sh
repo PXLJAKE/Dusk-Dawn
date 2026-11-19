@@ -28,6 +28,7 @@ python3 -m venv --system-site-packages /opt/sleepgen/venv
 
 echo "==> audio mixing + music player"
 cp "$HERE/asound.conf" /etc/asound.conf
+cp "$HERE/asound.conf" /etc/asound.conf.direct
 cat > /etc/default/squeezelite <<'SQ'
 SL_NAME="Soundlampe"
 SL_SOUNDCARD="default"
@@ -38,6 +39,27 @@ echo "==> services"
 cp "$HERE/sleepgen.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable sleepgen squeezelite
+
+# Optional EQ (CamillaDSP): sudo EQ=1 ./install.sh   (see hardware/docs/EQ.md; not tested on real hardware yet)
+if [ "${EQ:-0}" = "1" ]; then
+  echo "==> EQ (CamillaDSP)"
+  CAMILLA_VERSION="${CAMILLA_VERSION:-v3.0.1}"
+  echo snd-aloop > /etc/modules-load.d/snd-aloop.conf
+  echo "options snd-aloop index=1" > /etc/modprobe.d/snd-aloop.conf
+  modprobe snd-aloop index=1 || true
+  if [ ! -x /usr/local/bin/camilladsp ]; then
+    curl -fL "https://github.com/HEnquist/camilladsp/releases/download/${CAMILLA_VERSION}/camilladsp-linux-aarch64.tar.gz" \
+      | tar -xz -C /usr/local/bin camilladsp
+  fi
+  mkdir -p /etc/camilladsp/profiles
+  cp "$HERE"/camilladsp/*.yml /etc/camilladsp/profiles/
+  for p in /etc/camilladsp/profiles/*.yml; do /usr/local/bin/camilladsp -c "$p"; done
+  cp "$HERE/asound-eq.conf" /etc/asound.conf.eq
+  cp "$HERE/camilladsp.service" /etc/systemd/system/
+  install -m 755 "$HERE/sleepgen-eq" /usr/local/bin/sleepgen-eq
+  systemctl daemon-reload
+  /usr/local/bin/sleepgen-eq schlaf
+fi
 
 # AirPlay 2 and Spotify Connect (skip with AIRPLAY=0 / SPOTIFY=0)
 "$HERE/streaming.sh"

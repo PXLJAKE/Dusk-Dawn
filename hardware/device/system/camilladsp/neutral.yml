@@ -1,0 +1,39 @@
+# Soundlampe EQ-Profil "neutral" (CamillaDSP v3). Mono-Signal kommt schon gemischt an, beide Kanäle bekommen dieselben Filter.
+# Prüfen auf dem Pi:  camilladsp -c /etc/camilladsp/profiles/neutral.yml
+devices:
+  samplerate: 48000
+  chunksize: 1024
+  capture:
+    type: Alsa
+    channels: 2
+    device: "hw:Loopback,1,0"
+    format: S32LE
+  playback:
+    type: Alsa
+    channels: 2
+    device: "hw:0,0"
+    format: S32LE
+
+filters:
+  # Schutz: unterhalb der Abstimmung der Passivmembran bringt der Konus nur Hub, kaum Pegel (ND105-4: 4 mm Hub)
+  hochpass:
+    type: BiquadCombo
+    parameters: {type: ButterworthHighpass, freq: 60, order: 4}
+  # Alu-Konen haben um 6 kHz einen Resonanzpeak, der bei Rauschen und Regen zischt
+  zisch_weg:
+    type: Biquad
+    parameters: {type: Peaking, freq: 6200, gain: -2.0, q: 1.5}
+  hoehen:
+    type: Biquad
+    parameters: {type: Highshelf, freq: 3500, gain: 0.0, slope: 6}
+  waerme:
+    type: Biquad
+    parameters: {type: Lowshelf, freq: 120, gain: 0.0, slope: 6}
+  vorpegel:
+    type: Gain
+    parameters: {gain: -2.0}
+
+pipeline:
+  - type: Filter
+    channels: [0, 1]
+    names: [vorpegel, hochpass, zisch_weg, hoehen, waerme]
