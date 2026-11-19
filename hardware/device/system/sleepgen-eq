@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Wechselt das EQ-Profil der Soundlampe:  sudo sleepgen-eq schlaf|neutral|musik|aus
+# "aus" geht ohne EQ direkt auf die DigiAMP+ (Notausgang, wenn CamillaDSP Probleme macht).
+set -euo pipefail
+P=/etc/camilladsp/profiles
+case "${1:-}" in
+  schlaf|neutral|musik)
+    [ -f /etc/asound.conf.eq ] && cp /etc/asound.conf.eq /etc/asound.conf
+    ln -sf "$P/$1.yml" /etc/camilladsp/active.yml
+    systemctl enable --now camilladsp
+    systemctl restart camilladsp
+    echo "EQ-Profil: $1 (laufende Wiedergaben bitte neu starten)" ;;
+  aus)
+    systemctl disable --now camilladsp || true
+    cp /etc/asound.conf.direct /etc/asound.conf
+    echo "EQ aus. Laufende Wiedergaben bitte neu starten." ;;
+  *) echo "Aufruf: sudo sleepgen-eq schlaf|neutral|musik|aus"; exit 1 ;;
+esac

@@ -1,0 +1,13 @@
+[Unit]
+Description=CamillaDSP EQ for the Soundlampe
+After=sound.target
+Wants=sound.target
+
+[Service]
+ExecStart=/usr/local/bin/camilladsp /etc/camilladsp/active.yml
+Restart=on-failure
+RestartSec=2
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target
