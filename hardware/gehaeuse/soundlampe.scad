@@ -29,16 +29,18 @@ cut_h     = sph_r * cos(45);
 zc        = plinth_h + cut_h;         // centre height of the speakers and the knob
 // speakers sit behind the round wall: inner baffle at y = +-baf_in, the wall in front of it is the grille
 baf_in    = base == "kugel" ? 76 : 69;  // flange seat (inside face of the baffle); room for the 106 mm flange
-baf_t     = 7;                        // BT3 x 12 through the 4.5 mm flange bite 7 mm into the baffle
+baf_t     = 7;
+pilot_depth = 7;                      // pilot hole from 1 mm in front of the baffle: ends 6 mm into it. The corner holes on the 110 mm bolt circle sit near the outer wall, deeper holes broke through (leak)
+// BT3 x 10 through ear (about 2 mm) and foam gasket (2 mm) bite about 6 mm into the baffle
 
 /* [Driver (front, -Y) and passive radiator (back, +Y)] */
 drv_flange_d = 106;
 drv_flange_t = 4.5;
-drv_cutout_d = 93;
-drv_bolt_d   = 99;
+drv_cutout_d = 100;                  // round cutout, 100 mm as measured (data sheet says 93 mm, the cone and frame need more room)
+drv_bolt_d   = 110;                   // measured on the driver: 110 mm across the diagonal (holes on the 45 deg diagonals), about 78-80 mm between neighbours
 pr_flange_d  = 106;
-pr_cutout_d  = 93;
-pr_bolt_d    = 99;
+pr_cutout_d  = 100;
+pr_bolt_d    = 110;                   // same pattern as the ND105-4 (measured)
 
 /* [Hole field in the wall (the grille is printed with the body)] */
 grille_r  = 44;
@@ -216,12 +218,13 @@ module knob_pocket() {
 module face_cuts(s) {
   cut = s < 0 ? drv_cutout_d : pr_cutout_d;
   bd = s < 0 ? drv_bolt_d : pr_bolt_d;
-  // opening in the baffle: teardrop, roof clipped flat (short bridge) so the baffle stays closed to the wall
-  translate([0, s * (baf_in + baf_t / 2), zc]) intersection() { teardrop_y(cut, baf_t + 2); rotate([90, 0, 0]) cylinder(r = 52, h = baf_t + 4, center = true); }
+  // opening in the baffle: exactly round (seals against the foam gasket); the upper arc needs manual tree supports when printing
+  translate([0, s * (baf_in + baf_t / 2), zc]) rotate([90, 0, 0]) cylinder(d = cut, h = baf_t + 2, center = true, $fn = 180);
   // pilot holes, screwed from inside the chamber
-  for (a = [45:90:315]) translate([cos(a) * bd / 2, s * (baf_in - 1), zc + sin(a) * bd / 2]) rotate([-s * 90, 0, 0]) cylinder(d = bt3_pilot, h = baf_t + 2, $fn = 16);
+  for (a = [45:90:315]) translate([cos(a) * bd / 2, s * (baf_in - 1), zc + sin(a) * bd / 2]) rotate([-s * 90, 0, 0]) cylinder(d = bt3_pilot, h = pilot_depth, $fn = 16);
   // room for flange and screw heads where the 45 deg roof of the chamber reaches down: 7 mm straight, then a 45 deg cone
-  translate([0, s * baf_in, zc]) rotate([s * 90, 0, 0]) { cylinder(r = drv_flange_d / 2 + 0.75, h = 7 + eps, $fn = 120); translate([0, 0, 7]) cylinder(r1 = drv_flange_d / 2 + 0.75, r2 = drv_flange_d / 2 - 7.25, h = 8, $fn = 120); }
+  let(cr = max(drv_flange_d / 2, bd / 2 + 3.6) + 0.75)   // also covers the mounting ears and the screw heads on the bolt circle
+  translate([0, s * baf_in, zc]) rotate([s * 90, 0, 0]) { cylinder(r = cr, h = 7 + eps, $fn = 120); translate([0, 0, 7]) cylinder(r1 = cr, r2 = cr - 8, h = 8, $fn = 120); }
   // round hole field in the outer wall, flat-top hexagons: each roof is a 2.4 mm bridge
   hole_field(s);
 }
@@ -432,7 +435,7 @@ module drivers_in(e = 0) {
 }
 // pan heads sit on the flange inside the chamber, the screws point outwards into the baffle
 module speaker_screws(e) for (s = [-1, 1]) for (a = [45:90:315]) let(bd = s < 0 ? drv_bolt_d : pr_bolt_d, p = [cos(a) * bd / 2, s * (baf_in - drv_flange_t), zc + sin(a) * bd / 2])
-  { translate(p - [0, s * e, 0]) rotate([s * 90, 0, 0]) screw(12); if (e > 0) guide(p - [0, s * 2, 0], p - [0, s * (e - 3), 0]); }
+  { translate(p - [0, s * e, 0]) rotate([s * 90, 0, 0]) screw(10); if (e > 0) guide(p - [0, s * 2, 0], p - [0, s * (e - 3), 0]); }
 module cut_open() difference() { children(); translate([0, -300, -10]) cube([300, 600, 700]); }
 module base_screws(e) for (a = [45:90:315]) let(p = [cos(a) * screw_r, sin(a) * screw_r, plinth_h])
   { translate(p + [0, 0, -plinth_top_t - 6 - e]) rotate([180, 0, 0]) screw(10); if (e > 0) guide(p + [0, 0, -plinth_top_t - 6 - e], p); }

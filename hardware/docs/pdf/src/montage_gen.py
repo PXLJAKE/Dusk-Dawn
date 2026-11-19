@@ -28,7 +28,6 @@ def standoff():
             'fill="#c9a14a"/><rect x="11" y="1.25" width="6" height="2.5" fill="#d8b766"/></svg>')
 
 
-BT3_12 = bt(3, 12, 5.6)
 BT3_10 = bt(3, 10, 5.6)
 BT26_6 = bt(2.6, 6, 4.8)
 M25_5 = bt(2.5, 5, 4.5)
@@ -68,7 +67,7 @@ Welche Dateien du druckst, steht im Paketordner deiner Variante (<code>hardware/
 <h3>Schrauben</h3><p class="scale">Nur Linsenkopf, selbstschneidend für Kunststoff (BT = „Blechtreib“-Gewinde, z. B. Bambu Lab Maker's Supply).
 Keine Senkköpfe, keine Gewindeeinsätze, kein Lötkolben fürs Gehäuse.</p>
 <table><tr><th></th><th>Schraube</th><th>Anzahl</th><th>Schritt</th><th>Wofür</th></tr>
-<tr><td>{BT3_12}</td><td><b>BT3 × 12</b></td><td>8</td><td>1</td><td>Breitbänder und Passivmembran von innen in die Schallwände</td></tr>
+<tr><td>{BT3_10}</td><td><b>BT3 × 10</b></td><td>8</td><td>1</td><td>Breitbänder und Passivmembran von innen in die Schallwände</td></tr>
 <tr><td>{BT3_10}</td><td><b>BT3 × 10</b></td><td>4</td><td>3</td><td>Körper auf den Sockel, von unten</td></tr>
 <tr><td>{BT3_10}</td><td><b>BT3 × 10</b></td><td>3</td><td>5</td><td>Bodenplatte an den Sockel, unter den Gummifüßen</td></tr>
 <tr><td>{BT26_6}</td><td><b>BT2.6 × 6</b></td><td>2</td><td>4</td><td>LM2596 auf die Bodenplatte</td></tr>
@@ -86,7 +85,7 @@ Keine Senkköpfe, keine Gewindeeinsätze, kein Lötkolben fürs Gehäuse.</p>
 <tr><td><b>Füße</b></td><td>3 Gummifüße Ø 12 mm, selbstklebend (sie decken die Bodenschrauben ab)</td></tr></table>'''
 
 p3 = (step(1, "s1", "Lautsprecher von innen anschrauben", "Körper, Breitbänder ND105-4, Passivmembran ND105-PR, Moosgummi",
-           [chip(8, BT3_12, "BT3 × 12")],
+           [chip(8, BT3_10, "BT3 × 10")],
            "<p>Moosgummi auf die Flansche kleben, an den Breitbänder 2 Kabel (ca. 30 cm) löten, rot = +. Den <b>Breitbänder vorne</b> "
            "(Lochfeld links vom Knopf), die <b>Passivmembran hinten</b> durch die große Öffnung oben oder unten in den Körper führen und von innen "
            "gegen die innere Schallwand legen. Je 4 Schrauben über Kreuz direkt in den Kunststoff drehen.</p>"

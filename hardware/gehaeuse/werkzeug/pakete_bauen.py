@@ -23,7 +23,7 @@ def teile(fuss, schirm):
     name, stiel, auf_deckel, _ = SCHIRME[schirm]
     t = [
         ("body_" + fuss, f"01_koerper_{fuss}.stl", 1, f"Körper ({FUESSE[fuss]})", "Gehäusefarbe",
-         "**Tree Supports (manuell)**: nur die Decke der Knopfmulde anmalen", "liegt richtig herum, Flansch auf der Platte"),
+         "**Tree Supports (manuell)**: Decke der Knopfmulde und oberen Bogen beider Lautsprecher-Ausschnitte anmalen", "liegt richtig herum, Flansch auf der Platte"),
         ("plinth", "02_sockel.stl", 1, "Sockel", "Gehäusefarbe", "keine", "steht kopfüber (Decke auf der Platte)"),
         ("plate", "03_bodenplatte.stl", 1, "Bodenplatte", "Gehäusefarbe", "keine", ""),
         ("lid", "04_deckel.stl", 1, "Deckel (Bajonett)", "Gehäusefarbe", "keine", "Oberseite nach oben"),
@@ -41,7 +41,7 @@ def teile(fuss, schirm):
 
 SCHRAUBEN = """| Schraube | Anzahl | Wofür | Werkzeug |
 |---|---|---|---|
-| BT3 × 12, Linsenkopf, selbstschneidend | 8 | Breitbänder und Passivmembran von innen in die Schallwände, vor dem Sockel durch die offene Unterseite | kurzer Kreuz PH1 oder Bit-Ratsche |
+| BT3 × 10, Linsenkopf, selbstschneidend | 8 | Breitbänder und Passivmembran von innen in die Schallwände, vor dem Sockel durch die offene Unterseite | kurzer Kreuz PH1 oder Bit-Ratsche |
 | BT3 × 10, Linsenkopf, selbstschneidend | 4 | Körper auf den Sockel (von unten aus dem Sockel) | Kreuz PH1 |
 | BT3 × 10, Linsenkopf, selbstschneidend | 3 | Bodenplatte an den Sockel (unter den Gummifüßen) | Kreuz PH1 |
 | BT2.6 × 6, Linsenkopf, selbstschneidend | 2 | LM2596 auf die Bodenplatte | Kreuz PH0 |
@@ -74,7 +74,7 @@ Schirm: **{name}**, {beschr}. Stiel: **{stiel} mm**.
 ### Einstellungen (Bambu Lab P1S, 0,4-mm-Düse)
 
 - **Gehäuseteile** (Körper, Sockel, Platte, Deckel, Knopf): PLA oder PETG, 0,2 mm Schicht, 3 Wände, 15 % Gyroid. Alle Teile passen einzeln auf die 256 × 256-Platte, der Körper ist das größte Teil.
-- **Stützen**: global **aus**. Nur beim Körper: Stütztyp *Tree (manuell)* und mit dem Pinsel nur die runde Decke der Knopfmulde anmalen. Alles andere ist auf höchstens 45° oder als kurze Brücke konstruiert, auch das Lochfeld (Sechsecke mit flachem Dach, je 2,4 mm Brücke). Innen über den Lautsprecherflanschen gibt es zwei kurze Aussparungen (7 mm tief), die mit leichtem Durchhang ohne Stützen drucken; wer mag, malt dort auch Tree Supports an.
+- **Stützen**: global **aus**. Nur beim Körper: Stütztyp *Tree (manuell)* und mit dem Pinsel die runde Decke der Knopfmulde und den oberen Bogen der beiden runden Lautsprecher-Ausschnitte (Ø 100 mm) anmalen. Die Stützen im Ausschnitt nach dem Druck von Hand herausziehen, die Kante dann leicht entgraten, damit der Moosgummi-Ring dicht aufliegt. Alles andere ist auf höchstens 45° oder als kurze Brücke konstruiert, auch das Lochfeld (Sechsecke mit flachem Dach, je 2,4 mm Brücke). Innen über den Lautsprecherflanschen gibt es zwei kurze Aussparungen (7 mm tief), die mit leichtem Durchhang ohne Stützen drucken; wer mag, malt dort auch Tree Supports an.
 - **Schirm**: helles PLA, 0,2 mm Schicht, 3 Wände (= 1,2 mm), 0 % Füllung. Ohne Stützen, der Schirm ist oben und unten offen.
 - **Lichtkern und Kerndeckel**: weißes PLA, wie Gehäuse.
 

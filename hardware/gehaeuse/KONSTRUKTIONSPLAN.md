@@ -7,7 +7,7 @@ Dieser Plan gilt für beide Fuß-Versionen (Kugel und Zylinder) und alle fünf S
 | Regel | Umsetzung |
 |---|---|
 | Bauraum 256 × 256 × 256 mm | Größtes Teil ist der Zylinder-Körper mit Ø 190 × 144 mm. Alle Teile passen einzeln auf die Platte. |
-| Stützen nur gezielt | Wände höchstens 45° geneigt, Löcher in senkrechten Wänden als Tropfenform. **Tree Supports** (Baumstützen) nur an der Decke der Drehknopf-Mulde. Alle anderen Teile drucken ohne Stützen: Schraubdome haben 45°-Kinne, der Knopfbecher ist unten spitz, Lichtkern und Kerndeckel werden so gedreht gedruckt, dass nur kurze Brücken bleiben. Die Ausrichtung steckt schon in den STL der Pakete. |
+| Stützen nur gezielt | Wände höchstens 45° geneigt, Löcher in senkrechten Wänden als Tropfenform. **Tree Supports** (Baumstützen) nur an der Decke der Drehknopf-Mulde und am oberen Bogen der beiden runden Lautsprecher-Ausschnitte (Ø 100 mm, damit der Moosgummi-Ring dicht schließt). Alle anderen Teile drucken ohne Stützen: Schraubdome haben 45°-Kinne, der Knopfbecher ist unten spitz, Lichtkern und Kerndeckel werden so gedreht gedruckt, dass nur kurze Brücken bleiben. Die Ausrichtung steckt schon in den STL der Pakete. |
 | Weniger Teile | Das Kabelrohr entfällt (Kabel läuft durch die Kammer, an Sockel und Kern mit Silikon abgedichtet), der Schirmsitz entfällt (der Deckel trägt den Schirm), Deckel, Sockel, Bodenplatte, Knopf und Lichtteile sind für beide Füße **dieselben Teile**. |
 | Zugänglichkeit | Jede Schraube wird gerade angesetzt, bevor das nächste Teil sie verdeckt. Die Lautsprecher-Schrauben werden vor dem Sockel durch die offene Unterseite (Ø 112 mm) mit einem kurzen Kreuzschraubendreher oder einer Bit-Ratsche angezogen, alle anderen von unten. |
 
@@ -20,7 +20,7 @@ Teile pro Lampe (Kugel oder Zylinder mit Kugelschirm): Körper, Sockel, Bodenpla
 | Keine Schraube von außen sichtbar | Lautsprecher-Schrauben sitzen innen in der Kammer, die Körper-Schrauben im Sockel, die Bodenplatten-Schrauben unter den Gummifüßen. Der Deckel hat keine Schrauben. |
 | Keine Senkköpfe, selbstschneidende Kunststoffschrauben | Nur **BT3** (Ø 3 mm) und **BT2.6** mit Linsen- bzw. Flachkopf, z. B. aus dem Bambu Lab Maker's Supply. Vorbohrung im Modell: BT3 = 2,5 mm, BT2.6 = 2,1 mm, Schraubdom Ø 8 mm. |
 | Gewindeeinsätze auf ein Minimum | **Keine** Einschmelzmuttern mehr. Alle Schraubstellen sind Dome für selbstschneidende Schrauben. |
-| Lautsprecher ohne Einsätze | Die Außenwand bleibt rund, das Lochfeld ist direkt in die Wand gedruckt (Sechseck-Löcher mit flachem Dach, jedes Dach ist eine 2,4-mm-Brücke). Dahinter sitzt eine 7 mm starke **innere Schallwand**. Breitbänder und Passivmembran werden von innen mit Moosgummi daraufgelegt und mit 4 × BT3 × 12 je Chassis direkt in die Schallwand geschraubt (7 mm Gewindelänge im Kunststoff, keine Einsätze). Die Schrauben greifen Schrauben und Flansch. |
+| Lautsprecher ohne Einsätze | Die Außenwand bleibt rund, das Lochfeld ist direkt in die Wand gedruckt (Sechseck-Löcher mit flachem Dach, jedes Dach ist eine 2,4-mm-Brücke). Dahinter sitzt eine 7 mm starke **innere Schallwand**. Breitbänder und Passivmembran werden von innen mit Moosgummi daraufgelegt und mit 4 × BT3 × 10 je Chassis direkt in die Schallwand geschraubt (rund 6 mm Gewindelänge im Kunststoff, keine Einsätze). Die Vorbohrungen enden 6 mm tief, damit sie die Außenwand nicht durchstoßen (Lochkreis der Chassis: 110 mm auf den Diagonalen, gemessen). |
 | Freigang für Kopf und Werkzeug | Um jedes Schraubenloch sind mindestens 5 mm radial frei (Ø 11 mm um den Kopf). Bodenplatten-Schrauben sitzen in 1 mm tiefen Mulden, die die Gummifüße abdecken. |
 | Bajonett, Rast- und Steckverbindungen | **Deckel:** Bajonett mit 3 Nocken, eine Drittel-Drehung, kein Werkzeug. **Kabel:** ohne Rohr, Durchführungen mit Silikon abgedichtet. **Stiel, Lichtkern, Kerndeckel, Spinne:** gesteckt. |
 
@@ -28,7 +28,7 @@ Teile pro Lampe (Kugel oder Zylinder mit Kugelschirm): Körper, Sockel, Bodenpla
 
 | Schraube | Anzahl | Wo |
 |---|---|---|
-| BT3 × 12, Linsenkopf | 8 | Breitbänder und Passivmembran von innen in die Schallwände |
+| BT3 × 10, Linsenkopf | 8 | Breitbänder und Passivmembran von innen in die Schallwände |
 | BT3 × 10, Linsenkopf | 4 | Körper auf den Sockel (von innen aus dem Sockel nach oben) |
 | BT3 × 10, Linsenkopf | 3 | Bodenplatte an den Sockel (unter den Gummifüßen) |
 | BT2.6 × 6, Linsenkopf | 2 | LM2596 auf die Bodenplatte |
