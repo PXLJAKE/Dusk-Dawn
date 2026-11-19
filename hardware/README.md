@@ -6,7 +6,7 @@ Optionaler Zusatz zur Integration: eine Nachttischlampe mit Lautsprecher, die di
 
 ## Ich will eine bauen
 
-1. **Variante wählen** und den passenden Ordner aus [`pakete/`](pakete/README.md) nehmen: Kugel oder Zylinder, dazu Plissee, Glocke, Kolben, Twist oder Laterne. Darin liegen alle STL, die Druckeinstellungen für den Bambu Lab P1S und die Schraubenliste.
+1. **Variante wählen** und den passenden Ordner aus [`pakete/`](pakete/README.md) nehmen: Kugel oder Zylinder, dazu Plissee, Glocke, Kolben, Twist oder Laterne. Darin liegen alle STL, die Druckeinstellungen für den Bambu Lab P1S und die Schraubenliste. Jedes Paket gibt es auch als [ZIP zum Herunterladen](pakete/README.md#als-zip-herunterladen), mit Anleitung.
 2. **Teile kaufen:** [docs/HARDWARE.md](docs/HARDWARE.md)
 3. **Zusammenbauen** mit Bildern zu jedem Schritt: [Montageanleitung (PDF)](docs/pdf/Soundlampe_Montageanleitung.pdf). Elektronik, Löten und Stromlaufplan: [Bauanleitung (PDF)](docs/pdf/Soundlampe_Bauanleitung.pdf).
 4. **Einrichten** (Pi, Home Assistant): [docs/SETUP.md](docs/SETUP.md)

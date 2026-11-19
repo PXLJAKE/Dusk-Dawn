@@ -1,0 +1,37 @@
+name: Druckpakete
+
+# Baut aus hardware/pakete je Variante eine ZIP und legt sie im Release
+# "druckpakete" ab. Dort laden sie sich mit einem Klick herunter.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "hardware/pakete/**"
+      - "hardware/docs/**"
+      - "hardware/gehaeuse/werkzeug/zip_bauen.py"
+      - ".github/workflows/druckpakete.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    name: ZIPs bauen und veröffentlichen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZIPs bauen
+        run: python3 hardware/gehaeuse/werkzeug/zip_bauen.py dist/druckpakete
+      - name: Release aktualisieren
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Alle 10 Druckpakete als ZIP (STL, Anleitung, Montageanleitung, Hardware-Liste). Stand: $(date -u +%F)."
+          if gh release view druckpakete >/dev/null 2>&1; then
+            gh release edit druckpakete --notes "$notes"
+          else
+            gh release create druckpakete --title "Druckpakete (ZIP)" --notes "$notes" --target "$GITHUB_SHA"
+          fi
+          gh release upload druckpakete dist/druckpakete/*.zip --clobber
