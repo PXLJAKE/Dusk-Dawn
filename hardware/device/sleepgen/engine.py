@@ -49,7 +49,12 @@ class Engine:
     def __post_init__(self):
         self.layers: dict[str, Layer] = {}
         for i, src in enumerate(self.sources):
-            key = src.split("/")[-1].rsplit(".", 1)[0] if src.startswith("file:") else src.removeprefix("gen:")
+            if "=" in src.split(":", 1)[0]:  # "rain=file:/home/admin/sounds/rain": own recording replaces the synth
+                key, src = src.split("=", 1)
+            elif src.startswith("file:"):
+                key = src.rstrip("/").split("/")[-1].rsplit(".", 1)[0]
+            else:
+                key = src.removeprefix("gen:")
             seed = None if self.seed is None else self.seed + i
             self.layers[key] = Layer(src, make_generator(src, self.sr, seed))
         self.master = 0.6

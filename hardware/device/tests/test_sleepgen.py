@@ -244,3 +244,33 @@ def test_alarm_tones(tone):
     eng.start_alarm(tone, 1, 1.0)
     x = run(eng, 3)
     assert np.isfinite(x).all() and np.abs(x).max() <= 1.0 and np.abs(x).max() > 0.01
+
+
+def _tone(path, seconds, freq, amp=0.4, fmt="wav"):
+    out = path / f"t{freq}.{fmt}"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                    f"sine=frequency={freq}:duration={seconds}", "-af", f"volume={amp}", str(out)], check=True)
+    return out
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg missing")
+def test_file_loop_folder_is_seamless_and_normalised(tmp_path, monkeypatch):
+    _tone(tmp_path, 20, 300)
+    _tone(tmp_path, 20, 700, fmt="mp3")
+    monkeypatch.setattr("sleepgen.dsp.tempfile.gettempdir", lambda: str(tmp_path / "cache"))
+    gen = make_generator(f"file:{tmp_path}", SR, seed=2)
+    out = np.concatenate([gen.render(2400) for _ in range(20 * 60)])  # 60 s
+    assert out.shape == (60 * SR, 2)
+    assert np.max(np.abs(np.diff(out[:, 0]))) < 0.2  # no clicks at the crossfades
+    rms = [np.sqrt(np.mean(out[i:i + SR] ** 2)) for i in range(0, 59 * SR, SR)]
+    assert min(rms) > 0.6 * max(rms)
+    assert np.sqrt(np.mean(out**2)) == pytest.approx(TARGET_RMS, rel=0.25)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg missing")
+def test_engine_own_recording_replaces_synth(tmp_path, monkeypatch):
+    f = _tone(tmp_path, 10, 440)
+    monkeypatch.setattr("sleepgen.dsp.tempfile.gettempdir", lambda: str(tmp_path / "cache"))
+    eng = Engine(sr=SR, sources=[f"rain=file:{f}", "brown"], seed=1)
+    assert set(eng.layers) == {"rain", "brown"}
+    assert type(eng.layers["rain"].gen).__name__ == "FileLoop"

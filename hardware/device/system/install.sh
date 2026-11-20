@@ -9,7 +9,7 @@ CONFIG_TXT=/boot/firmware/config.txt
 
 echo "==> packages"
 apt-get update
-apt-get install -y python3-venv python3-numpy python3-scipy python3-yaml \
+apt-get install -y ffmpeg python3-venv python3-numpy python3-scipy python3-yaml \
   python3-gpiozero python3-lgpio python3-spidev libportaudio2 alsa-utils squeezelite
 
 echo "==> boot config (DigiAMP+, SPI for the LEDs)"
