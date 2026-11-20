@@ -60,6 +60,8 @@ bore_r    = 62;                       // collar bore below the 45 deg seat
 lid_t     = 4;
 lug_w     = 12;                       // deg
 lock_a    = 40;                       // turn to lock
+seat_gap  = 0.6;                      // lid cone and plug sit this much inside the body seat
+wall_gap  = 0.5;                      // the lid stays this far inside the inner sphere surface below its rim (before, its cone cut into the sphere wall and the lid jammed)
 
 /* [Knob] */
 knob_d    = 30;
@@ -260,8 +262,8 @@ module lid() {
   difference() {
     union() {
       // flush edge = the missing sphere band, then a 45 deg cone into the seat (prints top up without supports)
-      rotate_extrude($fn = 180) polygon([[0, T], [edge_top, T], [edge_bot, T - lid_t], [edge_bot - 0.4, T - lid_t],
-                                         [bore_r - 0.4, seat_z - 0.4], [bore_r - 0.4, T - 24], [0, T - 24]]);
+      rotate_extrude($fn = 180) polygon([[0, T], [edge_top, T], [edge_bot, T - lid_t], [edge_bot - seat_gap, T - lid_t],
+                                         [bore_r - seat_gap, seat_z - 0.4], [bore_r - seat_gap, T - 24], [0, T - 24]]);
       for (a = [0:120:240]) rotate(a + 1) rotate_extrude(angle = lug_w, $fn = 120) translate([bore_r - 1, T - 24]) square([3.2, 3]);  // lugs
     }
     translate([0, 0, T - socket_d]) cylinder(d = stem_od + 0.4, h = socket_d + 1);                  // stem socket
@@ -270,6 +272,8 @@ module lid() {
     // LED cable: through the plug, up into the stem; arc slot covers the locking turn
     rotate(180) rotate_extrude(angle = lock_a + 10, $fn = 120) translate([40, T - 25]) square([8, 8]);
     hull() { translate([-44, 0, T - 18]) sphere(d = 7, $fn = 24); translate([0, 0, T - 18]) sphere(d = 7, $fn = 24); }
+    // clearance for the sphere wall: below the rim the lid must stay inside the inner sphere surface, the rim rests on the top of the wall
+    rotate_extrude($fn = 180) polygon(concat([[130, T - lid_t]], [for (z = [T - lid_t : -1 : T - 26]) [sqrt((sph_r - wall - wall_gap) * (sph_r - wall - wall_gap) - (z - zc) * (z - zc)), z]], [[130, T - 26]]));
     // two finger holes to turn the lid
     for (x = [-34, 34]) translate([x, 0, T - 6]) cylinder(d = 14, h = 7, $fn = 48);
   }
