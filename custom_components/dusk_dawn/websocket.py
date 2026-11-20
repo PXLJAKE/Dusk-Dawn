@@ -14,6 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import CONF_LIGHTS, CONF_PRESENCE, CONF_SPEAKERS, DOMAIN, SIGNAL_STATE
 from .runtime import SpotError
+from .uploads import get_library, refresh_engines
 
 if TYPE_CHECKING:
     from .runtime import SpotRuntime
@@ -24,7 +25,7 @@ PRESENCE_CLASSES = ("occupancy", "motion", "presence")
 ACTIONS = (
     "play", "stop", "toggle", "set_level", "set_volume", "apply_preset", "save_preset", "delete_preset",
     "set_timer", "good_night", "light", "set_alarm", "delete_alarm", "ring", "stop_alarm", "preview_tone",
-    "set_auto",
+    "set_auto", "set_source",
 )
 
 
@@ -35,6 +36,8 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_command)
     websocket_api.async_register_command(hass, ws_config)
     websocket_api.async_register_command(hass, ws_entities)
+    websocket_api.async_register_command(hass, ws_sounds)
+    websocket_api.async_register_command(hass, ws_sound_delete)
 
 
 def _spots(hass: HomeAssistant) -> list[SpotRuntime]:
@@ -135,6 +138,8 @@ async def _dispatch(rt: SpotRuntime, action: str, msg: dict[str, Any]) -> None:
         await rt.async_stop_alarm()
     elif action == "preview_tone":
         await rt.async_preview_tone(msg["tone"])
+    elif action == "set_source":
+        await rt.async_set_source(msg["sound"], msg["mode"])
     elif action == "set_auto":
         await rt.async_set_auto(dict(msg["auto"]))
 
@@ -213,3 +218,24 @@ def ws_entities(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
         })
     out.sort(key=lambda e: (e["domain"], e["name"].casefold()))
     connection.send_result(msg["id"], {"entities": out})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "dusk_dawn/sounds"})
+@callback
+def ws_sounds(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """The library of own recordings: ``{sound: [{id, name, duration, added}]}``."""
+    connection.send_result(msg["id"], {"files": get_library(hass).listing()})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "dusk_dawn/sound_delete", vol.Required("file_id"): str})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_sound_delete(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
+                          msg: dict[str, Any]) -> None:
+    library = get_library(hass)
+    entry = await hass.async_add_executor_job(library.delete, msg["file_id"])
+    if entry is None:
+        connection.send_error(msg["id"], websocket_api.ERR_NOT_FOUND, "Unknown file")
+        return
+    refresh_engines(hass, entry.sound)
+    connection.send_result(msg["id"], {"files": library.listing()})

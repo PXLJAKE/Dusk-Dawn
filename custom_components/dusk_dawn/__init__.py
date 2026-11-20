@@ -31,7 +31,9 @@ from .const import (
 )
 from .runtime import SpotRuntime, spot_config
 from .services import async_setup_services
+from .samples import SampleEngine, SoundLibrary
 from .stream import StreamView
+from .uploads import DATA_LIBRARY, UploadView
 from .websocket import async_setup_websocket
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +79,10 @@ def ffmpeg_binary(hass: HomeAssistant) -> str:
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the things shared by all spots: HTTP view, services, websocket API."""
     hass.http.register_view(StreamView())
+    hass.http.register_view(UploadView())
+    library = SoundLibrary(Path(hass.config.path("dusk_dawn_sounds")), SAMPLE_RATE)
+    await hass.async_add_executor_job(library.load)
+    hass.data[DATA_LIBRARY] = library
     async_setup_services(hass)
     async_setup_websocket(hass)
     await hass.http.async_register_static_paths(
@@ -111,6 +117,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DuskDawnConfigEntry) -> 
     if not spot_config(entry)[CONF_DIY_DEVICE]:
         engine_cls, kind = await hass.async_add_executor_job(load_engine_class)
         engine = await hass.async_add_executor_job(engine_cls, SAMPLE_RATE)
+        engine = SampleEngine(engine, hass.data[DATA_LIBRARY])
         _LOGGER.debug("Spot %s uses the %s sound engine", entry.title, kind)
 
     runtime = SpotRuntime(hass, entry, engine, ffmpeg_binary(hass))

@@ -116,4 +116,5 @@ def engine_kind(engine: Any) -> str | None:
     """``"rust"`` or ``"python"`` for an engine instance, None without engine."""
     if engine is None:
         return None
+    engine = getattr(engine, "inner", engine)  # SampleEngine wraps the real engine
     return "rust" if type(engine).__module__.startswith(MODULE) else "python"

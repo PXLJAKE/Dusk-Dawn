@@ -49,7 +49,9 @@ from .lights import LightController
 from .native import engine_kind
 from .scheduler import Scheduler
 from .state import find_preset, merge_stored, normalize_alarm, normalize_auto
+from .samples import FILE_SOUNDS, SampleEngine
 from .stream import SpotStream
+from .uploads import get_library
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -148,6 +150,9 @@ class SpotRuntime:
             self.engine.set_master(0.0)
             for sound, level in self.state["levels"].items():
                 self.engine.set_level(sound, level)
+            if isinstance(self.engine, SampleEngine):
+                for sound, mode in self.state["sources"].items():
+                    self.engine.set_source(sound, mode)
         if self.diy:
             await self.diy.async_start()
         self.scheduler.async_start()
@@ -309,6 +314,27 @@ class SpotRuntime:
             self.engine.set_level(sound, level)
         if self.diy:
             await self.diy.set_level(sound, level)
+        self.async_changed()
+
+    async def async_set_source(self, sound: str, mode: str) -> None:
+        """Choose synthesised sound or own recordings for one nature sound."""
+        if sound not in FILE_SOUNDS:
+            raise SpotError(f"{sound!r} cannot use own files")
+        if mode not in ("synth", "file"):
+            raise SpotError(f"Unknown source {mode!r}")
+        if mode == "file" and not get_library(self.hass).files(sound):
+            raise SpotError("Upload a recording for this sound first")
+        self.state["sources"][sound] = mode
+        if isinstance(self.engine, SampleEngine):
+            self.engine.set_source(sound, mode)
+        self.async_changed()
+
+    @callback
+    def async_library_changed(self) -> None:
+        """A recording was added or deleted: drop to synth when none is left."""
+        for sound, mode in self.state["sources"].items():
+            if mode == "file" and not get_library(self.hass).files(sound):
+                self.state["sources"][sound] = "synth"
         self.async_changed()
 
     async def async_set_volume(self, volume: float) -> None:
