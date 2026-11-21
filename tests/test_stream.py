@@ -86,7 +86,7 @@ async def test_stream_with_rust_core(
     """Same pipeline with the optional Rust engine, if it is installed."""
     pytest.importorskip("dusk_dawn_core")
     rt = setup_spot.runtime_data
-    assert type(rt.engine).__module__.startswith("dusk_dawn_core")
+    assert type(rt.engine.inner).__module__.startswith("dusk_dawn_core")
     await rt.async_play(preset="regen")
     client = await hass_client_no_auth()
     resp = await client.get(rt.stream.path)
