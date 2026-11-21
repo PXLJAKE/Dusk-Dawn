@@ -540,56 +540,121 @@ impl Raw for Waves {
 }
 
 // ------------------------------------------------------------------ fire
-/// Fireplace (see `Fire` in the Python engine): a low roar, a soft hiss,
-/// crackles that come in clusters and pauses, and now and then a pop.
+const FIRE_HOP: usize = 512;
+
+/// One fire voice after Andy Farnell, *Designing Sound*, Practical 11
+/// (see `Fire` in device/sleepgen/dsp.py).
+struct FireVoice {
+    lop: Biquad,
+    hip1k: Biquad,
+    res30: Biquad,
+    hip25a: Biquad,
+    hip25b: Biquad,
+    crackle: Biquad,
+    post: Biquad,
+    /// running crackle envelopes: (position, length)
+    envs: [(usize, usize); 4],
+    n_envs: usize,
+    sq: f64,
+    prev_sq: Option<f64>,
+    count: usize,
+}
+
+impl FireVoice {
+    fn new(sr: f64, post: Biquad) -> Self {
+        FireVoice {
+            lop: Biquad::pd_lop(1.0, sr),
+            hip1k: Biquad::pd_hip(1000.0, sr),
+            res30: Biquad::pd_bp(30.0, 5.0, sr),
+            hip25a: Biquad::pd_hip(25.0, sr),
+            hip25b: Biquad::pd_hip(25.0, sr),
+            crackle: Biquad::pd_bp(1500.0, 1.0, sr),
+            post,
+            envs: [(0, 0); 4],
+            n_envs: 0,
+            sq: 0.0,
+            prev_sq: None,
+            count: 0,
+        }
+    }
+
+    #[inline]
+    fn sample(&mut self, rng: &mut Rng, sr: f64) -> f64 {
+        let nz = rng.random() * 2.0 - 1.0;
+        let lo = self.lop.process(nz);
+        self.sq += lo * lo;
+        let m = (lo * 10.0) * (lo * 10.0);
+        let mut y = self.hip1k.process(nz) * (m * m * 600.0) * 0.3;
+        y += self
+            .hip25b
+            .process(self.hip25a.process(self.res30.process(nz) * 100.0).clamp(-0.9, 0.9))
+            * 0.36;
+        let band = self.crackle.process(nz);
+        if self.n_envs > 0 {
+            let mut env: f64 = 0.0;
+            let mut k = 0;
+            while k < self.n_envs {
+                let (pos, len) = self.envs[k];
+                let v = if len > 1 {
+                    1.0 - pos as f64 / (len - 1) as f64
+                } else {
+                    1.0
+                };
+                env = env.max(v * v);
+                if pos + 1 >= len {
+                    self.n_envs -= 1;
+                    self.envs[k] = self.envs[self.n_envs];
+                } else {
+                    self.envs[k].0 = pos + 1;
+                    k += 1;
+                }
+            }
+            y += band * env * 0.2;
+        }
+        self.count += 1;
+        if self.count == FIRE_HOP {
+            self.count = 0;
+            if let Some(prev) = self.prev_sq {
+                let rms = ((prev + self.sq) / (2 * FIRE_HOP) as f64).sqrt();
+                let db = 100.0 + 20.0 * rms.max(1e-10).log10();
+                if (50.0..51.0).contains(&db) {
+                    let r = rng.integers(0, 30) as f64;
+                    self.crackle.set_pd_bp(1500.0 + 500.0 * r, 1.0, sr);
+                    if self.n_envs < self.envs.len() {
+                        self.envs[self.n_envs] = (0, ((sr * r / 1000.0) as usize).max(1));
+                        self.n_envs += 1;
+                    }
+                }
+            }
+            self.prev_sq = Some(self.sq);
+            self.sq = 0.0;
+        }
+        self.post.process(y)
+    }
+}
+
+/// Fireplace after Andy Farnell's fire model ("Feuer G", `Fire` in
+/// device/sleepgen/dsp.py): four voices, each with crackles, a little hiss and
+/// the low flapping of the flames (a clipped 30 Hz resonator), through four
+/// different colour filters, summed x0.2. Mono: one fire.
 pub struct Fire {
     sr: f64,
-    pink: Pink,
-    pink_hiss: Pink,
-    lp: Biquad,
-    hp: Biquad,
-    hiss_bp: Biquad,
-    flame: SmoothRandom,
-    flick: SmoothRandom,
-    activity: SmoothRandom,
-    crackles: Grains,
-    pops: Grains,
-    fl: [f64; MAX_BLOCK],
+    rng: Rng,
+    voices: Vec<FireVoice>,
 }
 
 impl Fire {
-    const CRACKLE_PER_S: f64 = 30.0;
-    const POP_PER_S: f64 = 1.0;
-    const W_ROAR: f64 = 0.6;
-    const W_HISS: f64 = 0.3;
-    const CRACKLE_K: f64 = 0.12;
-    const POP_K: f64 = 0.15;
-
     pub fn new(mut rng: Rng, sr: f64) -> Calibrated<Fire> {
-        let crackles = (0..48)
-            .map(|_| {
-                let (tau, f0, q) = (
-                    rng.uniform(0.0007, 0.003),
-                    rng.uniform(1500.0, 7000.0),
-                    rng.uniform(1.0, 2.5),
-                );
-                fire_tick(&mut rng, sr, tau, f0, q)
-            })
-            .collect();
-        let pops = (0..16).map(|_| fire_pop(&mut rng, sr)).collect();
+        let posts = [
+            Biquad::pd_hip(1000.0, sr),
+            Biquad::pd_bp(1200.0, 0.6, sr),
+            Biquad::pd_bp(2600.0, 0.4, sr),
+            Biquad::pd_bp(600.0, 0.2, sr),
+        ];
         let f = Fire {
             sr,
-            pink: Pink::new(rng.fork()),
-            pink_hiss: Pink::new(rng.fork()),
-            lp: Biquad::new(Kind::Lp, 600.0, sr, 0.7),
-            hp: Biquad::new(Kind::Hp, 90.0, sr, 0.707),
-            hiss_bp: Biquad::new(Kind::Bp, 3200.0, sr, 0.5),
-            flame: SmoothRandom::new(rng.fork(), 0.45, 1.0, 3.5, sr),
-            flick: SmoothRandom::new(rng.fork(), 0.8, 1.2, 0.45, sr),
-            activity: SmoothRandom::new(rng.fork(), 0.3, 2.0, 9.0, sr),
-            crackles: Grains::new(rng.fork(), crackles),
-            pops: Grains::new(rng.fork(), pops),
-            fl: [0.0; MAX_BLOCK],
+            voices: posts.into_iter().map(|p| FireVoice::new(sr, p)).collect(),
+            rng: rng.fork(),
         };
         Calibrated::new(f, sr, CALIBRATE_S)
     }
@@ -597,21 +662,13 @@ impl Fire {
 
 impl Raw for Fire {
     fn raw(&mut self, out: &mut [f64]) {
-        let n = out.len();
-        let mut act = 0.0;
-        for k in 0..n {
-            self.fl[k] = self.flame.next_value() * self.flick.next_value();
-            act += self.activity.next_value();
+        let (sr, rng) = (self.sr, &mut self.rng);
+        for o in out.iter_mut() {
+            let mut y = 0.0;
+            for v in self.voices.iter_mut() {
+                y += v.sample(rng, sr);
+            }
+            *o = y * 0.2;
         }
-        act /= n as f64;
-        for (o, &fl) in out.iter_mut().zip(self.fl[..n].iter()) {
-            let roar = self.hp.process(self.lp.process(self.pink.sample())) * fl;
-            let hiss = self.hiss_bp.process(self.pink_hiss.sample()) * fl * fl * fl;
-            *o = roar * Self::W_ROAR + hiss * Self::W_HISS;
-        }
-        self.crackles
-            .render(out, Self::CRACKLE_PER_S * act / self.sr, (0.08, 0.7), 0.0, Self::CRACKLE_K);
-        self.pops
-            .render(out, Self::POP_PER_S * act / self.sr, (0.4, 1.0), 0.0, Self::POP_K);
     }
 }

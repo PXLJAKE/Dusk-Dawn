@@ -50,24 +50,23 @@ Drei Arten von Körnern kommen immer wieder vor:
 - Lange Donner werden in einem eigenen Thread vorbereitet, damit der Pi beim Berechnen nicht stockt.
 - Hinweis: Viel Energie liegt unter 80 Hz; auf einem kleinen Lautsprecher klingt der Donner deshalb leise und fern.
 
-### Kaminfeuer (neu, 2026-11-21)
-Die alte Version (Farnell, Practical 11) hatte ihre Energie fast nur unter 100 Hz, auf einem kleinen Lautsprecher war davon kaum etwas zu hören. Die neue Version hat vier Schichten, ihr Schwerpunkt liegt bei etwa 800 Hz:
-- **Grollen:** rosa Rauschen zwischen 90 und 600 Hz, Pegel wandert (Periode 3,5 s) und flackert (0,45 s).
-- **Zischen:** rosa Rauschen um 3 kHz, nur hörbar, wenn die Flammen hoch sind.
-- **Knistern:** viele winzige helle Rauschstöße (0,7–3 ms, 1,5–7 kHz). Die Rate wandert (Periode 9 s) zwischen etwa 2 und 14 pro Sekunde, so entstehen Gruppen und Pausen.
-- **Knacken:** seltene Stöße mit tiefem Körper (250–700 Hz) und Klick, etwa einer pro Sekunde in lebhaften Phasen.
+### Kaminfeuer
+*Wieder die ursprüngliche Version.*
+- **Grundrauschen:** braunes Rauschen unter 500 Hz, das Brennen der Flammen.
+- **Knistern:** einzelne Knackser über 1,8 kHz, mal 2, mal 40 pro Sekunde. Die Aktivität wandert alle 1–2 s, so wechseln ruhige und lebhafte Phasen.
+- Einige Knackser sind deutlich lauter (Pareto-Verteilung): ein Scheit, der springt.
 
-### Vögel (neu, 2026-11-21)
-Fünf feste „Individuen“ statt immer neuer Zufallsvögel. Jeder behält Tonhöhe und Rhythmus, singt seine Strophe ein- bis dreimal und wird nach etwa sechs Strophen durch einen neuen ersetzt, so verändert sich der Chor langsam. Die Dichte wandert zwischen „ein Vogel alle 20 s“ und „mehrere gleichzeitig“.
+### Vögel
+Ein Morgenchor aus mehreren „Arten“, alle 1–4,5 s eine neue Strophe:
 
-| Art | Aufbau |
-|---|---|
-| Zwitschern (Fink, Spatz) | 3–8 kurze, gleitende Töne bei 2,8–5,5 kHz |
-| Triller (Zaunkönig, Rotkehlchen) | 12–24 Töne pro Sekunde |
-| Pfiffe (Amsel) | 3–6 Melodietöne bei 1,5–3,6 kHz mit Vibrato und Obertönen |
-| Kuckuck (7 % der Ereignisse, weit weg) | fallende kleine Terz („ku-kuu“, kurz hoch, lang tief), 3–7 Rufe, weicher Einsatz, Obertöne, leiser werdend |
+| Art | Aufbau | Anteil |
+|---|---|---|
+| Zwitschern (Fink, Spatz) | 3–9 kurze, gleitende Töne bei 2,8–5,5 kHz | 42 % |
+| Triller (Zaunkönig, Rotkehlchen) | 12–24 Töne pro Sekunde, 0,6–1,6 s lang | 25 % |
+| Pfiffe (Amsel) | 3–6 langsame Melodietöne bei 1,7–3,4 kHz mit Vibrato | 28 % |
+| Kuckuck | zwei tiefe Töne, weit weg | 5 % |
 
-40 % der Vögel sind weit weg: leiser und dumpfer durch einen Tiefpass.
+40 % der Vögel sind weit weg: Sie sind leiser und dumpfer, weil ein Tiefpass die Höhen nimmt, wie in echt.
 
 ### Blätterrauschen (neu)
 - Langsame Windböen (Periode etwa 2,6 s) steuern, wie viel los ist: in Ruhe 60, in einer Böe bis 2 600 Blatt-Körner pro Sekunde.

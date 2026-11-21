@@ -392,35 +392,6 @@ pub fn tick(rng: &mut Rng, sr: f64, tau: f64, f0: f64, q: f64) -> Vec<f64> {
     normalize(k)
 }
 
-/// Fire crackle: a tiny bright noise tick, `tau` seconds decay, band-passed at `f0`.
-pub fn fire_tick(rng: &mut Rng, sr: f64, tau: f64, f0: f64, q: f64) -> Vec<f64> {
-    let m = ((0.02 * sr) as usize).max(8);
-    let mut bq = Biquad::new(Kind::Bp, f0, sr, q);
-    let k = (0..m)
-        .map(|i| {
-            let t = i as f64 / sr;
-            bq.process(rng.normal() * (-t / tau).exp())
-        })
-        .collect();
-    normalize(k)
-}
-
-/// Fire pop: a short low thump (250-700 Hz) with a bright click on top.
-pub fn fire_pop(rng: &mut Rng, sr: f64) -> Vec<f64> {
-    let m = (0.08 * sr) as usize;
-    let dur = rng.uniform(0.015, 0.04);
-    let mut body_f = Biquad::new(Kind::Bp, rng.uniform(250.0, 700.0), sr, 1.5);
-    let body: Vec<f64> = (0..m)
-        .map(|i| body_f.process(rng.normal()) * (-(i as f64 / sr) / dur).exp())
-        .collect();
-    let mut click_f = Biquad::new(Kind::Bp, rng.uniform(2500.0, 6000.0), sr, 1.2);
-    let click: Vec<f64> = (0..m)
-        .map(|i| click_f.process(rng.normal()) * (-(i as f64 / sr) / 0.002).exp())
-        .collect();
-    let (body, click) = (normalize(body), normalize(click));
-    normalize(body.iter().zip(click.iter()).map(|(b, c)| b + 0.5 * c).collect())
-}
-
 /// Rain 1c raindrop tick: 4-12 ms noise burst band-passed at 1.8-6 kHz.
 pub fn drop_tick(rng: &mut Rng, sr: f64) -> Vec<f64> {
     let m = ((sr * rng.uniform(0.004, 0.012)) as usize).max(8);

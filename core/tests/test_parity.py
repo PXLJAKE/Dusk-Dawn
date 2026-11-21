@@ -66,10 +66,8 @@ def core():
 ORIGINAL_COMMIT = "73c0381"  # the original sound design (before the grain rework)
 GRAIN_COMMIT = "3603211"  # birds, leaves and stream as ported to Rust
 ORIGINAL_SOUNDS = ["white", "pink", "brown", "fan", "wind", "waves", "thunder"]
-CURRENT_SOUNDS = ["rain"]
-GRAIN_SOUNDS = ["leaves", "stream"]
-# redesigned after those references (see custom_components/dusk_dawn/engine/dsp.py): compared with the Python engine
-REDESIGNED_SOUNDS = ["fire", "birds"]
+CURRENT_SOUNDS = ["rain", "fire"]
+GRAIN_SOUNDS = ["birds", "leaves", "stream"]
 
 
 def _git(*args: str) -> bytes:
@@ -383,42 +381,6 @@ def _compare(core, orig, name):
     )
     assert abs(diff) <= 3.0
     assert abs(cc / co - 1) <= 0.15
-
-
-@pytest.mark.parametrize("name", REDESIGNED_SOUNDS)
-def test_matches_python_engine(core, name):
-    """Fire and birds (new designs): Rust and Python engine agree in loudness and brightness."""
-    from custom_components.dusk_dawn.engine import Engine  # noqa: PLC0415
-
-    seconds = 120.0 if name == "birds" else 30.0
-    ms_p, ms_c, spec_p, spec_c = [], [], 0.0, 0.0
-    for seed in range(3):
-        eng = Engine(SR, seed=seed)
-        eng.set_master(1.0)
-        eng.set_level(name, 1.0)
-        eng.wait_ready(60)
-        eng.render(SR)
-        xp = pcm(b"".join(eng.render(4096) for _ in range(int(seconds * SR / 4096))))
-        xc = _rust_take(core, name, seed, seconds)
-        ms_p.append(np.mean(xp**2))
-        ms_c.append(np.mean(xc**2))
-        spec_p = spec_p + _power_spectrum(xp)
-        spec_c = spec_c + _power_spectrum(xc)
-    diff = db(np.sqrt(np.mean(ms_c))) - db(np.sqrt(np.mean(ms_p)))
-    cp, cc = _centroid(spec_p), _centroid(spec_c)
-    print(f"{name}: python {db(np.sqrt(np.mean(ms_p))):+.2f} dB, rust {db(np.sqrt(np.mean(ms_c))):+.2f} dB, "
-          f"diff {diff:+.2f} dB; centroid python {cp:.0f} Hz, rust {cc:.0f} Hz")
-    assert abs(diff) <= 4.0
-    assert abs(cc / cp - 1) <= 0.25
-
-
-def test_fire_is_audible_on_a_small_speaker(core):
-    """The old fire was almost all below 100 Hz; the new one keeps its energy where a 4 inch driver plays."""
-    x = _rust_take(core, "fire", 1, 30.0)
-    spec = _power_spectrum(x)
-    f = np.fft.rfftfreq(2 * (len(spec) - 1), 1 / SR)
-    assert spec[(f >= 150) & (f < 6000)].sum() > 0.7 * spec.sum()
-    assert 0.5 < _centroid(spec) / 1000 < 2.0
 
 
 @pytest.mark.parametrize("name", GRAIN_SOUNDS)
