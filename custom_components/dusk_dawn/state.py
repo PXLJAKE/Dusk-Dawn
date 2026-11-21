@@ -9,6 +9,7 @@ from datetime import datetime, time, timedelta
 from typing import Any
 
 from .const import ALARM_TONES, BUILTIN_PRESETS, SOUNDS
+from .samples import FILE_SOUNDS
 
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
@@ -39,6 +40,8 @@ def default_state() -> dict[str, Any]:
         "playing": False,
         "preset": None,
         "levels": dict.fromkeys(SOUNDS, 0.0),
+        # "synth" or "file" (own recordings) for the sounds in samples.FILE_SOUNDS
+        "sources": dict.fromkeys(FILE_SOUNDS, "synth"),
         "volume": 0.5,
         "timer": {"minutes": None, "ends_at": None},
         # "effect" is an addition to the contract: the running light effect, if any
@@ -62,6 +65,8 @@ def merge_stored(stored: dict[str, Any] | None) -> dict[str, Any]:
         if key in stored:
             state[key] = stored[key]
     state["levels"].update({k: float(v) for k, v in stored.get("levels", {}).items() if k in SOUNDS})
+    state["sources"].update({k: v for k, v in stored.get("sources", {}).items()
+                             if k in FILE_SOUNDS and v in ("synth", "file")})
     state["timer"]["minutes"] = stored.get("timer", {}).get("minutes")
     light = stored.get("light", {})
     state["light"].update({k: light[k] for k in ("brightness", "kelvin") if k in light})

@@ -15,6 +15,7 @@
 Bedienung, Entitäten, Aktionen und Grenzen: [docs/DUSK_AND_DAWN.md](docs/DUSK_AND_DAWN.md).
 
 - **Online-Demo:** https://claude.ai/artifact/DLmL7VoFJZXLVwC1FM6WSx
+- **Eigene Aufnahmen hochladen** (Regen, Meer, Wind, Vögel, Blätter, Feuer, endlos ohne hörbare Schleife): [docs/EIGENE_AUFNAHMEN.md](docs/EIGENE_AUFNAHMEN.md)
 - **Sound-Design (wie die Klänge entstehen, Wecker):** [docs/SOUND_DESIGN.md](docs/SOUND_DESIGN.md)
 - **Schnittstelle Integration ↔ Seitenleiste ↔ Gerät:** [docs/CONTRACT.md](docs/CONTRACT.md)
 

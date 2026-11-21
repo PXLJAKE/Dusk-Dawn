@@ -18,7 +18,7 @@ filters:
   # Schutz: unterhalb der Abstimmung der Passivmembran bringt der Konus nur Hub, kaum Pegel (ND105-4: 4 mm Hub)
   hochpass:
     type: BiquadCombo
-    parameters: {type: ButterworthHighpass, freq: 60, order: 4}
+    parameters: {type: ButterworthHighpass, freq: 55, order: 4}
   # Alu-Konen haben um 6 kHz einen Resonanzpeak, der bei Rauschen und Regen zischt
   zisch_weg:
     type: Biquad
@@ -28,10 +28,10 @@ filters:
     parameters: {type: Highshelf, freq: 3500, gain: 0.5, slope: 6}
   waerme:
     type: Biquad
-    parameters: {type: Lowshelf, freq: 120, gain: 2.5, slope: 6}
+    parameters: {type: Lowshelf, freq: 130, gain: 4.5, slope: 6}
   vorpegel:
     type: Gain
-    parameters: {gain: -4.0}
+    parameters: {gain: -6.5}
 
 pipeline:
   - type: Filter

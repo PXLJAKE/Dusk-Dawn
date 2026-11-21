@@ -3,15 +3,19 @@
 Every generator produces stereo float32 blocks shaped (n, 2) with a loudness of
 roughly -18 dBFS RMS at gain 1.0, so layers can be mixed without surprises.
 Everything is synthesised live: no sample files, no licensing questions, and no
-audible loop points. File based loops are supported via :class:`FileLoop`.
+audible loop points. Own recordings (any format ffmpeg reads) loop without a seam via :class:`FileLoop`.
 """
 
 from __future__ import annotations
 
+import hashlib
 import math
+import os
+import subprocess
+import tempfile
 import threading
-import wave
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 from scipy import signal
@@ -789,46 +793,113 @@ class AlarmTone(Generator):
         return out
 
 
-@dataclass
+AUDIO_EXT = (".wav", ".mp3", ".flac", ".ogg", ".oga", ".opus", ".m4a", ".aac", ".wma", ".aif", ".aiff", ".mp4", ".webm")
+
+
+def _decode_mono(path: Path, sr: int, cache_dir: Path) -> np.ndarray:
+    """Any audio file as mono int16 at ``sr`` (memory mapped from a cache file; ffmpeg does the work)."""
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    st = path.stat()
+    key = hashlib.sha1(f"{path.resolve()}|{st.st_size}|{st.st_mtime_ns}|{sr}".encode()).hexdigest()[:16]
+    raw = cache_dir / f"{key}.raw"
+    if not raw.exists():
+        tmp = raw.with_suffix(".part")
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(path), "-vn", "-ac", "1",
+               "-ar", str(sr), "-f", "s16le", str(tmp)]
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=1800)
+        except (OSError, subprocess.SubprocessError) as err:
+            tmp.unlink(missing_ok=True)
+            raise ValueError(f"cannot read {path.name}: {err} (is ffmpeg installed?)") from err
+        os.replace(tmp, raw)
+    return np.memmap(raw, dtype="<i2", mode="r")
+
+
 class FileLoop(Generator):
-    """Seamless loop of a WAV file with an equal-power crossfade at the seam."""
+    """Endless playback of own recordings: random segments chained with long equal-power crossfades.
 
-    path: str = ""
-    sr: int = 48000
-    xfade_s: float = 2.0
-    data: np.ndarray = field(init=False, repr=False)
-    pos: int = field(init=False, default=0)
+    ``path`` is a file or a folder (all audio files in it take turns). Each file is normalised to
+    :data:`TARGET_RMS`, so recordings of different loudness sit at the same level as synthesised sounds.
+    A 5 minute recording is enough; the same stretch only comes back after hours.
+    """
 
-    def __post_init__(self):
-        with wave.open(self.path, "rb") as w:
-            ch, width, rate = w.getnchannels(), w.getsampwidth(), w.getframerate()
-            raw = w.readframes(w.getnframes())
-        if width != 2:
-            raise ValueError("Only 16-bit PCM WAV files are supported")
-        x = np.frombuffer(raw, dtype="<i2").astype(np.float64) / 32768.0
-        x = x.reshape(-1, ch)
-        if ch == 1:
-            x = np.repeat(x, 2, axis=1)
-        if rate != self.sr:
-            x = signal.resample_poly(x, self.sr, rate, axis=0)
-        xf = min(int(self.xfade_s * self.sr), len(x) // 4)
-        if xf > 0:
-            t = np.linspace(0, np.pi / 2, xf)[:, None]
-            head, tail = x[:xf], x[-xf:]
-            x = x[:-xf].copy()
-            x[:xf] = head * np.sin(t) + tail * np.cos(t)
-        rms = np.sqrt(np.mean(x**2)) or 1.0
-        self.data = x * (TARGET_RMS / rms)
+    name = "file"
+    XFADE_S = 6.0
+    SEG_S = (45.0, 150.0)
+
+    def __init__(self, sr: int, seed: int | None = None, path: str = "", cache_dir: str = "/var/lib/sleepgen/cache"):
+        super().__init__(sr, seed)
+        p = Path(path).expanduser()
+        paths = sorted(f for f in p.iterdir() if f.suffix.lower() in AUDIO_EXT) if p.is_dir() else [p]
+        if not paths:
+            raise ValueError(f"no audio files in {p}")
+        try:
+            cache = Path(cache_dir)
+            cache.mkdir(parents=True, exist_ok=True)
+        except OSError:  # not running as the service user: fall back to a temp folder
+            cache = Path(tempfile.gettempdir()) / "sleepgen-cache"
+        self.clips: list[tuple[np.ndarray, float]] = []
+        for f in paths:
+            data = _decode_mono(f, sr, cache)
+            if len(data) < sr * 2:
+                raise ValueError(f"{f.name} is shorter than 2 seconds")
+            acc = 0.0
+            for i in range(0, len(data), sr * 30):
+                part = np.asarray(data[i : i + sr * 30], dtype=np.float64) / 32768.0
+                acc += float(np.dot(part, part))
+            rms = math.sqrt(acc / len(data)) or 1.0
+            self.clips.append((data, min(TARGET_RMS / rms, 12.0)))
+        self._order: list[int] = []
+        self._last = -1
+        self._voices: list[list] = []  # [clip, start, length, xfade, age, spawned_next, fade_in]
+        self._t = 0
+        self._phase = float(self.rng.uniform(0, 2 * math.pi))
+
+    def _pick(self) -> int:
+        if not self._order:
+            order = list(range(len(self.clips)))
+            self.rng.shuffle(order)
+            if len(order) > 1 and order[0] == self._last:
+                order.append(order.pop(0))
+            self._order = order
+        self._last = self._order.pop(0)
+        return self._last
+
+    def _spawn(self, fade_in: bool) -> list:
+        idx = self._pick()
+        data = self.clips[idx][0]
+        total = len(data)
+        xf = int(min(self.XFADE_S * self.sr, total / 4))
+        seg = int(self.rng.uniform(*self.SEG_S) * self.sr)
+        seg = max(min(seg, total), min(total, 2 * xf + 1))
+        start = int(self.rng.integers(0, max(1, total - seg + 1)))
+        return [idx, start, min(seg, total - start), xf, 0, False, fade_in]
 
     def render(self, n):
-        out = np.empty((n, 2))
-        i = 0
-        while i < n:
-            take = min(n - i, len(self.data) - self.pos)
-            out[i : i + take] = self.data[self.pos : self.pos + take]
-            i += take
-            self.pos = (self.pos + take) % len(self.data)
-        return out
+        if not self._voices:
+            self._voices.append(self._spawn(False))
+        mono = np.zeros(n)
+        for v in list(self._voices):
+            idx, start, length, xf, age, spawned, fade_in = v
+            take = min(n, length - age)
+            if take > 0:
+                data, gain = self.clips[idx]
+                seg = np.asarray(data[start + age : start + age + take], dtype=np.float64) / 32768.0
+                take = len(seg)
+                i = age + np.arange(take)
+                fin = np.minimum(i / xf, 1.0) if fade_in else np.ones(take)
+                fout = np.clip((length - i) / xf, 0.0, 1.0)
+                mono[:take] += seg * np.sin(fin * math.pi / 2) * np.sin(fout * math.pi / 2) * gain
+            v[4] = age + n
+            if not spawned and length - v[4] <= xf:
+                v[5] = True
+                self._voices.append(self._spawn(True))
+            if v[4] >= length:
+                self._voices.remove(v)
+        t = self._t + np.arange(n)
+        self._t += n
+        drift = 10 ** (1.2 * np.sin(2 * math.pi * t / (55.0 * self.sr) + self._phase) / 20)
+        return np.repeat((mono * drift)[:, None], 2, axis=1)
 
 
 GENERATORS = {
@@ -853,9 +924,9 @@ LABELS_DE = {
 
 
 def make_generator(source: str, sr: int, seed: int | None = None) -> Generator:
-    """Create a generator from ``gen:<name>``/``<name>`` or ``file:<path.wav>``."""
+    """Create a generator from ``gen:<name>``/``<name>`` or ``file:<path>`` (a file or a folder)."""
     if source.startswith("file:"):
-        return FileLoop(path=source[5:], sr=sr)
+        return FileLoop(sr, seed, path=source[5:])
     name = source[4:] if source.startswith("gen:") else source
     if name not in GENERATORS:
         raise KeyError(f"Unknown sound '{name}'. Known: {', '.join(GENERATORS)}")

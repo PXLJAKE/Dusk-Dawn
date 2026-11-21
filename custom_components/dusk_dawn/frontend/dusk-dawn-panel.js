@@ -15,6 +15,7 @@ const VERSION = "0.3.0";
 /* ------------------------------------------------------------------ data */
 
 const SOUNDS = ["rain", "waves", "stream", "wind", "thunder", "birds", "leaves", "fire", "fan", "white", "pink", "brown"];
+const FILE_SOUNDS = ["rain", "waves", "wind", "birds", "leaves", "fire"];
 const GROUPS = [
   { key: "water", sounds: ["rain", "waves", "stream"] },
   { key: "weather", sounds: ["wind", "thunder"] },
@@ -118,6 +119,10 @@ const STR = {
     next_alarm: "Nächster Wecker", no_alarm: "Kein Wecker aktiv", in_time: "in {d}",
     presets: "Klangwelten", presets_hint: "Antippen zum Übernehmen, darunter fein mischen.",
     mixer: "Mischpult", mixer_hint: "Jede Ebene hat ihre eigene Lautstärke.",
+    own_title: "Eigene Aufnahmen", own_hint: "Lade eigene Aufnahmen hoch (Handy, Diktiergerät, Download – gern 5 Minuten oder länger). Sie laufen endlos mit weichen Übergängen und zufälligen Stellen, ohne hörbare Wiederholung. Mehrere Dateien pro Klang wechseln sich ab.",
+    src_synth: "Synthetisch", src_file: "Eigene Datei", upload_btn: "Aufnahme hochladen", uploading: "Wird verarbeitet …", upload_done: "Aufnahme „{n}“ hinzugefügt",
+    upload_err: "Hochladen fehlgeschlagen", no_files: "Noch keine Aufnahme.", delete_file: "Aufnahme „{n}“ löschen", own_admin: "Hochladen und Löschen darf nur ein Administrator.",
+    src_need_file: "Lade zuerst eine Aufnahme hoch.", file_tag: "Datei", min_s: "{m}:{s} min",
     group_water: "Wasser", group_weather: "Wetter", group_nature: "Natur", group_noise: "Rauschen",
     save_preset: "Als Klangwelt speichern", preset_name: "Name der Klangwelt", preset_icon: "Symbol",
     save: "Speichern", cancel: "Abbrechen", delete: "Löschen", confirm_delete: "Wirklich löschen?",
@@ -166,6 +171,10 @@ const STR = {
     next_alarm: "Next alarm", no_alarm: "No alarm set", in_time: "in {d}",
     presets: "Soundscapes", presets_hint: "Tap to apply, then fine-tune below.",
     mixer: "Mixer", mixer_hint: "Every layer has its own volume.",
+    own_title: "Own recordings", own_hint: "Upload your own recordings (phone, voice recorder, download – five minutes or longer is ideal). They play endlessly with soft crossfades and random start points, without an audible loop. Several files per sound take turns.",
+    src_synth: "Synthesised", src_file: "My file", upload_btn: "Upload recording", uploading: "Processing …", upload_done: "Added “{n}”",
+    upload_err: "Upload failed", no_files: "No recording yet.", delete_file: "Delete recording “{n}”", own_admin: "Only an administrator can upload or delete.",
+    src_need_file: "Upload a recording first.", file_tag: "File", min_s: "{m}:{s} min",
     group_water: "Water", group_weather: "Weather", group_nature: "Nature", group_noise: "Noise",
     save_preset: "Save as soundscape", preset_name: "Soundscape name", preset_icon: "Icon",
     save: "Save", cancel: "Cancel", delete: "Delete", confirm_delete: "Really delete?",
@@ -572,6 +581,17 @@ input[type=range].kelvin::-moz-range-progress { background: transparent; }
 .narrow-layout .groups { grid-template-columns: minmax(0, 1fr); }
 .group { display: grid; gap: 4px; align-content: start; }
 .group h3 { margin-bottom: 4px; }
+.srctag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; background: var(--brass); color: var(--brass-fg); margin-left: 6px; vertical-align: middle; }
+.ownrows { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.ownrow { border: 1px solid var(--line, rgba(128,128,128,.25)); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.ownhead { display: flex; align-items: center; gap: 10px; }
+.flist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.flist li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.flist .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flist .fdur { color: var(--muted); font-variant-numeric: tabular-nums; }
+.flist .del { position: static; }
+label.btn { cursor: pointer; align-self: flex-start; }
+label.btn.disabled { opacity: .6; pointer-events: none; }
 .layer { display: grid; grid-template-columns: 32px minmax(0, 1fr) 48px; align-items: center; gap: 4px 12px; padding: 4px 0; }
 .layer .lic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--faint); background: var(--sunken); }
 .layer .lic .ic { width: 20px; height: 20px; }
@@ -734,6 +754,7 @@ class DuskDawnPanel extends HTMLElement {
     this._dlg = null; // alarm dialog draft
     this._saveForm = null; // save-preset draft
     this._confirmDel = null;
+    this._lib = null; this._uploading = {}; this._confirmFile = null;
     this._entities = null;
     this._cfg = null; // settings draft
     this._filters = {};
@@ -804,6 +825,7 @@ class DuskDawnPanel extends HTMLElement {
     this._subscribing = true;
     const gen = ++this._gen;
     if (this._spots === null || this._loadError) this._loadSpots();
+    if (this._lib === null) this._loadLib();
     hass.connection
       .subscribeMessage((msg) => this._onPush(msg), { type: "dusk_dawn/subscribe" })
       .then((unsub) => {
@@ -816,6 +838,31 @@ class DuskDawnPanel extends HTMLElement {
         this._subscribing = false;
         console.warn("[dusk-dawn] subscribe failed", err);
       });
+  }
+
+  async _loadLib() {
+    if (!this._hass) return;
+    try {
+      const res = await this._hass.callWS({ type: "dusk_dawn/sounds" });
+      this._lib = res.files || {};
+    } catch (err) { console.warn("[dusk-dawn] load sounds failed", err); this._lib = this._lib || {}; }
+    this._schedule();
+  }
+
+  async _upload(sound, file) {
+    if (!file || this._uploading[sound]) return;
+    this._uploading[sound] = true; this._schedule();
+    try {
+      const url = `/api/dusk_dawn/upload/${sound}?name=${encodeURIComponent(file.name)}`;
+      const res = await this._hass.fetchWithAuth(url, { method: "POST", body: file });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || res.statusText);
+      this._lib = body.files || this._lib;
+      this._toast(this._t("upload_done", { n: body.file?.name || file.name }));
+    } catch (err) {
+      this._toast(`${this._t("upload_err")}: ${err && err.message ? err.message : err}`, true);
+    }
+    delete this._uploading[sound]; this._schedule();
   }
 
   async _loadSpots() {
@@ -1211,7 +1258,7 @@ class DuskDawnPanel extends HTMLElement {
           return `<div class="layer ${v > 0 ? "on" : ""}">
             <span class="lic">${icon(s)}</span>
             <div class="lbody">
-              <label for="lvl-${s}">${esc(this._sound(s))}</label>
+              <label for="lvl-${s}">${esc(this._sound(s))}${(st.sources || {})[s] === "file" ? ` <span class="srctag">${esc(this._t("file_tag"))}</span>` : ""}</label>
               <input type="range" id="lvl-${s}" min="0" max="100" step="1" value="${v}" style="--p:${v}%" data-input="level" data-sound="${s}">
             </div>
             <output for="lvl-${s}">${esc(this._pct(v))}</output>
@@ -1245,7 +1292,40 @@ class DuskDawnPanel extends HTMLElement {
         <div class="groups">${groups}</div>
         <div class="divider"></div>
         ${save}
-      </section>`;
+      </section>
+      ${this._tplOwn(spot)}`;
+  }
+
+  _fmtDur(sec) { const t = Math.round(sec); return this._t("min_s", { m: Math.floor(t / 60), s: pad2(t % 60) }); }
+
+  _tplOwn(spot) {
+    const st = spot.state || {};
+    const src = st.sources || {};
+    const admin = this._isAdmin();
+    const lib = this._lib || {};
+    const rows = FILE_SOUNDS.map((s) => {
+      const files = lib[s] || [];
+      const busy = !!this._uploading[s];
+      const list = files.length ? `<ul class="flist">${files.map((f) => {
+        const confirm = this._confirmFile === f.id;
+        return `<li><span class="fname">${esc(f.name)}</span><span class="fdur">${esc(this._fmtDur(f.duration))}</span>
+          ${admin ? `<button class="del ${confirm ? "confirm" : ""}" data-action="del_file" data-id="${esc(f.id)}" aria-label="${esc(this._t("delete_file", { n: f.name }))}">${confirm ? esc(this._t("confirm_delete")) : icon("trash")}</button>` : ""}</li>`;
+      }).join("")}</ul>` : `<p class="hint">${esc(this._t("no_files"))}</p>`;
+      return `<div class="ownrow" data-key="own-${s}">
+        <div class="ownhead"><span class="lic">${icon(s)}</span><strong>${esc(this._sound(s))}</strong></div>
+        <div class="chips" role="group" aria-label="${esc(this._sound(s))}">
+          <button class="chip" data-action="src" data-sound="${s}" data-mode="synth" aria-pressed="${(src[s] || "synth") === "synth"}">${esc(this._t("src_synth"))}</button>
+          <button class="chip" data-action="src" data-sound="${s}" data-mode="file" aria-pressed="${src[s] === "file"}" ${files.length ? "" : "disabled"} title="${files.length ? "" : esc(this._t("src_need_file"))}">${esc(this._t("src_file"))}</button>
+        </div>
+        ${list}
+        ${admin ? `<label class="btn ${busy ? "disabled" : ""}">${icon("plus")}${esc(busy ? this._t("uploading") : this._t("upload_btn"))}
+          <input type="file" accept="audio/*,video/*,.wav,.mp3,.flac,.ogg,.m4a,.aac,.opus" hidden data-change="upload" data-sound="${s}" ${busy ? "disabled" : ""}></label>` : ""}
+      </div>`;
+    }).join("");
+    return `<section class="card" aria-labelledby="h-own">
+      <div class="card-head"><div><h2 id="h-own">${esc(this._t("own_title"))}</h2><p class="hint">${esc(this._t("own_hint"))}</p>${admin ? "" : `<p class="hint">${esc(this._t("own_admin"))}</p>`}</div></div>
+      <div class="ownrows">${rows}</div>
+    </section>`;
   }
 
   /* ---- Wecker */
@@ -1504,6 +1584,23 @@ class DuskDawnPanel extends HTMLElement {
         if (this._view === "settings") this._initCfg();
         this._schedule(); break;
       case "view": this._setView(el.dataset.view); break;
+      case "src": {
+        const sound = el.dataset.sound; const mode = el.dataset.mode;
+        this._cmd("set_source", { sound, mode }, (s) => { (s.sources ||= {})[sound] = mode; }); break;
+      }
+      case "del_file": {
+        const id = el.dataset.id;
+        if (this._confirmFile !== id) {
+          this._confirmFile = id; this._schedule();
+          clearTimeout(this._confirmFileT); this._confirmFileT = setTimeout(() => { this._confirmFile = null; this._schedule(); }, 3500);
+          break;
+        }
+        this._confirmFile = null;
+        this._hass.callWS({ type: "dusk_dawn/sound_delete", file_id: id })
+          .then((r) => { this._lib = r.files || this._lib; this._schedule(); })
+          .catch((err) => this._toast(`${this._t("err_cmd")}: ${err.message || err}`, true));
+        break;
+      }
       case "toggle":
         this._cmd("toggle", {}, (s) => { s.playing = !s.playing; }); break;
       case "timer": {
@@ -1669,6 +1766,12 @@ class DuskDawnPanel extends HTMLElement {
       if (!/^\d{2}:\d{2}$/.test(el.value)) return;
       const auto = { ...(spot.state.auto || {}), [el.dataset.key2]: el.value };
       this._cmd("set_auto", { auto }, (s) => { s.auto = auto; });
+    }
+    if (el.dataset?.change === "upload") {
+      const f = el.files && el.files[0];
+      el.value = "";
+      if (f) this._upload(el.dataset.sound, f);
+      return;
     }
     const pick = el.dataset?.pick;
     if (pick) {

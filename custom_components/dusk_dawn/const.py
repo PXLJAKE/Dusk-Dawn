@@ -17,6 +17,7 @@ STORAGE_KEY: Final = "dusk_dawn.{entry_id}"  # contract: dusk_dawn.<entry_id>
 
 # HTTP / panel
 STREAM_URL: Final = "/api/dusk_dawn/stream/{entry_id}.mp3"
+UPLOAD_URL: Final = "/api/dusk_dawn/upload/{sound}"
 STATIC_URL: Final = "/dusk_dawn_static"
 PANEL_URL_PATH: Final = "dusk-dawn"
 PANEL_COMPONENT: Final = "dusk-dawn-panel"
