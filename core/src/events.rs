@@ -250,19 +250,24 @@ impl Source for Thunder {
 }
 
 // ------------------------------------------------------------------ birds
-const MAX_SEGS: usize = 80;
-const VOICES: usize = 16;
+const MAX_SEGS: usize = 320;
+const VOICES: usize = 8;
+const ROSTER: usize = 5;
+const CUCKOO_P: f64 = 0.07;
 
 #[derive(Clone, Copy, Default)]
 struct Seg {
     len: u32, // samples
     note: bool,
+    soft: bool,
     f0: f64,
     f1: f64,
     d: f64,
     vib: f64,
     vib_hz: f64,
     harm: f64,
+    harm3: f64,
+    amp: f64,
 }
 
 #[derive(Clone, Copy)]
@@ -294,165 +299,268 @@ impl Default for Voice {
     }
 }
 
-/// Peak of `sin x + h sin 2x`.
-fn harm_peak(h: f64) -> f64 {
-    if h == 0.0 {
-        return 1.0;
-    }
+/// Peak of `a1 sin x + a2 sin 2x + a3 sin 3x`.
+fn harm_peak(a1: f64, a2: f64, a3: f64) -> f64 {
     (0..1024)
         .map(|k| {
             let x = 2.0 * PI * k as f64 / 1024.0;
-            (x.sin() + h * (2.0 * x).sin()).abs()
+            (a1 * x.sin() + a2 * (2.0 * x).sin() + a3 * (3.0 * x).sin()).abs()
         })
         .fold(0.0, f64::max)
 }
 
-/// A lively dawn chorus: chirps (finch, sparrow), trills (wren, robin),
-/// whistles (blackbird) and a rare cuckoo far away.
-pub struct Birds {
-    sr: f64,
-    rng: Rng,
-    clock: EventClock,
-    voices: Box<[Voice; VOICES]>,
-    far_lp: OnePole,
+#[derive(Clone, Copy, PartialEq)]
+enum Species {
+    Chirp,
+    Trill,
+    Whistle,
 }
 
-impl Birds {
-    pub fn new(rng: Rng, sr: f64) -> Self {
-        Self::with_every(rng, sr, (1.2, 4.5))
-    }
+/// One individual bird of the chorus: keeps its pitch and rhythm.
+#[derive(Clone, Copy)]
+struct Bird {
+    kind: Species,
+    base: f64,
+    rate: f64,
+    notes: i64,
+    slow: f64,
+    far: bool,
+}
 
-    pub fn with_every(mut rng: Rng, sr: f64, every: (f64, f64)) -> Self {
-        let clock = EventClock::new(&mut rng, sr, every);
-        Birds {
-            sr,
-            rng,
-            clock,
-            voices: Box::new([Voice::default(); VOICES]),
-            far_lp: OnePole::butter_lp(3500.0, sr),
+/// The song under construction.
+struct Song {
+    segs: [Seg; MAX_SEGS],
+    n: usize,
+    sr: f64,
+}
+
+impl Song {
+    fn push(&mut self, s: Seg) {
+        if self.n < MAX_SEGS {
+            self.segs[self.n] = s;
+            self.n += 1;
         }
     }
 
-    /// Like [`Birds::with_every`], but the first song starts immediately
-    /// (used by the alarm, which should not begin with seconds of silence).
-    pub fn starting_now(rng: Rng, sr: f64, every: (f64, f64)) -> Self {
-        let mut b = Self::with_every(rng, sr, every);
-        b.clock.countdown = 0;
-        b
-    }
-
-    fn trigger(&mut self) {
-        let Some(slot) = self.voices.iter().position(|v| !v.active) else {
-            return; // too many birds at once: skip this one
-        };
-        let (sr, rng) = (self.sr, &mut self.rng);
-        let v = &mut self.voices[slot];
-        let mut n = 0usize;
-        let mut push = |s: Seg| {
-            if n < MAX_SEGS {
-                v.segs[n] = s;
-                n += 1;
-            }
-        };
-        let note = |f0: f64, f1: f64, d: f64, vib: f64, vib_hz: f64, harm: f64| Seg {
-            len: (d * sr) as u32,
+    #[allow(clippy::too_many_arguments)]
+    fn note(&mut self, f0: f64, f1: f64, d: f64, vib: f64, vib_hz: f64, harm: f64, harm3: f64, soft: bool, amp: f64) {
+        self.push(Seg {
+            len: (d * self.sr) as u32,
             note: true,
+            soft,
             f0,
             f1,
             d,
             vib,
             vib_hz,
             harm,
-        };
-        let gap = |s: f64| Seg {
-            len: (s * sr) as u32,
-            ..Default::default()
-        };
+            harm3,
+            amp,
+        });
+    }
 
-        let u = rng.random();
-        let kind = if u < 0.42 {
-            0
-        } else if u < 0.67 {
-            1
-        } else if u < 0.95 {
-            2
-        } else {
-            3
-        };
-        match kind {
-            0 => {
-                // chirp
-                let base = rng.uniform(2800.0, 5500.0);
-                for _ in 0..rng.integers(3, 10) {
-                    let f0 = base * rng.uniform(0.85, 1.15);
-                    let f1 = f0 * rng.uniform(0.6, 1.5);
-                    push(note(f0, f1, rng.uniform(0.03, 0.14), 0.0, 0.0, 0.0));
-                    push(gap(rng.uniform(0.02, 0.1)));
+    fn gap(&mut self, s: f64) {
+        self.push(Seg {
+            len: (s * self.sr) as u32,
+            ..Default::default()
+        });
+    }
+}
+
+/// A dawn chorus of a few individual birds with busy and quiet spells (see
+/// `Birds` in the Python engine): five birds repeat their phrases and are
+/// replaced now and then; once in a while a cuckoo calls from far away.
+pub struct Birds {
+    sr: f64,
+    rng: Rng,
+    every: (f64, f64),
+    countdown: i64,
+    dynamic: bool,
+    busy: f64,
+    songs: u64,
+    roster: [Bird; ROSTER],
+    voices: Box<[Voice; VOICES]>,
+    far_lp: OnePole,
+    cuckoo_lp: OnePole,
+}
+
+fn new_bird(rng: &mut Rng) -> Bird {
+    let u = rng.random();
+    let kind = if u < 0.35 {
+        Species::Chirp
+    } else if u < 0.6 {
+        Species::Trill
+    } else {
+        Species::Whistle
+    };
+    let base = match kind {
+        Species::Chirp => rng.uniform(2800.0, 5500.0),
+        Species::Trill => rng.uniform(3500.0, 6500.0),
+        Species::Whistle => rng.uniform(1700.0, 3400.0),
+    };
+    Bird {
+        kind,
+        base,
+        rate: rng.uniform(12.0, 24.0),
+        notes: rng.integers(3, 9),
+        slow: rng.uniform(0.8, 1.25),
+        far: rng.random() < 0.4,
+    }
+}
+
+impl Birds {
+    pub fn new(rng: Rng, sr: f64) -> Self {
+        Self::build(rng, sr, (1.2, 4.5), true)
+    }
+
+    fn build(mut rng: Rng, sr: f64, every: (f64, f64), dynamic: bool) -> Self {
+        let (lo, hi) = (every.0.min(3.0), every.0.max(3.0));
+        let countdown = (rng.uniform(lo, hi) * sr) as i64;
+        let roster = std::array::from_fn(|_| new_bird(&mut rng));
+        Birds {
+            sr,
+            rng,
+            every,
+            countdown,
+            dynamic,
+            busy: 0.6,
+            songs: 0,
+            roster,
+            voices: Box::new([Voice::default(); VOICES]),
+            far_lp: OnePole::butter_lp(3500.0, sr),
+            cuckoo_lp: OnePole::butter_lp(2200.0, sr),
+        }
+    }
+
+    /// Steady, dense singing without cuckoo, and the first song right away
+    /// (used by the alarm, which should not begin with seconds of silence).
+    pub fn starting_now(rng: Rng, sr: f64, every: (f64, f64)) -> Self {
+        let mut b = Self::build(rng, sr, every, false);
+        b.countdown = 0;
+        b
+    }
+
+    /// Seconds to the next song; the busyness does a slow random walk.
+    fn next_interval(&mut self) -> f64 {
+        if !self.dynamic {
+            return self.rng.uniform(self.every.0, self.every.1);
+        }
+        let rng = &mut self.rng;
+        self.busy = (self.busy + rng.uniform(-0.3, 0.3) + 0.1 * (0.5 - self.busy)).clamp(0.0, 1.0);
+        rng.uniform(self.every.0, self.every.1) * (0.35 + 4.0 * (1.0 - self.busy).powi(2))
+    }
+
+    fn phrase(rng: &mut Rng, song: &mut Song, b: &Bird) {
+        let base = b.base * rng.uniform(0.96, 1.04);
+        match b.kind {
+            Species::Chirp => {
+                for _ in 0..b.notes {
+                    let f0 = base * rng.uniform(0.9, 1.1);
+                    let f1 = f0 * rng.uniform(0.65, 1.4);
+                    let d = rng.uniform(0.03, 0.12) * b.slow;
+                    song.note(f0, f1, d, 0.0, 0.0, 0.12, 0.0, false, 1.0);
+                    song.gap(rng.uniform(0.02, 0.09));
                 }
             }
-            1 => {
-                // trill
-                let mut f0 = rng.uniform(3500.0, 6500.0);
-                let rate = rng.uniform(12.0, 24.0);
-                let count = (rng.uniform(0.6, 1.6) * rate) as usize;
+            Species::Trill => {
+                let mut f0 = base;
+                let rate = b.rate * rng.uniform(0.92, 1.08);
+                let count = (rng.uniform(0.7, 1.4) * rate) as usize;
                 for _ in 0..count {
-                    push(note(f0, f0 * 0.82, 0.6 / rate, 0.0, 0.0, 0.0));
-                    push(gap(0.4 / rate));
-                    f0 *= rng.uniform(0.985, 1.01);
+                    song.note(f0, f0 * 0.82, 0.6 / rate, 0.0, 0.0, 0.1, 0.0, false, 1.0);
+                    song.gap(0.4 / rate);
+                    f0 *= rng.uniform(0.985, 1.008);
                 }
             }
-            2 => {
-                // whistle
-                for _ in 0..rng.integers(3, 7) {
-                    let f0 = rng.uniform(1700.0, 3400.0);
-                    let f1 = f0 * rng.uniform(0.75, 1.3);
-                    let d = rng.uniform(0.12, 0.38);
-                    push(note(f0, f1, d, 0.015, rng.uniform(25.0, 45.0), 0.15));
-                    push(gap(rng.uniform(0.04, 0.18)));
-                }
-            }
-            _ => {
-                // cuckoo
-                let f0 = rng.uniform(560.0, 700.0);
-                for _ in 0..rng.integers(2, 4) {
-                    push(note(f0, f0, 0.22, 0.0, 0.0, 0.1));
-                    push(gap(rng.uniform(0.06, 0.1)));
-                    push(note(f0 * 0.8, f0 * 0.8, 0.3, 0.0, 0.0, 0.1));
-                    push(gap(rng.uniform(0.6, 0.9)));
+            Species::Whistle => {
+                let mut f0 = base;
+                for _ in 0..(b.notes - 2).max(3) {
+                    f0 = (f0 * rng.uniform(0.8, 1.25)).clamp(1500.0, 3600.0);
+                    let f1 = f0 * rng.uniform(0.78, 1.25);
+                    let d = rng.uniform(0.12, 0.34) * b.slow;
+                    song.note(f0, f1, d, 0.012, rng.uniform(25.0, 45.0), 0.2, 0.05, false, 1.0);
+                    song.gap(rng.uniform(0.04, 0.16));
                 }
             }
         }
-        let near = rng.random();
-        let far = near < 0.4;
-        let mut level = if far {
-            rng.uniform(0.04, 0.09)
-        } else {
-            rng.uniform(0.09, 0.2)
+    }
+
+    /// Falling minor third, a short high note then a longer low one, 3-7 times, fading.
+    fn cuckoo(rng: &mut Rng, song: &mut Song) {
+        let f = rng.uniform(640.0, 730.0);
+        let mut amp = 1.0;
+        for _ in 0..rng.integers(3, 8) {
+            let fj = f * rng.uniform(0.99, 1.01);
+            song.note(fj * 1.03, fj * 0.99, 0.17, 0.0, 0.0, 0.3, 0.08, true, amp);
+            song.gap(rng.uniform(0.03, 0.05));
+            song.note(fj * 0.87, fj * 0.81, 0.3, 0.0, 0.0, 0.3, 0.08, true, amp * 0.9);
+            song.gap(rng.uniform(0.45, 0.75));
+            amp *= rng.uniform(0.88, 1.03);
+        }
+    }
+
+    fn trigger(&mut self) {
+        let Some(slot) = self.voices.iter().position(|v| !v.active) else {
+            return; // too many birds at once: skip this one
         };
-        if kind == 3 {
-            level = 0.06;
+        let sr = self.sr;
+        let mut song = Song {
+            segs: [Seg::default(); MAX_SEGS],
+            n: 0,
+            sr,
+        };
+        let rng = &mut self.rng;
+        let cuckoo = self.dynamic && rng.random() < CUCKOO_P;
+        let (far, level);
+        if cuckoo {
+            Self::cuckoo(rng, &mut song);
+            far = true;
+            level = 0.07;
+        } else {
+            self.songs += 1;
+            if self.songs % 6 == 0 {
+                let i = rng.integers(0, ROSTER as i64) as usize;
+                self.roster[i] = new_bird(rng);
+            }
+            let b = self.roster[rng.integers(0, ROSTER as i64) as usize];
+            for _ in 0..rng.integers(1, 4) {
+                Self::phrase(rng, &mut song, &b);
+                song.gap(rng.uniform(0.35, 1.4));
+            }
+            far = b.far;
+            level = if far {
+                rng.uniform(0.04, 0.09)
+            } else {
+                rng.uniform(0.09, 0.2)
+            };
         }
-        // The reference normalises the finished song to its peak. The peak of a
-        // note sits at its envelope centre, so it can be computed up front.
+        let lp = if cuckoo { self.cuckoo_lp } else { self.far_lp };
+        // The Python engine normalises the finished song to its peak. The peak
+        // of a note sits at its envelope maximum, so it is estimated up front
+        // (through the distance filter for far birds).
         let mut peak = 0.0f64;
-        for s in v.segs[..n].iter().filter(|s| s.note) {
+        for s in song.segs[..song.n].iter().filter(|s| s.note) {
             let p = if far {
                 let fc = 0.5 * (s.f0 + s.f1);
-                let g1 = self.far_lp.gain_at(fc, sr);
-                let g2 = self.far_lp.gain_at(2.0 * fc, sr);
-                g1 * harm_peak(s.harm * g2 / g1.max(1e-9))
+                harm_peak(
+                    lp.gain_at(fc, sr),
+                    s.harm * lp.gain_at(2.0 * fc, sr),
+                    s.harm3 * lp.gain_at(3.0 * fc, sr),
+                )
             } else {
-                harm_peak(s.harm)
+                harm_peak(1.0, s.harm, s.harm3)
             };
-            peak = peak.max(p);
+            peak = peak.max(p * s.amp);
         }
-        v.active = n > 0;
-        v.nseg = n;
+        let v = &mut self.voices[slot];
+        v.segs = song.segs;
+        v.active = song.n > 0;
+        v.nseg = song.n;
         v.si = 0;
         v.sp = 0;
         v.ph = 0.0;
         v.far = far;
-        v.lp = self.far_lp;
+        v.lp = lp;
         v.lp.reset();
         v.scale = level / peak.max(1e-9);
     }
@@ -462,7 +570,9 @@ impl Source for Birds {
     fn render(&mut self, out: &mut [f64]) {
         let n = out.len();
         out.fill(0.0);
-        if self.clock.tick(&mut self.rng, n) {
+        self.countdown -= n as i64;
+        if self.countdown <= 0 {
+            self.countdown = (self.next_interval() * self.sr) as i64;
             self.trigger();
         }
         let sr = self.sr;
@@ -484,15 +594,20 @@ impl Source for Birds {
                             f *= 1.0 + s.vib * (2.0 * PI * s.vib_hz * t).sin();
                         }
                         v.ph += 2.0 * PI * f / sr;
-                        let e = (PI * t / s.d).sin();
-                        let mut y = (v.ph.sin()
-                            + if s.harm != 0.0 {
-                                s.harm * (2.0 * v.ph).sin()
-                            } else {
-                                0.0
-                            })
-                            * e
-                            * e;
+                        let e = if s.soft {
+                            (t / 0.012).min(1.0) * (-1.6 * t / s.d).exp() * ((s.d - t) / 0.015).clamp(0.0, 1.0)
+                        } else {
+                            let e = (PI * t / s.d).sin();
+                            e * e
+                        };
+                        let mut y = v.ph.sin();
+                        if s.harm != 0.0 {
+                            y += s.harm * (2.0 * v.ph).sin();
+                        }
+                        if s.harm3 != 0.0 {
+                            y += s.harm3 * (3.0 * v.ph).sin();
+                        }
+                        y *= e * s.amp;
                         if v.far {
                             y = v.lp.process(y);
                         }
@@ -524,8 +639,8 @@ mod tests {
 
     #[test]
     fn harm_peak_values() {
-        assert_eq!(harm_peak(0.0), 1.0);
-        let p = harm_peak(0.15);
+        assert!((harm_peak(1.0, 0.0, 0.0) - 1.0).abs() < 1e-3);
+        let p = harm_peak(1.0, 0.15, 0.0);
         assert!(p > 1.0 && p < 1.15, "{p}");
     }
 

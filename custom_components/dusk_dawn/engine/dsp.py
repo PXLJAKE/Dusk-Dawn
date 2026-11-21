@@ -339,6 +339,16 @@ def _drop_plip(rng, sr):
     return np.sin(2 * np.pi * np.cumsum(f) / sr) * np.exp(-t / (m / sr / 4))
 
 
+def _pop(rng, sr):
+    """Fire pop: a short low thump (250-700 Hz) with a bright click on top."""
+    dur = rng.uniform(0.015, 0.04)
+    m = int(0.08 * sr)
+    t = np.arange(m) / sr
+    body = iir(*_biquad("bp", rng.uniform(250, 700), sr, 1.5), rng.standard_normal(m)) * np.exp(-t / dur)
+    click = iir(*_biquad("bp", rng.uniform(2500, 6000), sr, 1.2), rng.standard_normal(m)) * np.exp(-t / 0.002)
+    return _peak_norm(_peak_norm(body) + 0.5 * _peak_norm(click))
+
+
 def _grain(rng, sr, dur, f0, q):
     """Leaf grain: soft-edged noise snippet, band-limited."""
     m = max(16, int(dur * sr))
@@ -591,128 +601,50 @@ class Waves(Generator):
         return out * env * 3.2
 
 
-def _pd_lop(f, sr):
-    """Pure Data ``lop~``: one-pole low-pass."""
-    k = min(1.0, 2 * math.pi * f / sr)
-    return [k], [1.0, -(1 - k)]
+class Fire(_Calibrated):
+    """Fireplace: low roar, soft hiss, crackles and now and then a pop.
 
+    Four layers, each with its own slow movement, so the fire breathes:
 
-def _pd_hip(f, sr):
-    """Pure Data ``hip~``: one-pole high-pass."""
-    c = max(0.0, 1 - 2 * math.pi * f / sr)
-    return [(1 + c) / 2, -(1 + c) / 2], [1.0, -c]
-
-
-def _pd_bp(f, q, sr):
-    """Pure Data ``bp~``: two-pole resonator."""
-    om = 2 * math.pi * f / sr
-    r = max(0.0, 1 - om / q) if q > 0 else 0.0
-    return [2 * (1 - r) * ((1 - r) + r * om), 0.0, 0.0], [1.0, -2 * r * math.cos(om), r * r]
-
-
-FIRE_POST = [("hip", 1000), ("bp", 1200, 0.6), ("bp", 2600, 0.4), ("bp", 600, 0.2)]
-
-
-class _IIRCols(IIR):
-    """:class:`IIR` over the columns of a ``(CHUNK, cols)`` block, each column
-    with its own state (one matrix product for all of them)."""
-
-    def __init__(self, b, a, cols):
-        super().__init__(b, a)
-        self.xh = np.zeros((self.order, cols))
-        self.yh = np.zeros((self.order, cols))
-
-    def __call__(self, x: np.ndarray) -> np.ndarray:
-        o, size = self.order, len(x)
-        xp = np.concatenate([self.xh, x])
-        u = self.b[0] * x
-        for k in range(1, o + 1):
-            u = u + self.b[k] * xp[o - k : o - k + size]
-        for m in range(min(o, size)):
-            for k in range(m + 1, o + 1):
-                u[m] -= self.a[k] * self.yh[o + m - k]
-        y = self.toeplitz[:size, :size] @ u
-        self.xh = xp[-o:].copy()
-        self.yh = np.concatenate([self.yh, y])[-o:].copy()
-        return y
-
-
-class Fire(Generator):
-    """Fireplace after Andy Farnell, *Designing Sound*, Practical 11 ("Feuer G").
-
-    Four fire voices (one per colour filter in FIRE_POST), summed x0.2. One
-    voice is crackles (triggered when the RMS of 1 Hz low-passed noise over the
-    last 1024 samples lands in 50..51 dB, checked every 512 samples; r = 0..29
-    sets an r ms squared decay and a band-pass at 1500 + 500 r Hz), hiss (noise
-    above 1 kHz gated by (10 x low-passed noise)^4 x 600) and lapping (noise
-    through a 30 Hz resonator, x100, clipped), mixed 0.2 / 0.3 / 0.6. Mono:
-    one fire (the device renders two, cross-mixed).
+    * roar    pink noise between 90 and 600 Hz, the body of the flames,
+              its level wandering between 0.45 and 1 and flickering +-20 %
+    * hiss    pink noise around 3 kHz, only audible while the flames are high
+    * crackle many tiny, bright noise ticks (0.7-3 ms, 1.5-7 kHz); the rate
+              swings between about 2 and 14 per second, so they come in
+              clusters and pauses, and a few are much louder than the rest
+    * pops    rare thumps (250-700 Hz body with a click on top), a log giving way
     """
 
     name = "fire"
-    HOP = IIR.CHUNK
-    VOICES = len(FIRE_POST)
-    LEVEL = 0.81  # RMS -> TARGET_RMS
+    CRACKLE_PER_S, POP_PER_S = 30.0, 1.0
+    W_ROAR, W_HISS, W_CRACKLE, W_POP = 0.6, 0.3, 1.0, 1.0
+    CRACKLE_K, POP_K = 0.12, 0.15
 
     def __init__(self, sr, seed=None):
         super().__init__(sr, seed)
-        v = self.VOICES
-        self.lop = _IIRCols(*_pd_lop(1, sr), v)
-        self.hip1k = _IIRCols(*_pd_hip(1000, sr), v)
-        self.res30 = _IIRCols(*_pd_bp(30, 5, sr), v)
-        self.hip25a = _IIRCols(*_pd_hip(25, sr), v)
-        self.hip25b = _IIRCols(*_pd_hip(25, sr), v)
-        self.posts = [IIR(*(_pd_hip(p[1], sr) if p[0] == "hip" else _pd_bp(p[1], p[2], sr))) for p in FIRE_POST]
-        self.crackles = [TVBiquad() for _ in range(v)]
-        self.freq = [1500.0] * v
-        self.envs: list[list[list[int]]] = [[] for _ in range(v)]
-        self.prev_sq: np.ndarray | None = None
-        self.buf = np.zeros(0)
+        rng = self.rng
+        self.pink = PinkNoise(sr, seed)
+        self.pink_hiss = PinkNoise(sr, None if seed is None else seed + 1)
+        self.lp = IIR(*_biquad("lp", 600, sr, 0.7))
+        self.hp = IIR(*_biquad("hp", 90, sr))
+        self.hiss_bp = IIR(*_biquad("bp", 3200, sr, 0.5))
+        self.flame = SmoothRandom(rng, 0.45, 1.0, 3.5, sr)
+        self.flick = SmoothRandom(rng, 0.8, 1.2, 0.45, sr)
+        self.activity = SmoothRandom(rng, 0.3, 2.0, 9.0, sr)
+        self.crackles = Grains(rng, [_tick(rng, sr, rng.uniform(0.0007, 0.003), rng.uniform(1500, 7000),
+                                           rng.uniform(1.0, 2.5), dur=0.02) for _ in range(48)])
+        self.pops = Grains(rng, [_pop(rng, sr) for _ in range(16)])
+        self._calibrate()
 
-    def _hop(self) -> np.ndarray:
-        n, sr, v = self.HOP, self.sr, self.VOICES
-        nz = self.rng.uniform(-1, 1, (n, v))
-        lo = self.lop(nz)
-        m = (lo * 10) ** 2
-        mix = self.hip1k(nz) * (m * m * 600) * 0.3
-        mix += self.hip25b(np.clip(self.hip25a(self.res30(nz) * 100), -0.9, 0.9)) * 0.36
-        out = np.zeros(n)
-        for c in range(v):
-            y = mix[:, c]
-            band = self.crackles[c](nz[:, c], *_pd_bp(self.freq[c], 1, sr))
-            if self.envs[c]:
-                env = np.zeros(n)
-                keep = []
-                for e in self.envs[c]:
-                    pos, length = e
-                    j = np.arange(pos, min(length, pos + n))
-                    ramp = (1 - j / (length - 1)) ** 2 if length > 1 else np.ones(len(j))
-                    env[: len(j)] = np.maximum(env[: len(j)], ramp)
-                    e[0] += n
-                    if e[0] < length:
-                        keep.append(e)
-                self.envs[c] = keep
-                y = y + band * env * 0.2
-            out += self.posts[c](y)
-        sq = np.einsum("ij,ij->j", lo, lo)
-        if self.prev_sq is not None:
-            db = 100 + 20 * np.log10(np.maximum(np.sqrt((self.prev_sq + sq) / (2 * n)), 1e-10))
-            for c in np.flatnonzero((db >= 50) & (db < 51)).tolist():
-                r = int(self.rng.integers(0, 30))
-                self.freq[c] = 1500.0 + 500.0 * r
-                self.envs[c].append([0, max(1, int(sr * r / 1000))])
-        self.prev_sq = sq
-        return out * 0.2
-
-    def render(self, n):
-        parts = [self.buf]
-        have = len(self.buf)
-        while have < n:
-            parts.append(self._hop())
-            have += self.HOP
-        buf = np.concatenate(parts)
-        self.buf = buf[n:]
-        return buf[:n] * self.LEVEL
+    def _raw(self, n):
+        fl = self.flame.render(n) * self.flick.render(n)
+        act = float(np.mean(self.activity.render(n)))
+        roar = self.hp(self.lp(self.pink.render(n))) * fl
+        hiss = self.hiss_bp(self.pink_hiss.render(n)) * fl**3
+        crackle = self.crackles.render(n, self.CRACKLE_PER_S * act / self.sr, (0.08, 0.7), heavy=0.0)
+        pop = self.pops.render(n, self.POP_PER_S * act / self.sr, (0.4, 1.0), heavy=0.0)
+        return (roar * self.W_ROAR + hiss * self.W_HISS + crackle * self.W_CRACKLE * self.CRACKLE_K
+                + pop * self.W_POP * self.POP_K)
 
 
 @dataclass(eq=False)
@@ -736,6 +668,9 @@ class EventGenerator(Generator):
         self._ready: np.ndarray | None = None
         self._worker: threading.Thread | None = None
         self._rng_lock = threading.Lock()
+
+    def next_interval(self) -> float:
+        return float(self.rng.uniform(*self.every))
 
     def make_event(self) -> np.ndarray:  # pragma: no cover - interface
         raise NotImplementedError
@@ -765,7 +700,7 @@ class EventGenerator(Generator):
         if self.countdown <= 0:
             self.trigger()
             with self._rng_lock:
-                self.countdown = int(self.rng.uniform(*self.every) * self.sr)
+                self.countdown = int(self.next_interval() * self.sr)
         for ev in list(self.active):
             take = min(n, len(ev.buf) - ev.pos)
             out[:take] += ev.buf[ev.pos : ev.pos + take]
@@ -807,14 +742,45 @@ class Thunder(EventGenerator):
 
 
 class Birds(EventGenerator):
-    """A lively dawn chorus: chirps, trills, whistles and a rare cuckoo."""
+    """A dawn chorus of a few individual birds, with busy and quiet spells.
+
+    Five birds (chirpers, trillers, whistlers) each keep their own pitch and
+    rhythm and repeat their phrase one to three times, like real birds do; every
+    few songs one of them is replaced, so the chorus slowly changes. How busy it
+    is wanders between "a bird every 20 s" and "several at once". Now and then
+    a cuckoo calls from far away: a falling minor third, three to seven times.
+    """
 
     name = "birds"
+    CUCKOO_P = 0.07
+    ROSTER = 5
 
-    def __init__(self, sr, seed=None, every=(1.2, 4.5)):
+    def __init__(self, sr, seed=None, every=(1.2, 4.5), dynamic=True):
         super().__init__(sr, seed, every)
+        self.dynamic = dynamic  # False: steady, dense singing without cuckoo (the alarm)
+        self.busy = 0.6
+        self.songs = 0
+        self.roster = [self._new_bird() for _ in range(self.ROSTER)]
 
-    def _note(self, f0, f1, d, vib=0.0, vib_hz=0.0, harm=0.0):
+    # -- individual birds
+    def _new_bird(self):
+        rng = self.rng
+        kind = str(rng.choice(["chirp", "trill", "whistle"], p=[0.35, 0.25, 0.4]))
+        base = {"chirp": rng.uniform(2800, 5500), "trill": rng.uniform(3500, 6500),
+                "whistle": rng.uniform(1700, 3400)}[kind]
+        return {"kind": kind, "base": base, "rate": rng.uniform(12, 24), "notes": int(rng.integers(3, 9)),
+                "slow": rng.uniform(0.8, 1.25), "far": rng.random() < 0.4}
+
+    def next_interval(self):
+        """Seconds to the next song; the busyness does a slow random walk."""
+        rng = self.rng
+        if not self.dynamic:
+            return float(rng.uniform(*self.every))
+        self.busy = float(np.clip(self.busy + rng.uniform(-0.3, 0.3) + 0.1 * (0.5 - self.busy), 0.0, 1.0))
+        return rng.uniform(*self.every) * (0.35 + 4.0 * (1.0 - self.busy) ** 2)
+
+    # -- building blocks
+    def _note(self, f0, f1, d, vib=0.0, vib_hz=0.0, harm=0.0, harm3=0.0, soft=False, amp=1.0):
         sr = self.sr
         m = int(d * sr)
         t = np.arange(m) / sr
@@ -822,45 +788,72 @@ class Birds(EventGenerator):
         if vib:
             f = f * (1 + vib * np.sin(2 * np.pi * vib_hz * t))
         ph = 2 * np.pi * np.cumsum(f) / sr
-        env = np.sin(np.pi * t / d) ** 2
-        return (np.sin(ph) + harm * np.sin(2 * ph)) * env
+        if soft:  # quick breathy start, then fading away
+            env = np.minimum(t / 0.012, 1.0) * np.exp(-1.6 * t / d) * np.minimum((d - t) / 0.015, 1.0)
+        else:
+            env = np.sin(np.pi * t / d) ** 2
+        return (np.sin(ph) + harm * np.sin(2 * ph) + harm3 * np.sin(3 * ph)) * env * amp
 
-    def _gap(self, lo, hi):
-        return np.zeros(int(self.rng.uniform(lo, hi) * self.sr))
+    def _gap(self, lo, hi=None):
+        return np.zeros(int(self.rng.uniform(lo, lo if hi is None else hi) * self.sr))
+
+    def _phrase(self, b):
+        rng = self.rng
+        base = b["base"] * rng.uniform(0.96, 1.04)
+        parts: list[np.ndarray] = []
+        if b["kind"] == "chirp":
+            for _ in range(b["notes"]):
+                f0 = base * rng.uniform(0.9, 1.1)
+                parts += [self._note(f0, f0 * rng.uniform(0.65, 1.4), rng.uniform(0.03, 0.12) * b["slow"],
+                                     harm=0.12), self._gap(0.02, 0.09)]
+        elif b["kind"] == "trill":
+            f0, rate = base, b["rate"] * rng.uniform(0.92, 1.08)
+            for _ in range(int(rng.uniform(0.7, 1.4) * rate)):
+                parts += [self._note(f0, f0 * 0.82, 0.6 / rate, harm=0.1), np.zeros(int(0.4 / rate * self.sr))]
+                f0 *= rng.uniform(0.985, 1.008)
+        else:
+            f0 = base
+            for _ in range(max(3, b["notes"] - 2)):
+                f0 = float(np.clip(f0 * rng.uniform(0.8, 1.25), 1500, 3600))
+                parts += [self._note(f0, f0 * rng.uniform(0.78, 1.25), rng.uniform(0.12, 0.34) * b["slow"],
+                                     vib=0.012, vib_hz=rng.uniform(25, 45), harm=0.2, harm3=0.05),
+                          self._gap(0.04, 0.16)]
+        return parts
+
+    def _cuckoo(self):
+        """Falling minor third, a short high note then a longer low one, 3-7 times, fading."""
+        rng = self.rng
+        f = rng.uniform(640, 730)
+        amp = 1.0
+        parts: list[np.ndarray] = []
+        for _ in range(int(rng.integers(3, 8))):
+            fj = f * rng.uniform(0.99, 1.01)
+            parts += [self._note(fj * 1.03, fj * 0.99, 0.17, harm=0.3, harm3=0.08, soft=True, amp=amp),
+                      self._gap(0.03, 0.05),
+                      self._note(fj * 0.87, fj * 0.81, 0.3, harm=0.3, harm3=0.08, soft=True, amp=amp * 0.9),
+                      self._gap(0.45, 0.75)]
+            amp *= rng.uniform(0.88, 1.03)
+        return parts
 
     def make_event(self):
         sr, rng = self.sr, self.rng
-        kind = rng.choice(["chirp", "trill", "whistle", "cuckoo"], p=[0.42, 0.25, 0.28, 0.05])
-        parts: list[np.ndarray] = []
-        if kind == "chirp":
-            base = rng.uniform(2800, 5500)
-            for _ in range(rng.integers(3, 10)):
-                f0 = base * rng.uniform(0.85, 1.15)
-                parts += [self._note(f0, f0 * rng.uniform(0.6, 1.5), rng.uniform(0.03, 0.14)), self._gap(0.02, 0.1)]
-        elif kind == "trill":
-            f0 = rng.uniform(3500, 6500)
-            rate = rng.uniform(12, 24)
-            for _ in range(int(rng.uniform(0.6, 1.6) * rate)):
-                parts += [self._note(f0, f0 * 0.82, 0.6 / rate), np.zeros(int(0.4 / rate * sr))]
-                f0 *= rng.uniform(0.985, 1.01)
-        elif kind == "whistle":
-            for _ in range(rng.integers(3, 7)):
-                f0 = rng.uniform(1700, 3400)
-                parts += [self._note(f0, f0 * rng.uniform(0.75, 1.3), rng.uniform(0.12, 0.38),
-                                     vib=0.015, vib_hz=rng.uniform(25, 45), harm=0.15), self._gap(0.04, 0.18)]
+        cuckoo = self.dynamic and rng.random() < self.CUCKOO_P
+        if cuckoo:
+            parts, far, level = self._cuckoo(), True, 0.07
         else:
-            f0 = rng.uniform(560, 700)
-            for _ in range(rng.integers(2, 4)):
-                parts += [self._note(f0, f0, 0.22, harm=0.1), self._gap(0.06, 0.1),
-                          self._note(f0 * 0.8, f0 * 0.8, 0.3, harm=0.1), self._gap(0.6, 0.9)]
+            self.songs += 1
+            if self.songs % 6 == 0:
+                self.roster[int(rng.integers(0, self.ROSTER))] = self._new_bird()
+            b = self.roster[int(rng.integers(0, self.ROSTER))]
+            phrase = self._phrase(b)
+            parts = []
+            for i in range(int(rng.integers(1, 4))):
+                parts += (self._phrase(b) if i else phrase) + [self._gap(0.35, 1.4)]
+            far = b["far"]
+            level = rng.uniform(0.04, 0.09) if far else rng.uniform(0.09, 0.2)
         mono = np.concatenate(parts)
-        if rng.random() < 0.4:  # far away: quieter and duller
-            mono = fft_filter(mono, sr, butter_lp_mag(3500, 1)) * 1.6
-            level = rng.uniform(0.04, 0.09)
-        else:
-            level = rng.uniform(0.09, 0.2)
-        if kind == "cuckoo":
-            level = 0.06
+        if far:
+            mono = fft_filter(mono, sr, butter_lp_mag(2200 if cuckoo else 3500, 1)) * 1.6
         return _peak_norm(mono) * level
 
 
@@ -880,7 +873,7 @@ class AlarmTone(Generator):
         self.tone = tone if tone in self.TONES else "bells"
         self.pos = 0
         if self.tone == "birds":
-            self.birds = Birds(sr, seed, every=(0.3, 1.2))
+            self.birds = Birds(sr, seed, every=(0.3, 1.2), dynamic=False)
             self.birds.countdown = 0
         else:
             self.loop = self._build(self.tone)
