@@ -362,7 +362,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 }
 .narrow .toolbar { padding-left: 4px; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
-.brand .ic { color: var(--brass); width: 24px; height: 24px; }
+.brand .ic { color: var(--brass); width: 28px; height: 28px; }
 .brand h1 { margin: 0; font: 600 21px/1 var(--serif); letter-spacing: .01em; white-space: nowrap; }
 .iconbtn {
   width: 44px; height: 44px; border-radius: 50%; border: 0; background: transparent; color: var(--muted);
@@ -1053,7 +1053,7 @@ class DuskDawnPanel extends HTMLElement {
     const head = `
       <header class="toolbar">
         ${this._narrow ? `<button class="iconbtn" data-action="menu" aria-label="${esc(this._t("menu"))}">${icon("menu")}</button>` : ""}
-        <div class="brand">${icon("moon")}<h1>Dusk &amp; Dawn</h1></div>
+        <div class="brand"><svg class="ic mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 13.5a9 9 0 0 1 18 0z"/><rect x="3" y="15.6" width="18" height="1.4" rx=".7" opacity=".8"/><rect x="6" y="18.2" width="12" height="1.4" rx=".7" opacity=".5"/><rect x="9" y="20.8" width="6" height="1.4" rx=".7" opacity=".28"/></svg><h1>Dusk &amp; Dawn</h1></div>
         <button class="iconbtn" data-action="theme" data-theme="${this._theme}" aria-label="${themeLabel}" title="${themeLabel}">${icon(themeIcon)}</button>
         ${showGear ? `<button class="iconbtn" data-action="settings" aria-label="${esc(this._t("settings"))}" aria-pressed="${this._view === "settings"}">${icon("gear")}</button>` : ""}
       </header>`;
