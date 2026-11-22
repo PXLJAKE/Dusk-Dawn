@@ -1,3 +1,5 @@
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/dark_logo.png"><img src="docs/logo/logo.png" alt="Dusk &amp; Dawn" height="96"></picture></p>
+
 # Dusk & Dawn – Schlafsounds, Wecker und Sonnenaufgang für Home Assistant
 
 **Schlafgeräusche für Home Assistant:** Regen, Meer, Gewitter, Kaminfeuer, Vögel, Wind, Ventilator, White/Pink/Brown Noise, frei mischbar, mit Sleep-Timer, Lichtwecker (Sonnenaufgang) und Wecker. Läuft als HACS-Integration mit eigener Seitenleiste auf jedem Lautsprecher (Sonos, Google Nest, Music Assistant …) und mit jeder Lampe.
