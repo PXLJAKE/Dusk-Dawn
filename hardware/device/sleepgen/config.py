@@ -64,7 +64,9 @@ DEFAULTS: dict = {
         "minutes": 10,            # rings at most this long, a knob press stops it earlier
         "volume": 0.7,
         "min_device_volume": 0.5,  # amp volume is raised to at least this while ringing
+        "grace_min": 20,          # after a power cut the alarm still rings if the lamp is back within this time
     },
+    "alarms_file": "/var/lib/sleepgen/alarms.json",
     "state_file": "/var/lib/sleepgen/state.json",
 }
 

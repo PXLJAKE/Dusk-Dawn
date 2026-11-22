@@ -26,7 +26,7 @@ Für eigene Automationen gibt es pro Schlafplatz Entitäten (Schalter, Klangwelt
 
 ## Wie der Klang zum Lautsprecher kommt
 
-Die Integration berechnet die Geräusche selbst und stellt sie als MP3-Stream bereit, den der Lautsprecher wie ein Internetradio abspielt. Dadurch reagieren Sonos und Google-Lautsprecher auf Regler mit 2–10 s Verzögerung. Die DIY-Soundlampe bekommt stattdessen nur Befehle über MQTT und rechnet den Klang selbst, ohne Verzögerung und mit Wecker auch ohne WLAN.
+Die Integration berechnet die Geräusche selbst und stellt sie als MP3-Stream bereit, den der Lautsprecher wie ein Internetradio abspielt. Dadurch reagieren Sonos und Google-Lautsprecher auf Regler mit 2–10 s Verzögerung. Die DIY-Soundlampe bekommt stattdessen nur Befehle über MQTT und rechnet den Klang selbst, ohne Verzögerung. Die Weckzeiten speichert die Lampe selbst, der Wecker klingelt also auch, wenn Home Assistant oder das WLAN ausfällt ([hardware/docs/ALARM_OFFLINE.md](../hardware/docs/ALARM_OFFLINE.md)).
 
 Der Klangkern ist in Rust geschrieben (`core/`) und liegt für x86_64 und aarch64 fertig gebaut bei; er braucht für vier Klänge etwa 0,5 % eines CPU-Kerns. Auf anderen Systemen nutzt die Integration automatisch die langsamere Python-Version mit gleichem Klang.
 

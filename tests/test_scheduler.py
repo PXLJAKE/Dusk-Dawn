@@ -142,3 +142,50 @@ async def test_pause_on_music(hass: HomeAssistant, setup_spot: MockConfigEntry) 
     hass.states.async_set("media_player.kitchen", "playing")
     await hass.async_block_till_done()
     assert rt.state["playing"] is False
+
+
+async def test_diy_lamp_keeps_and_rings_the_alarms_itself(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    play_media_calls: list[ServiceCall],
+    light_calls: list[ServiceCall],
+) -> None:
+    """With a DIY lamp the alarm list goes to the lamp (retained MQTT) and Home Assistant stays quiet."""
+    from unittest.mock import AsyncMock, patch  # noqa: PLC0415
+
+    from homeassistant.core_config import async_process_ha_core_config  # noqa: PLC0415
+
+    from custom_components.dusk_dawn.const import DOMAIN  # noqa: PLC0415
+    from custom_components.dusk_dawn.diy import DiyLamp  # noqa: PLC0415
+
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Lamp",
+        data={"name": "Lamp", "speakers": [], "lights": [], "presence": None, "diy_device": "sleepgen"},
+    )
+    await async_process_ha_core_config(hass, {"internal_url": "http://ha.local:8123"})
+    entry.add_to_hass(hass)
+    with (
+        patch.object(DiyLamp, "async_start", AsyncMock()),
+        patch.object(DiyLamp, "set_alarms", AsyncMock()) as set_alarms,
+        patch.object(DiyLamp, "ring", AsyncMock()) as ring,
+        patch.object(DiyLamp, "effect", AsyncMock()) as effect,
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        rt = entry.runtime_data
+        await _tick(hass, freezer, _local(1, 5, 0))
+        await rt.async_set_alarm({"time": "07:00", "days": [], "sunrise": True, "sunrise_min": 30})
+        assert set_alarms.await_args.args[0][0]["time"] == "07:00"
+        assert set_alarms.await_args.args[1] is True
+        assert rt.state["next_alarm"] == _local(0, 7, 0).isoformat()  # still shown in Home Assistant
+
+        await _tick(hass, freezer, _local(0, 6, 30))
+        await _tick(hass, freezer, _local(0, 7, 0))
+        assert not ring.await_count and not effect.await_count  # the lamp does this, not Home Assistant
+
+        # the lamp reports that its one-off alarm rang and switched itself off
+        alarm_id = rt.state["alarms"][0]["id"]
+        rt._diy_alarms({"enabled": True, "alarms": [{"id": alarm_id, "enabled": False}]})
+        assert rt.state["alarms"][0]["enabled"] is False
+        await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()
