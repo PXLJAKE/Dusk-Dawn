@@ -1,13 +1,24 @@
 {
   "domain": "dusk_dawn",
   "name": "Dusk & Dawn",
-  "after_dependencies": ["light", "media_player", "mqtt"],
-  "codeowners": ["@PXLJAKE"],
+  "after_dependencies": [
+    "light",
+    "media_player",
+    "mqtt"
+  ],
+  "codeowners": [
+    "@PXLJAKE"
+  ],
   "config_flow": true,
-  "dependencies": ["ffmpeg", "frontend", "http", "panel_custom"],
+  "dependencies": [
+    "ffmpeg",
+    "frontend",
+    "http",
+    "panel_custom"
+  ],
   "documentation": "https://github.com/PXLJAKE/Dusk-Dawn",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/PXLJAKE/Dusk-Dawn/issues",
   "requirements": [],
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
