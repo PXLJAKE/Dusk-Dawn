@@ -95,13 +95,16 @@ async def _async_register_panel(hass: HomeAssistant) -> None:
     if hass.data.get(DATA_PANEL):
         return
     integration = await async_get_integration(hass, DOMAIN)
+    # The file's modification time goes into the URL, so every update loads the new panel, not a cached one
+    panel_file = Path(__file__).parent / "frontend" / PANEL_FILE
+    stamp = int(await hass.async_add_executor_job(lambda: panel_file.stat().st_mtime))
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name=PANEL_COMPONENT,
         frontend_url_path=PANEL_URL_PATH,
         sidebar_title=NAME,
         sidebar_icon=PANEL_ICON,
-        module_url=f"{STATIC_URL}/{PANEL_FILE}?v={integration.version}",
+        module_url=f"{STATIC_URL}/{PANEL_FILE}?v={integration.version}-{stamp}",
         embed_iframe=False,
         require_admin=False,
     )
