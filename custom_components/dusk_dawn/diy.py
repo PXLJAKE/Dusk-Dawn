@@ -7,7 +7,10 @@ Topics (see hardware/device/sleepgen/mqtt_ha.py), base ``sleepgen/<device_id>``:
     timer/set "Aus"|"N min"   lamp/set <HA JSON light command>
     alarm/set ON|OFF          alarm_tone/set <German name>
     alarm_minutes/set N       alarm_volume/set 0..100
+    alarms/set (JSON, retained, written here)  alarms/state (JSON, retained, written by the lamp)
     state  (JSON, retained)   playing / alarm_ringing / ...
+
+The alarm list is stored on the lamp, which rings by itself even if Home Assistant is down.
 """
 
 from __future__ import annotations
@@ -35,11 +38,19 @@ def diy_timer_option(minutes: int | None) -> str:
 class DiyLamp:
     """Sends commands to and mirrors state from one DIY Soundlampe."""
 
-    def __init__(self, hass: HomeAssistant, device_id: str, on_state: Callable[[dict[str, Any]], None]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        device_id: str,
+        on_state: Callable[[dict[str, Any]], None],
+        on_alarms: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
         self.hass = hass
         self.base = DIY_BASE_TOPIC.format(device=device_id)
         self._on_state = on_state
+        self._on_alarms = on_alarms
         self._unsub: Callable[[], None] | None = None
+        self._unsub_alarms: Callable[[], None] | None = None
 
     async def async_start(self) -> None:
         """Subscribe to the lamp's state topic (if MQTT is set up)."""
@@ -59,20 +70,34 @@ class DiyLamp:
 
         self._unsub = await mqtt.async_subscribe(self.hass, f"{self.base}/state", _message)
 
+        @callback
+        def _alarms(msg: Any) -> None:
+            try:
+                data = json.loads(msg.payload)
+            except (ValueError, TypeError):
+                return
+            if isinstance(data, dict) and self._on_alarms:
+                self._on_alarms(data)
+
+        self._unsub_alarms = await mqtt.async_subscribe(self.hass, f"{self.base}/alarms/state", _alarms)
+
     @callback
     def async_stop(self) -> None:
         if self._unsub:
             self._unsub()
             self._unsub = None
+        if self._unsub_alarms:
+            self._unsub_alarms()
+            self._unsub_alarms = None
 
-    async def _publish(self, sub: str, payload: Any) -> None:
+    async def _publish(self, sub: str, payload: Any, retain: bool = False) -> None:
         if "mqtt" not in self.hass.config.components:
             return
         from homeassistant.components import mqtt  # noqa: PLC0415
 
         if not isinstance(payload, str):
             payload = json.dumps(payload) if isinstance(payload, dict) else str(payload)
-        await mqtt.async_publish(self.hass, f"{self.base}/{sub}", payload)
+        await mqtt.async_publish(self.hass, f"{self.base}/{sub}", payload, retain=retain)
 
     # ------------------------------------------------------------ sound
     async def play(self, levels: dict[str, float], volume: float, timer_min: int | None) -> None:
@@ -106,6 +131,10 @@ class DiyLamp:
 
     async def stop_alarm(self) -> None:
         await self._publish("alarm/set", "OFF")
+
+    async def set_alarms(self, alarms: list[dict[str, Any]], enabled: bool) -> None:
+        """Hand the alarm list to the lamp (retained, so it also arrives when the lamp boots later)."""
+        await self._publish("alarms/set", {"enabled": enabled, "alarms": alarms}, retain=True)
 
     # ------------------------------------------------------------ light
     async def light(self, on: bool, brightness: int | None = None, kelvin: int | None = None) -> None:

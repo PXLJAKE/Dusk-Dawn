@@ -125,6 +125,7 @@ def test_lamp_ha_commands():
 def make_app(tmp_path):
     cfg = config.load(None)
     cfg["state_file"] = str(tmp_path / "state.json")
+    cfg["alarms_file"] = str(tmp_path / "alarms.json")
     return App(cfg, hardware=False)
 
 
@@ -274,3 +275,104 @@ def test_engine_own_recording_replaces_synth(tmp_path, monkeypatch):
     eng = Engine(sr=SR, sources=[f"rain=file:{f}", "brown"], seed=1)
     assert set(eng.layers) == {"rain", "brown"}
     assert type(eng.layers["rain"].gen).__name__ == "FileLoop"
+
+
+# ------------------------------------------------------------ offline alarms
+from datetime import datetime  # noqa: E402
+
+from sleepgen.alarms import AlarmScheduler, next_ring, prev_ring  # noqa: E402
+
+MON = datetime(2026, 11, 23, 6, 0)  # a Monday
+
+
+def alarm_dict(**kw):
+    a = {"id": "a1", "enabled": True, "time": "06:30", "days": [0, 1, 2, 3, 4], "tone": "bells",
+         "duration_min": 5, "volume": 0.6, "sunrise": False, "sunrise_min": 30}
+    a.update(kw)
+    return a
+
+
+def make_sched(tmp_path, clock):
+    app = make_app(tmp_path)
+    sched = AlarmScheduler(app, tmp_path / "alarms.json", now=lambda: clock[0])
+    return app, sched
+
+
+def test_next_and_prev_ring():
+    a = alarm_dict()
+    assert next_ring(a, MON) == datetime(2026, 11, 23, 6, 30)
+    assert next_ring(a, datetime(2026, 11, 27, 7, 0)) == datetime(2026, 11, 30, 6, 30)  # Fri -> Mon
+    assert prev_ring(a, datetime(2026, 11, 23, 6, 31)) == datetime(2026, 11, 23, 6, 30)
+    assert prev_ring(a, datetime(2026, 11, 29, 12, 0)) == datetime(2026, 11, 27, 6, 30)  # Sun -> Fri
+
+
+def test_alarm_rings_without_homeassistant(tmp_path):
+    clock = [MON]
+    app, sched = make_sched(tmp_path, clock)
+    sched.set_all({"enabled": True, "alarms": [alarm_dict()]})
+    sched.tick(datetime(2026, 11, 23, 6, 29, 59))
+    assert not app.engine.alarm_ringing
+    clock[0] = datetime(2026, 11, 23, 6, 30, 1)
+    sched.tick()
+    assert app.engine.alarm_ringing
+    app.stop_alarm()
+    sched.tick(datetime(2026, 11, 23, 6, 31))  # does not ring twice
+    assert not app.engine.alarm_ringing
+
+
+def test_alarm_survives_restart_and_catches_up_after_power_cut(tmp_path):
+    clock = [MON]
+    app, sched = make_sched(tmp_path, clock)
+    sched.set_all({"enabled": True, "alarms": [alarm_dict()]})
+    app2, sched2 = make_sched(tmp_path, clock)  # new process, no MQTT, only the file
+    sched2.load()
+    assert [a["time"] for a in sched2.alarms] == ["06:30"]
+    sched2.tick(datetime(2026, 11, 23, 6, 40))  # back 10 min late: rings
+    assert app2.engine.alarm_ringing
+    app3, sched3 = make_sched(tmp_path, clock)
+    sched3.load()
+    sched3.tick(datetime(2026, 11, 23, 8, 0))  # hours late: stays quiet
+    assert not app3.engine.alarm_ringing
+
+
+def test_new_alarm_in_the_past_does_not_ring_at_once(tmp_path):
+    clock = [datetime(2026, 11, 23, 6, 32)]
+    app, sched = make_sched(tmp_path, clock)
+    sched.set_all({"enabled": True, "alarms": [alarm_dict()]})
+    sched.tick()
+    assert not app.engine.alarm_ringing
+    sched.set_all({"enabled": True, "alarms": [alarm_dict()]})  # retained message again: unchanged
+    sched.tick()
+    assert not app.engine.alarm_ringing
+
+
+def test_one_off_and_disabled_alarms(tmp_path):
+    clock = [MON]
+    app, sched = make_sched(tmp_path, clock)
+    sched.set_all({"enabled": True, "alarms": [alarm_dict(id="x", days=[]), alarm_dict(id="y", enabled=False)]})
+    sched.tick(datetime(2026, 11, 23, 6, 30, 5))
+    assert app.engine.alarm_ringing
+    snap = {a["id"]: a for a in sched.snapshot()["alarms"]}
+    assert snap["x"]["enabled"] is False  # one-off switches itself off
+    app.stop_alarm()
+    sched.tick(datetime(2026, 11, 24, 6, 30, 5))
+    assert not app.engine.alarm_ringing  # "y" is disabled, "x" already rang
+    sched.set_all({"enabled": False, "alarms": [alarm_dict(id="z")]})
+    sched.tick(datetime(2026, 11, 25, 6, 30, 5))
+    assert not app.engine.alarm_ringing  # master switch off
+
+
+def test_sunrise_starts_ahead_of_the_alarm(tmp_path):
+    clock = [MON]
+    app, sched = make_sched(tmp_path, clock)
+    sched.set_all({"enabled": True, "alarms": [alarm_dict(sunrise=True, sunrise_min=30)]})
+    sched.tick(datetime(2026, 11, 23, 5, 59))
+    assert app.lamp.state.effect is None
+    sched.tick(datetime(2026, 11, 23, 6, 1))
+    assert app.lamp.state.effect == EFFECT_SUNRISE and 28 < app.lamp.sunrise_minutes <= 29
+
+
+def test_alarms_set_over_mqtt_command(tmp_path):
+    app = make_app(tmp_path)
+    handle_command(app, "alarms/set", json.dumps({"enabled": True, "alarms": [alarm_dict()]}))
+    assert app.alarms.snapshot()["alarms"][0]["time"] == "06:30"

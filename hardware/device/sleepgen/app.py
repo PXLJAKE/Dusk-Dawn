@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 from . import __version__
+from .alarms import AlarmScheduler
 from .engine import Engine
 from .hardware import HardwareVolume
 from .light import Lamp, NullDriver, SpiSk6812Driver
@@ -47,6 +48,7 @@ class App:
         hv = cfg["hardware_volume"]
         self.volume = HardwareVolume(hv["card"], hv["control"], hv["enabled"] and hardware, on_change=self._changed)
 
+        self.alarms = AlarmScheduler(self, cfg["alarms_file"], grace_min=al.get("grace_min", 20))
         self.mqtt = None
         self.knob = None
         self.audio = None
@@ -81,13 +83,13 @@ class App:
                 self.lamp.start_sunset(minutes)
 
     # ----------------------------------------------------------- alarm
-    def start_alarm(self):
+    def start_alarm(self, tone: str | None = None, minutes: float | None = None, volume: float | None = None):
         """Ring now. Stops after ``alarm_minutes`` or on a knob press."""
         floor = float(self.cfg["alarm"]["min_device_volume"])
         if not self.engine.alarm_ringing and self.volume.value < floor:
             self._volume_before_alarm = self.volume.value
             self.volume.set(floor)
-        self.engine.start_alarm(self.alarm_tone, self.alarm_minutes)
+        self.engine.start_alarm(tone or self.alarm_tone, minutes or self.alarm_minutes, volume)
 
     def stop_alarm(self):
         self.engine.stop_alarm()
@@ -171,6 +173,7 @@ class App:
             self.audio = AudioOutput(self.engine.render, a["sample_rate"], a["block"], a["device"])
             self.audio.start()
         self.lamp.start()
+        self.alarms.start()
         k = self.cfg["knob"]
         if knob and k["enabled"]:
             try:
@@ -203,6 +206,7 @@ class App:
 
     def stop(self):
         self._stop.set()
+        self.alarms.stop()
         if self.audio:
             self.audio.stop()
         self.lamp.stop()

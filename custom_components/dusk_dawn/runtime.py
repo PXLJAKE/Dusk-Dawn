@@ -89,7 +89,7 @@ class SpotRuntime:
             SpotStream(hass, entry.entry_id, engine, ffmpeg_binary) if engine is not None else None
         )
         self.diy: DiyLamp | None = (
-            DiyLamp(hass, self.config[CONF_DIY_DEVICE], self._diy_state) if self.config[CONF_DIY_DEVICE] else None
+            DiyLamp(hass, self.config[CONF_DIY_DEVICE], self._diy_state, self._diy_alarms) if self.config[CONF_DIY_DEVICE] else None
         )
         self.lights_ctl = LightController(hass, self)
         self.scheduler = Scheduler(hass, self)
@@ -155,6 +155,7 @@ class SpotRuntime:
                     self.engine.set_source(sound, mode)
         if self.diy:
             await self.diy.async_start()
+            await self._push_alarms()
         self.scheduler.async_start()
 
     async def async_shutdown(self) -> None:
@@ -487,18 +488,26 @@ class SpotRuntime:
         else:
             alarms.append(new)
         self.scheduler.async_reschedule()
+        await self._push_alarms()
         self.async_changed()
         return new
 
     async def async_delete_alarm(self, alarm_id: str) -> None:
         self.state["alarms"] = [a for a in self.state["alarms"] if a["id"] != alarm_id]
         self.scheduler.async_reschedule()
+        await self._push_alarms()
         self.async_changed()
 
     async def async_set_alarms_enabled(self, enabled: bool) -> None:
         self.state["alarms_enabled"] = bool(enabled)
         self.scheduler.async_reschedule()
+        await self._push_alarms()
         self.async_changed()
+
+    async def _push_alarms(self) -> None:
+        """The DIY lamp keeps and rings the alarms itself, so it also works while Home Assistant is down."""
+        if self.diy:
+            await self.diy.set_alarms(self.state["alarms"], self.state["alarms_enabled"])
 
     def _default_alarm(self) -> dict[str, Any]:
         return self.state["alarms"][0] if self.state["alarms"] else {"tone": "bells", "duration_min": 10,
@@ -577,6 +586,19 @@ class SpotRuntime:
         self.async_changed()
 
     # ------------------------------------------------------------ DIY feedback
+    @callback
+    def _diy_alarms(self, data: dict[str, Any]) -> None:
+        """One-off alarms switch themselves off on the lamp after ringing; mirror that."""
+        off = {a.get("id") for a in data.get("alarms", []) if not a.get("enabled", True)}
+        changed = False
+        for alarm in self.state["alarms"]:
+            if alarm["id"] in off and alarm["enabled"] and not alarm["days"]:
+                alarm["enabled"] = False
+                changed = True
+        if changed:
+            self.scheduler.async_reschedule()
+            self.async_changed()
+
     @callback
     def _diy_state(self, data: dict[str, Any]) -> None:
         """Mirror what the DIY lamp reports (it ends timers/alarms by itself)."""

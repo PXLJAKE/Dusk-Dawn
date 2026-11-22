@@ -2,7 +2,8 @@
 
 * Alarms: ring at HH:MM on the chosen weekdays (Mon = 0); optionally start a
   sunrise ``sunrise_min`` minutes before. One timer is armed for the next
-  event; after it fired the next one is computed.
+  event; after it fired the next one is computed. With a DIY lamp the lamp
+  itself rings (it stores the list), so only ``next_alarm`` is computed here.
 * Presence: start the good-night routine when presence is detected inside the
   time window; stop sounds and lights after presence has been gone for
   ``presence_stop_min`` minutes.
@@ -89,6 +90,8 @@ class Scheduler:
                 continue
             if next_ring_at is None or ring < next_ring_at:
                 next_ring_at = ring
+            if self.rt.diy:
+                continue  # the lamp rings and runs the sunrise itself (works without Home Assistant)
             events.append((ring, "ring", alarm, ring))
             if alarm["sunrise"]:
                 start = ring - timedelta(minutes=alarm["sunrise_min"])

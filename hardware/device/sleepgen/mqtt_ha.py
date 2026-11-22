@@ -203,6 +203,8 @@ def handle_command(app: "App", sub: str, payload: str):
             app.start_alarm()
         else:
             app.stop_alarm()
+    elif sub == "alarms/set":
+        app.alarms.set_all(json.loads(p))
     elif sub == "alarm_tone/set":
         if p in AlarmTone.TONES:
             app.alarm_tone = p
@@ -270,3 +272,4 @@ class MqttBridge:
             return
         self.client.publish(f"{self.base}/state", json.dumps(self.app.full_state()), retain=True)
         self.client.publish(f"{self.base}/lamp/state", json.dumps(self.app.lamp.ha_state()), retain=True)
+        self.client.publish(f"{self.base}/alarms/state", json.dumps(self.app.alarms.snapshot()), retain=True)
