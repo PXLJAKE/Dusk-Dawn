@@ -6,6 +6,8 @@ import logging
 import re
 import shutil
 import subprocess
+import math
+import queue
 import threading
 from typing import Callable
 
@@ -88,21 +90,52 @@ class Knob:
 
 
 class AudioOutput(threading.Thread):
-    """Pulls blocks from the engine and writes them to the sound card."""
+    """Writes the engine's audio to the sound card.
 
-    def __init__(self, render: Callable[[int], object], sr: int, block: int, device=None):
+    Rendering runs in its own thread and stays ``buffer_s`` ahead of the sound card. A slow block (many
+    layers at once, a thunder roll, Wi-Fi or MQTT traffic, CamillaDSP) is then absorbed by the buffer
+    instead of making the sound stutter. Changes on the sliders are heard ``buffer_s`` later.
+    """
+
+    def __init__(self, render: Callable[[int], object], sr: int, block: int, device=None,
+                 buffer_s: float = 1.0, latency: float | str = 0.25):
         super().__init__(name="audio", daemon=True)
         self.render, self.sr, self.block, self.device = render, sr, block, device
+        self.latency = latency
         self._stop = threading.Event()
+        self._queue: queue.Queue = queue.Queue(maxsize=max(2, math.ceil(buffer_s * sr / block)))
+        self.underruns = 0
+        self._producer = threading.Thread(target=self._produce, name="audio-render", daemon=True)
+
+    def _produce(self):
+        while not self._stop.is_set():
+            block = self.render(self.block)
+            while not self._stop.is_set():
+                try:
+                    self._queue.put(block, timeout=0.5)
+                    break
+                except queue.Full:
+                    continue
 
     def run(self):
+        import numpy as np
         import sounddevice as sd
 
+        self._producer.start()
+        silence = np.zeros((self.block, 2), dtype="float32")
         with sd.OutputStream(samplerate=self.sr, channels=2, dtype="float32",
-                             blocksize=self.block, device=self.device, latency="high") as stream:
-            log.info("audio running: %s Hz, block %s, device %s", self.sr, self.block, self.device)
+                             blocksize=self.block, device=self.device, latency=self.latency) as stream:
+            log.info("audio running: %s Hz, block %s, buffer %s blocks, device %s",
+                     self.sr, self.block, self._queue.maxsize, self.device)
             while not self._stop.is_set():
-                stream.write(self.render(self.block))
+                try:
+                    block = self._queue.get(timeout=self.block / self.sr * 4)
+                except queue.Empty:
+                    block = silence
+                    self.underruns += 1
+                    log.warning("audio render too slow (%d gaps so far)", self.underruns)
+                if stream.write(block) and self.underruns % 50 == 0:
+                    log.debug("sound card underflow")
 
     def stop(self):
         self._stop.set()

@@ -609,19 +609,29 @@ class EventGenerator(Generator):
             self._worker = threading.Thread(target=self._prepare, daemon=True)
             self._worker.start()
 
-    def trigger(self):
+    def trigger(self, wait: bool = True) -> bool:
+        """Start the prepared event. Never builds one in the audio thread unless ``wait`` is False
+        and nothing is ready (used by tests and offline rendering)."""
         buf, self._ready = self._ready, None
         if buf is None:
+            if wait:
+                self._prepare_async()
+                return False
             buf = self.make_event()
         self.active.append(_Event(buf))
         self._prepare_async()
+        return True
 
     def render(self, n):
         out = np.zeros((n, 2))
+        if self._ready is None and (self._worker is None or not self._worker.is_alive()):
+            self._prepare_async()  # first use: build the first event in the background
         self.countdown -= n
         if self.countdown <= 0:
-            self.trigger()
-            self.countdown = int(self.rng.uniform(*self.every) * self.sr)
+            if self.trigger():
+                self.countdown = int(self.rng.uniform(*self.every) * self.sr)
+            else:
+                self.countdown = int(0.25 * self.sr)  # not ready yet (slow Pi): try again shortly
         for ev in list(self.active):
             take = min(n, len(ev.buf) - ev.pos)
             out[:take] += ev.buf[ev.pos : ev.pos + take]

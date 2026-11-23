@@ -170,7 +170,8 @@ class App:
         self.restore()
         if audio:
             a = self.cfg["audio"]
-            self.audio = AudioOutput(self.engine.render, a["sample_rate"], a["block"], a["device"])
+            self.audio = AudioOutput(self.engine.render, a["sample_rate"], a["block"], a["device"],
+                                     buffer_s=a.get("buffer_s", 1.0), latency=a.get("latency", 0.25))
             self.audio.start()
         self.lamp.start()
         self.alarms.start()
