@@ -26,15 +26,15 @@ def volume_curve(v: float) -> float:
 
 
 def master_curve(v: float) -> float:
-    """Master slider of the sounds: tops out at -8 dB and falls off faster, so the sounds sit well below music
+    """Master slider of the sounds: tops out at -18 dB and falls off faster, so the sounds sit well below music
     from AirPlay / Spotify / Music Assistant (same taper as the Home Assistant integration)."""
     v = min(max(v, 0.0), 1.0)
     if v <= 0:
         return 0.0
-    return 0.4 * float(10 ** ((v - 1.0) * 2.4)) * min(1.0, v * 10)
+    return 0.13 * float(10 ** ((v - 1.0) * 2.0)) * min(1.0, v * 10)
 
 
-ALARM_TRIM = 0.5  # alarm tones were too loud: half the amplitude
+ALARM_TRIM = 0.25  # alarm tones were too loud: -12 dB
 
 
 @dataclass

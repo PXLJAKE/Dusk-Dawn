@@ -229,7 +229,7 @@ def test_alarm_rings_and_stops(tmp_path):
     handle_command(app, "alarm/set", "ON")
     assert app.engine.alarm_ringing and app.full_state()["alarm_ringing"]
     x = run(app.engine, 2)
-    assert np.abs(x).max() > 0.01  # rings although the sounds are off
+    assert np.abs(x).max() > 0.003  # rings although the sounds are off
     run(app.engine, 5)
     assert not app.engine.alarm_ringing  # stopped by itself after the set duration
     handle_command(app, "alarm/set", "ON")

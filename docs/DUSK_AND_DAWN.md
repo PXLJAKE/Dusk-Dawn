@@ -19,7 +19,7 @@ Danach erscheint links in der Seitenleiste **Dusk & Dawn**.
 - **Klänge:** Klangwelten antippen oder im Mischpult jeden der acht eingebauten Klänge (Regen, Meer, Wind, Gewitter, Ventilator, White/Pink/Brown Noise) und jeden eigenen Klang einzeln einstellen und als eigene Klangwelt speichern. Die Gruppe **Eigene** zeigt die eigenen Klänge: beliebig viele anlegen, benennen, mit Aufnahmen füllen ([Anleitung](EIGENE_AUFNAHMEN.md)).
 - **Wecker:** beliebig viele Weckzeiten mit Wochentagen, Weckton (Glocken, Klassisch, Vogelchor) mit Vorhören, Dauer, Lautstärke und Sonnenaufgang davor.
 - **Automatik:** Start im Zeitfenster entweder erst, wenn jemand mindestens 10 Minuten (einstellbar) im Raum ist, oder nur nach Zeitraum ohne Sensor (Start zu Beginn, Stopp am Ende). Aus, wenn niemand mehr da ist. Pause bei Musik. Ein ausgeschalteter Sleep-Timer bleibt aus.
-- **Lautstärke:** Die Klänge sind absichtlich leiser als Musik über AirPlay oder Music Assistant. Regler ganz oben entspricht −8 dB, nach unten fällt er schneller ab.
+- **Lautstärke:** Die Klänge sind absichtlich leiser als Musik über AirPlay oder Music Assistant. Regler ganz oben entspricht −18 dB, bei 50 % sind es etwa −38 dB. Der Wecker ist zusätzlich um 12 dB gedämpft. Mit der DIY-Soundlampe rechnet die Lampe diese Kurve selbst, sie braucht dafür das aktuelle Update.
 - **Zahnrad:** Lautsprecher, Lampen und Melder ändern.
 - **Sonne/Mond oben rechts:** Design wechseln: wie Home Assistant (automatisch), hell oder dunkel. Die Wahl merkt sich jeder Browser selbst.
 
