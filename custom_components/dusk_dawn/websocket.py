@@ -26,7 +26,7 @@ PRESENCE_CLASSES = ("occupancy", "motion", "presence")
 ACTIONS = (
     "play", "stop", "toggle", "set_level", "set_volume", "apply_preset", "save_preset", "delete_preset",
     "set_timer", "good_night", "light", "set_alarm", "delete_alarm", "ring", "stop_alarm", "preview_tone",
-    "set_auto",
+    "set_auto", "activate_scene", "update_preset", "reorder_presets", "restore_presets",
 )
 
 
@@ -117,7 +117,16 @@ async def _dispatch(rt: SpotRuntime, action: str, msg: dict[str, Any]) -> None:
     elif action == "apply_preset":
         await rt.async_apply_preset(msg["preset_id"])
     elif action == "save_preset":
-        await rt.async_save_preset(msg["name"], msg.get("icon"))
+        await rt.async_save_preset(msg["name"], msg.get("icon"),
+                                   **{k: msg[k] for k in ("volume", "timer", "light") if k in msg})
+    elif action == "activate_scene":
+        await rt.async_activate_scene(msg["preset_id"])
+    elif action == "update_preset":
+        await rt.async_update_preset(msg["preset_id"], dict(msg.get("scene") or {}), bool(msg.get("take_mix")))
+    elif action == "reorder_presets":
+        await rt.async_reorder_presets([str(i) for i in msg["order"]])
+    elif action == "restore_presets":
+        await rt.async_restore_presets()
     elif action == "delete_preset":
         await rt.async_delete_preset(msg["preset_id"])
     elif action == "set_timer":

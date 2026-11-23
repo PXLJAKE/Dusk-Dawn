@@ -70,6 +70,15 @@ SOUND_ICONS: Final = {  # also in icons.json
 # Built-in presets, copied from hardware/device/sleepgen/config.py
 BUILTIN_PRESETS: Final = [
     {
+        "id": "gute_nacht",
+        "name": "Gute Nacht",
+        "builtin": True,
+        "icon": "mdi:weather-night",
+        "levels": {"rain": 0.8, "brown": 0.3},
+        # warm dimmed light that fades out with the sleep timer; the timer itself is left as it is
+        "light": {"mode": "fade", "brightness": 24, "kelvin": 2200},
+    },
+    {
         "id": "regen",
         "name": "Regen",
         "builtin": True,

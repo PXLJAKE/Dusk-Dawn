@@ -23,9 +23,12 @@ const GROUPS = [
 ];
 const TONES = ["bells", "classic", "birds"];
 const TIMERS = [null, 15, 30, 45, 60, 90];
-const BUILTIN_PRESETS = ["Regen", "Gewitternacht", "Meer", "Ventilator", "Brown Noise", "Pink Noise", "White Noise"];
-const PRESET_ICON_CHOICES = ["moon", "rain", "thunder", "waves", "wind", "fan", "brown"];
+const BUILTIN_PRESETS = ["Gute Nacht", "Regen", "Gewitternacht", "Meer", "Ventilator", "Brown Noise", "Pink Noise", "White Noise"];
+const PRESET_ICON_CHOICES = ["moon", "rain", "thunder", "waves", "wind", "fan", "brown", "bulb", "candle", "sunrise", "music"];
+const LIGHT_MODES = ["keep", "off", "white", "color", "gradient", "candle", "fade"];
+const LIGHT_DEFAULTS = { brightness: 40, kelvin: 2200, color: "#ff8a3d", to_color: "#3b1f6e", to_brightness: 0, minutes: 30 };
 const ICON_TO_MDI = {
+  bulb: "mdi:lightbulb", candle: "mdi:candle", sunrise: "mdi:weather-sunset-up", music: "mdi:music",
   moon: "mdi:weather-night", rain: "mdi:weather-rainy", thunder: "mdi:weather-lightning-rainy", waves: "mdi:waves",
   stream: "mdi:water", wind: "mdi:weather-windy", leaves: "mdi:leaf", birds: "mdi:bird", fire: "mdi:fireplace",
   fan: "mdi:fan", white: "mdi:sine-wave", pink: "mdi:sine-wave", brown: "mdi:sine-wave",
@@ -40,7 +43,8 @@ const MDI_TO_ICON = {
   "mdi:leaf": "leaves", "mdi:forest": "leaves", "mdi:pine-tree": "leaves", "mdi:tree": "leaves",
   "mdi:bird": "birds", "mdi:twitter": "birds",
   "mdi:fireplace": "fire", "mdi:fire": "fire", "mdi:campfire": "fire",
-  "mdi:fan": "fan",
+  "mdi:fan": "fan", "mdi:lightbulb": "bulb", "mdi:candle": "candle", "mdi:weather-sunset-up": "sunrise", "mdi:music": "music",
+  "mdi:playlist-music": "music", "mdi:star": "sparkle",
   "mdi:sine-wave": "brown", "mdi:waveform": "brown", "mdi:square-wave": "white", "mdi:volume-high": "brown",
 };
 
@@ -65,6 +69,7 @@ const ICONS = {
   check: { d: "M5 12.5l4.5 4.5L19 7.5" },
   trash: { d: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" },
   edit: { d: "M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4" },
+  grip: { d: "M8 5h2.4v2.4H8zM13.6 5H16v2.4h-2.4zM8 10.8h2.4v2.4H8zM13.6 10.8H16v2.4h-2.4zM8 16.6h2.4V19H8zM13.6 16.6H16V19h-2.4z", fill: true },
   speaker: { d: "M4 9.5h3.5L12 6v12l-4.5-3.5H4zM15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10" },
   bulb: { d: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z" },
   timer: { d: "M10 2.5h4M12 13.5l3-3M12 21.5a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15z" },
@@ -116,7 +121,17 @@ const STR = {
     good_night: "Gute Nacht", good_night_hint: "Abendklang, warmes gedimmtes Licht und Sleep-Timer in einem Schritt.",
     good_night_done: "Gute Nacht – schlaf gut.",
     next_alarm: "Nächster Wecker", no_alarm: "Kein Wecker aktiv", in_time: "in {d}",
-    presets: "Klangwelten", presets_hint: "Antippen zum Übernehmen, darunter fein mischen.",
+    presets: "Szenen", presets_hint: "Antippen startet die Szene. Am Griff ziehen sortiert, der Stift bearbeitet.",
+    my_scenes: "Meine Szenen", suggestions: "Vorschläge", no_own_scenes: "Noch keine eigenen Szenen. Stell das Mischpult ein und tippe auf „Neue Szene“.",
+    new_scene: "Neue Szene", edit_scene: "Szene bearbeiten", edit_scene_n: "Szene „{n}“ bearbeiten", scene_name: "Name", scene_sounds: "Klänge",
+    take_mix: "Aktuelles Mischpult übernehmen", mix_taken: "Übernimmt das aktuelle Mischpult", keep: "Nicht ändern", set_value: "Festlegen",
+    lm_off: "Aus", lm_white: "Weiß", lm_color: "Farbe", lm_gradient: "Farbverlauf", lm_candle: "Kerze", lm_fade: "Einschlaflicht",
+    lm_keep_hint: "Das Licht bleibt, wie es ist.", lm_fade_hint: "Warmes, gedimmtes Licht, das mit dem Sleep-Timer ausgeht. Schaltet nur ein, wenn schon Licht an ist oder „Licht mit dem Klang“ in der Automatik an ist.",
+    lm_gradient_hint: "Das Licht wandert langsam von der Start- zur Endfarbe. Helligkeit 0 am Ende schaltet es aus.",
+    color: "Farbe", from_color: "Startfarbe", to_color: "Endfarbe", end_brightness: "Helligkeit am Ende", gradient_min: "Dauer des Verlaufs",
+    remove_suggestion: "Vorschlag entfernen", restore_suggestions: "Vorschläge wiederherstellen", scene_saved: "Szene „{n}“ gespeichert", scene_started: "„{n}“ läuft",
+    drag: "„{n}“ verschieben (ziehen oder Pfeiltasten)", start_scene: "Abendszene", start_scene_desc: "Startet mit der Automatik und mit der Aktion „Gute Nacht“. Bearbeiten kannst du sie unter Klänge.",
+    all_scenes: "Alle Szenen", scene_timer: "Sleep-Timer {m} min", scene_timer_off: "Timer aus", scene_vol: "Lautstärke {n}", edited: "bearbeitet",
     mixer: "Mischpult", mixer_hint: "Jede Ebene hat ihre eigene Lautstärke.",
     own_title: "Eigene Klänge", own_hint: "Lege beliebig viele eigene Klänge an, gib ihnen einen Namen und lade Aufnahmen dazu hoch (Handy, Diktiergerät, Download – gern 5 Minuten oder länger). Sie laufen endlos mit weichen Übergängen und zufälligen Stellen, ohne hörbare Wiederholung. Mehrere Dateien pro Klang wechseln sich ab. Jeder Klang erscheint im Mischpult und lässt sich in Szenen verwenden.",
     own_new: "Neuer Klang", own_new_ph: "Name, z. B. Waldbach", own_create: "Klang anlegen", own_none: "Noch keine eigenen Klänge.", own_group: "Eigene", rename_label: "Name von „{n}“", remove_sound: "Klang „{n}“ löschen",
@@ -124,7 +139,7 @@ const STR = {
     upload_err: "Hochladen fehlgeschlagen", no_files: "Noch keine Aufnahme.", delete_file: "Aufnahme „{n}“ löschen", own_admin: "Hochladen und Löschen darf nur ein Administrator.",
     src_need_file: "Lade zuerst eine Aufnahme hoch.", file_tag: "Datei", min_s: "{m}:{s} min",
     group_water: "Wasser", group_weather: "Wetter", group_noise: "Rauschen",
-    save_preset: "Als Klangwelt speichern", preset_name: "Name der Klangwelt", preset_icon: "Symbol",
+    save_preset: "Als Szene speichern", preset_name: "Name der Klangwelt", preset_icon: "Symbol",
     save: "Speichern", cancel: "Abbrechen", delete: "Löschen", confirm_delete: "Wirklich löschen?",
     delete_preset: "Klangwelt „{n}“ löschen", preset_saved: "Klangwelt „{n}“ gespeichert", mix_empty: "Schiebe mindestens einen Regler hoch, um eine Klangwelt zu speichern.",
     active: "aktiv", off: "aus",
@@ -173,7 +188,17 @@ const STR = {
     good_night: "Good night", good_night_hint: "Bedtime sound, warm dimmed light and sleep timer in one step.",
     good_night_done: "Good night – sleep well.",
     next_alarm: "Next alarm", no_alarm: "No alarm set", in_time: "in {d}",
-    presets: "Soundscapes", presets_hint: "Tap to apply, then fine-tune below.",
+    presets: "Scenes", presets_hint: "Tap to start a scene. Drag the handle to sort, the pencil edits.",
+    my_scenes: "My scenes", suggestions: "Suggestions", no_own_scenes: "No scenes of your own yet. Set up the mixer and tap “New scene”.",
+    new_scene: "New scene", edit_scene: "Edit scene", edit_scene_n: "Edit scene “{n}”", scene_name: "Name", scene_sounds: "Sounds",
+    take_mix: "Use the current mixer", mix_taken: "Takes the current mixer", keep: "Don't change", set_value: "Set",
+    lm_off: "Off", lm_white: "White", lm_color: "Colour", lm_gradient: "Gradient", lm_candle: "Candle", lm_fade: "Sleep light",
+    lm_keep_hint: "The light stays as it is.", lm_fade_hint: "Warm, dimmed light that goes out with the sleep timer. Only switches on if a light is already on or “Light with the sound” is enabled.",
+    lm_gradient_hint: "The light slowly moves from the start to the end colour. Brightness 0 at the end switches it off.",
+    color: "Colour", from_color: "Start colour", to_color: "End colour", end_brightness: "Brightness at the end", gradient_min: "Gradient duration",
+    remove_suggestion: "Remove suggestion", restore_suggestions: "Restore suggestions", scene_saved: "Scene “{n}” saved", scene_started: "“{n}” playing",
+    drag: "Move “{n}” (drag or arrow keys)", start_scene: "Evening scene", start_scene_desc: "Starts with the automation and with the “Good night” action. Edit it under Sounds.",
+    all_scenes: "All scenes", scene_timer: "Sleep timer {m} min", scene_timer_off: "Timer off", scene_vol: "Volume {n}", edited: "edited",
     mixer: "Mixer", mixer_hint: "Every layer has its own volume.",
     own_title: "My sounds", own_hint: "Create as many sounds of your own as you like, name them and upload recordings to them (phone, voice recorder, download – five minutes or longer is ideal). They play endlessly with soft crossfades and random start points, without an audible loop. Several files per sound take turns. Every sound shows up in the mixer and can be used in scenes.",
     own_new: "New sound", own_new_ph: "Name, e.g. Forest stream", own_create: "Create sound", own_none: "No sounds of your own yet.", own_group: "Mine", rename_label: "Name of “{n}”", remove_sound: "Delete sound “{n}”",
@@ -181,7 +206,7 @@ const STR = {
     upload_err: "Upload failed", no_files: "No recording yet.", delete_file: "Delete recording “{n}”", own_admin: "Only an administrator can upload or delete.",
     src_need_file: "Upload a recording first.", file_tag: "File", min_s: "{m}:{s} min",
     group_water: "Water", group_weather: "Weather", group_noise: "Noise",
-    save_preset: "Save as soundscape", preset_name: "Soundscape name", preset_icon: "Icon",
+    save_preset: "Save as scene", preset_name: "Soundscape name", preset_icon: "Icon",
     save: "Save", cancel: "Cancel", delete: "Delete", confirm_delete: "Really delete?",
     delete_preset: "Delete soundscape “{n}”", preset_saved: "Soundscape “{n}” saved", mix_empty: "Raise at least one slider to save a soundscape.",
     active: "active", off: "off",
@@ -232,7 +257,7 @@ const DAY_LONG = {
   en: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
 };
 const PRESET_EN = {
-  Regen: "Rain", Gewitternacht: "Thunder night", Meer: "Seaside", Kaminabend: "Fireside evening",
+  "Gute Nacht": "Good night", Regen: "Rain", Gewitternacht: "Thunder night", Meer: "Seaside", Kaminabend: "Fireside evening",
   Waldmorgen: "Forest morning", Wald: "Forest", Ventilator: "Fan",
 };
 
@@ -587,6 +612,26 @@ input[type=range].kelvin::-moz-range-progress { background: transparent; }
 .tile .del:hover { color: var(--danger); background: var(--danger-bg); }
 .tile .del.confirm { width: auto; padding: 0 10px; background: var(--danger); color: #2a0a06; font-size: 12px; font-weight: 700; }
 
+.scgroup + .scgroup { margin-top: 18px; }
+.scgroup h3 { margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.scgroup h3 .grow { flex: 1; }
+.tile .tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 2px; }
+.tile .tool { width: 32px; height: 32px; border-radius: 10px; border: 0; background: transparent; color: var(--faint); display: grid; place-items: center; }
+.tile .tool .ic { width: 18px; height: 18px; }
+.tile .tool:hover, .tile .tool:focus-visible { color: var(--fg); background: var(--surface-2); }
+.tile .drag { cursor: grab; touch-action: none; }
+.tile.dragging { opacity: .55; }
+.tile.dragging .apply { border-style: dashed; border-color: var(--brass); }
+.tile .tname { padding-right: 58px; }
+.tile .textra { font-size: 12px; color: var(--brass-hi); line-height: 1.35; }
+.tile .gbar { height: 6px; border-radius: 99px; }
+.chips.scenes .chip .ic { width: 16px; height: 16px; }
+.gradprev { height: 14px; border-radius: 99px; border: 1px solid var(--line); }
+.colorrow { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.colorrow .field { min-width: 120px; flex: 1; }
+input[type="color"] { width: 100%; height: 40px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--sunken); padding: 3px; cursor: pointer; }
+.scenesum { font-size: 14px; color: var(--muted); }
+
 /* mixer */
 .groups { display: grid; gap: 18px 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .narrow-layout .groups { grid-template-columns: minmax(0, 1fr); }
@@ -789,6 +834,10 @@ class DuskDawnPanel extends HTMLElement {
     sr.addEventListener("input", (e) => this._onInput(e));
     sr.addEventListener("change", (e) => this._onChange(e));
     sr.addEventListener("keydown", (e) => this._onKey(e));
+    sr.addEventListener("pointerdown", (e) => this._dragStart(e));
+    sr.addEventListener("pointermove", (e) => this._dragMove(e));
+    sr.addEventListener("pointerup", (e) => this._dragEnd(e));
+    sr.addEventListener("pointercancel", (e) => this._dragEnd(e));
   }
 
   /* ---- HA properties */
@@ -995,6 +1044,148 @@ class DuskDawnPanel extends HTMLElement {
     const top = Object.keys(lv).sort((a, b) => lv[b] - lv[a])[0];
     return top && ICONS[top] ? top : "moon";
   }
+  _sceneExtras(p) {
+    const out = [];
+    if (p.light && p.light.mode && p.light.mode !== "keep") out.push(this._t(`lm_${p.light.mode}`));
+    if (p.timer !== undefined && p.timer !== "keep") out.push(p.timer ? this._t("scene_timer", { m: p.timer }) : this._t("scene_timer_off"));
+    if (p.volume != null) out.push(this._t("scene_vol", { n: this._pct(p.volume * 100) }));
+    if (p.builtin && p.edited) out.push(this._t("edited"));
+    return out.join(" · ");
+  }
+
+  _openScene(p, opener) {
+    const st = this._spot()?.state || {};
+    const cur = {};
+    Object.entries(st.levels || {}).forEach(([k, v]) => { if (v > 0.005) cur[k] = v; });
+    this._sdlgReturn = opener;
+    this._sdlg = {
+      isNew: !p, id: p?.id || null, builtin: !!p?.builtin, name: p ? this._presetName(p) : "",
+      icon: p?.icon || "mdi:weather-night", levels: p ? { ...(p.levels || {}) } : cur, takeMix: false,
+      volume: p?.volume ?? null, timer: p && p.timer !== undefined ? p.timer : "keep",
+      light: { ...LIGHT_DEFAULTS, ...(p?.light || {}), mode: p?.light?.mode || "keep" }, confirm: false,
+    };
+    if (p && this._lang === "en" && PRESET_EN[p.name]) this._sdlg.name = p.name; // keep the stored name
+    this._focusNext = "#sd-name";
+    this._schedule();
+  }
+
+  _closeScene() {
+    this._sdlg = null;
+    const ret = this._sdlgReturn;
+    this._sdlgReturn = null;
+    this._schedule();
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (ret && ret.isConnected) ret.focus(); }));
+  }
+
+  _saveScene() {
+    const d = this._sdlg;
+    if (!d || !d.name.trim()) return;
+    const L = d.light;
+    let light = null;
+    if (L.mode !== "keep") {
+      const keys = { off: [], white: ["brightness", "kelvin"], fade: ["brightness", "kelvin"], color: ["brightness", "color"],
+        candle: ["brightness"], gradient: ["color", "brightness", "to_color", "to_brightness", "minutes"] }[L.mode] || [];
+      light = { mode: L.mode };
+      keys.forEach((k) => { light[k] = L[k]; });
+    }
+    const name = d.name.trim();
+    const scene = { name, icon: d.icon, volume: d.volume, timer: d.timer, light };
+    this._closeScene();
+    const done = (r) => { if (r) this._toast(this._t("scene_saved", { n: name })); };
+    if (d.isNew) this._cmd("save_preset", scene).then(done);
+    else this._cmd("update_preset", { preset_id: d.id, scene, take_mix: d.takeMix }, (s) => {
+      const p = (s.presets || []).find((x) => x.id === d.id);
+      if (p) { Object.assign(p, scene); if (p.builtin) p.edited = true; if (!light) delete p.light; }
+    }).then(done);
+  }
+
+  _tplSceneDialog() {
+    const d = this._sdlg;
+    const spot = this._spot();
+    const st = spot?.state || {};
+    const hasLight = spot && ((spot.lights || []).length || spot.diy_device);
+    const L = d.light;
+    const cur = {};
+    Object.entries(st.levels || {}).forEach(([k, v]) => { if (v > 0.005) cur[k] = v; });
+    const levels = d.takeMix ? cur : d.levels;
+    const icons = PRESET_ICON_CHOICES.map((ic) => `<button type="button" data-action="sd_icon" data-icon="${ic}" aria-pressed="${this._presetIcon({ icon: d.icon }) === ic}" aria-label="${esc(ic)}">${icon(ic)}</button>`).join("");
+    const vol = Math.round((d.volume ?? st.volume ?? 0.3) * 100);
+    const timerOpts = ["keep", ...TIMERS];
+    const timers = timerOpts.map((m) => `<button type="button" class="chip" data-action="sd_timer" data-min="${m === "keep" ? "keep" : m ?? ""}" aria-pressed="${d.timer === m}">${esc(m === "keep" ? this._t("keep") : m == null ? this._t("timer_off") : `${m}`)}</button>`).join("");
+    const modes = LIGHT_MODES.map((m) => `<button type="button" class="chip" data-action="sd_lmode" data-mode="${m}" aria-pressed="${L.mode === m}">${esc(m === "keep" ? this._t("keep") : this._t(`lm_${m}`))}</button>`).join("");
+    const rng = (id, kind, label, val, min, max, step, out) => `<div class="field">
+        <div class="field-head"><label for="${id}">${esc(label)}</label><output for="${id}">${esc(out)}</output></div>
+        <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" style="--p:${((val - min) / (max - min)) * 100}%" data-input="${kind}">
+      </div>`;
+    let lightFields = "";
+    if (L.mode === "keep") lightFields = `<p class="hint">${esc(this._t("lm_keep_hint"))}</p>`;
+    else if (L.mode === "white" || L.mode === "fade") {
+      lightFields = rng("sd-lbri", "sd_lbri", this._t("brightness"), L.brightness, 1, 100, 1, this._pct(L.brightness))
+        + `<div class="field"><div class="field-head"><label for="sd-lkel">${esc(this._t("kelvin"))}</label><output for="sd-lkel">${L.kelvin} K</output></div>
+          <input type="range" class="kelvin" id="sd-lkel" min="1800" max="6500" step="50" value="${L.kelvin}" data-input="sd_lkel"></div>`
+        + (L.mode === "fade" ? `<p class="hint">${esc(this._t("lm_fade_hint"))}</p>` : "");
+    } else if (L.mode === "color") {
+      lightFields = `<div class="colorrow"><div class="field"><label class="lbl" for="sd-lcol">${esc(this._t("color"))}</label>
+          <input type="color" id="sd-lcol" value="${esc(L.color)}" data-input="sd_lcolor"></div></div>`
+        + rng("sd-lbri", "sd_lbri", this._t("brightness"), L.brightness, 1, 100, 1, this._pct(L.brightness));
+    } else if (L.mode === "candle") {
+      lightFields = rng("sd-lbri", "sd_lbri", this._t("brightness"), L.brightness, 1, 100, 1, this._pct(L.brightness));
+    } else if (L.mode === "gradient") {
+      lightFields = `<div class="gradprev" style="background:linear-gradient(90deg, ${esc(L.color)}, ${esc(L.to_color)})" aria-hidden="true"></div>
+        <div class="colorrow">
+          <div class="field"><label class="lbl" for="sd-lcol">${esc(this._t("from_color"))}</label><input type="color" id="sd-lcol" value="${esc(L.color)}" data-input="sd_lcolor"></div>
+          <div class="field"><label class="lbl" for="sd-lto">${esc(this._t("to_color"))}</label><input type="color" id="sd-lto" value="${esc(L.to_color)}" data-input="sd_lto"></div>
+        </div>`
+        + rng("sd-lbri", "sd_lbri", this._t("brightness"), L.brightness, 1, 100, 1, this._pct(L.brightness))
+        + rng("sd-ltob", "sd_ltob", this._t("end_brightness"), L.to_brightness, 0, 100, 1, L.to_brightness ? this._pct(L.to_brightness) : this._t("off"))
+        + rng("sd-lmin", "sd_lmin", this._t("gradient_min"), L.minutes, 5, 120, 5, `${L.minutes} min`)
+        + `<p class="hint">${esc(this._t("lm_gradient_hint"))}</p>`;
+    }
+    const delLabel = d.builtin ? this._t("remove_suggestion") : this._t("delete");
+    return `<div class="scrim" data-action="sd_scrim">
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="sd-title" data-key="sdlg">
+        <div class="dhead"><h2 id="sd-title">${esc(this._t(d.isNew ? "new_scene" : "edit_scene"))}</h2>
+          <button class="iconbtn" data-action="sd_close" aria-label="${esc(this._t("close"))}">${icon("close")}</button></div>
+        <div class="dbody">
+          <div class="field"><label class="lbl" for="sd-name">${esc(this._t("scene_name"))}</label>
+            <input class="text" id="sd-name" type="text" maxlength="40" autocomplete="off" value="${esc(d.name)}" data-input="sd_name"></div>
+          <div class="field"><span class="lbl" id="sd-ico-l">${esc(this._t("preset_icon"))}</span>
+            <div class="icopick" role="group" aria-labelledby="sd-ico-l">${icons}</div></div>
+          <div class="field">
+            <div class="field-head"><span class="lbl">${esc(this._t("scene_sounds"))}</span></div>
+            <p class="scenesum">${esc(this._presetSummary(levels) || this._t("nothing"))}</p>
+            ${d.isNew ? "" : `<div class="row" style="gap:10px;justify-content:flex-start"><button type="button" class="switch" role="switch" data-action="sd_takemix" aria-checked="${d.takeMix}" aria-labelledby="sd-mix-l"></button><span id="sd-mix-l">${esc(this._t("take_mix"))}</span></div>`}
+          </div>
+          <div class="divider"></div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="sd-vol-l">${esc(this._t("volume"))}</span></div>
+            <div class="chips" role="group" aria-labelledby="sd-vol-l">
+              <button type="button" class="chip" data-action="sd_volmode" data-on="0" aria-pressed="${d.volume == null}">${esc(this._t("keep"))}</button>
+              <button type="button" class="chip" data-action="sd_volmode" data-on="1" aria-pressed="${d.volume != null}">${esc(this._t("set_value"))}</button>
+            </div>
+          </div>
+          ${d.volume != null ? rng("sd-vol", "sd_vol", this._t("volume"), vol, 0, 100, 1, this._pct(vol)) : ""}
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="sd-tm-l">${esc(this._t("timer"))}</span></div>
+            <div class="chips" role="group" aria-labelledby="sd-tm-l">${timers}</div>
+          </div>
+          ${hasLight ? `<div class="divider"></div>
+          <div class="field">
+            <div class="field-head"><span class="lbl" id="sd-lm-l">${esc(this._t("light"))}</span></div>
+            <div class="chips" role="group" aria-labelledby="sd-lm-l">${modes}</div>
+          </div>
+          ${lightFields}` : `<p class="hint">${esc(this._t("no_light"))}</p>`}
+        </div>
+        <div class="dfoot">
+          ${d.isNew ? "" : `<button type="button" class="btn danger" data-action="sd_delete">${icon("trash")}${esc(d.confirm ? this._t("confirm_delete") : delLabel)}</button>`}
+          <span class="grow"></span>
+          <button type="button" class="btn ghost" data-action="sd_close">${esc(this._t("cancel"))}</button>
+          <button type="button" class="btn primary" data-action="sd_save" ${d.name.trim() ? "" : "disabled"}>${icon("check")}${esc(this._t("save"))}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   _presetSummary(levels) {
     const lv = levels || {};
     return Object.keys(lv).filter((k) => lv[k] > 0.01).sort((a, b) => lv[b] - lv[a]).slice(0, 3).map((k) => this._sound(k)).join(" · ");
@@ -1044,6 +1235,7 @@ class DuskDawnPanel extends HTMLElement {
 
   _render() {
     if (!this.isConnected) return;
+    if (this._drag) return; // a tile is being dragged: render again when it is dropped
     const html = this._tpl();
     if (html === this._lastHtml) return;
     this._lastHtml = html;
@@ -1087,7 +1279,7 @@ class DuskDawnPanel extends HTMLElement {
     const toast = this._toastMsg
       ? `<div class="toast ${this._toastMsg.err ? "err" : ""}" role="${this._toastMsg.err ? "alert" : "status"}">${esc(this._toastMsg.msg)}</div>`
       : `<div class="sr" role="status"></div>`;
-    return head + body + (this._dlg ? this._tplDialog() : "") + toast;
+    return head + body + (this._dlg ? this._tplDialog() : "") + (this._sdlg ? this._tplSceneDialog() : "") + toast;
   }
 
   _tplError() {
@@ -1243,8 +1435,11 @@ class DuskDawnPanel extends HTMLElement {
         <div class="chips timer" role="group" aria-labelledby="timer-l">${timerChips}</div>
       </div>
       ${lightHtml}
-      <div class="divider"></div>
-      <button class="goodnight" data-action="good_night">${icon("moon")}<span><b>${esc(this._t("good_night"))}</b><span>${esc(this._t("good_night_hint"))}</span></span></button>
+      ${presets.length ? `<div class="divider"></div>
+      <div class="field">
+        <div class="field-head"><span class="lbl" id="sc-l">${esc(this._t("presets"))}</span><button class="linkbtn" data-action="view" data-view="sounds">${esc(this._t("all_scenes"))}</button></div>
+        <div class="chips scenes" role="group" aria-labelledby="sc-l">${presets.slice(0, 8).map((p) => `<button class="chip" data-action="scene" data-id="${esc(p.id)}" aria-pressed="${playing && st.preset === p.id}">${icon(this._presetIcon(p))}${esc(this._presetName(p))}</button>`).join("")}</div>
+      </div>` : ""}
       ${next}
     </section>`;
   }
@@ -1254,21 +1449,34 @@ class DuskDawnPanel extends HTMLElement {
     const st = spot.state || {};
     const levels = st.levels || {};
     const presets = st.presets || [];
-    const tiles = presets.map((p) => {
+    const tile = (p) => {
       const sel = st.preset === p.id;
-      const user = this._isUserPreset(p);
-      const confirm = this._confirmDel === p.id;
-      return `<div class="tile" data-key="p-${esc(p.id)}">
-        <button class="apply" data-action="preset" data-id="${esc(p.id)}" aria-pressed="${sel}">
+      const extra = this._sceneExtras(p);
+      const g = p.light?.mode === "gradient" ? `<span class="gbar" style="background:linear-gradient(90deg, ${esc(p.light.color)}, ${esc(p.light.to_color)})"></span>` : "";
+      return `<div class="tile" data-key="p-${esc(p.id)}" data-pid="${esc(p.id)}">
+        <button class="apply" data-action="scene" data-id="${esc(p.id)}" aria-pressed="${sel}">
           <span class="tico">${icon(this._presetIcon(p))}</span>
           <span class="tname">${esc(this._presetName(p))}</span>
           <span class="tsum">${esc(this._presetSummary(p.levels))}</span>
+          ${extra ? `<span class="textra">${esc(extra)}</span>` : ""}${g}
         </button>
-        ${user
-          ? `<button class="del ${confirm ? "confirm" : ""}" data-action="del_preset" data-id="${esc(p.id)}" aria-label="${esc(this._t("delete_preset", { n: p.name }))}">${confirm ? esc(this._t("confirm_delete")) : icon("trash")}</button>`
-          : sel ? `<span class="badge">${icon("check")}</span>` : ""}
+        <div class="tools">
+          <button class="tool" data-action="scene_edit" data-id="${esc(p.id)}" aria-label="${esc(this._t("edit_scene_n", { n: this._presetName(p) }))}">${icon("edit")}</button>
+          <button class="tool drag" data-drag="${esc(p.id)}" aria-label="${esc(this._t("drag", { n: this._presetName(p) }))}">${icon("grip")}</button>
+        </div>
       </div>`;
-    }).join("");
+    };
+    const mine = presets.filter((p) => this._isUserPreset(p));
+    const sugg = presets.filter((p) => !this._isUserPreset(p));
+    const canRestore = (st.hidden_presets || []).length || sugg.some((p) => p.edited);
+    const tiles = `<div class="scgroup" role="group" aria-labelledby="g-mine">
+        <h3 id="g-mine">${esc(this._t("my_scenes"))}</h3>
+        ${mine.length ? `<div class="tiles" data-grid="mine">${mine.map(tile).join("")}</div>` : `<p class="hint">${esc(this._t("no_own_scenes"))}</p>`}
+      </div>
+      ${sugg.length || canRestore ? `<div class="scgroup" role="group" aria-labelledby="g-sugg">
+        <h3 id="g-sugg"><span>${esc(this._t("suggestions"))}</span><span class="grow"></span>${canRestore ? `<button class="linkbtn" data-action="restore_presets">${esc(this._t("restore_suggestions"))}</button>` : ""}</h3>
+        <div class="tiles" data-grid="sugg">${sugg.map(tile).join("")}</div>
+      </div>` : ""}`;
 
     const own = this._ownSounds();
     const allGroups = own.length ? [{ key: "own", sounds: own.map((o) => o.id) }, ...GROUPS] : GROUPS;
@@ -1301,13 +1509,14 @@ class DuskDawnPanel extends HTMLElement {
           <button type="button" class="btn ghost" data-action="cancel_preset">${esc(this._t("cancel"))}</button></div>
       </form>`;
     } else {
-      save = `<div class="btns"><button class="btn" data-action="open_save" ${anyLevel ? "" : "disabled"}>${icon("plus")}${esc(this._t("save_preset"))}</button>
+      save = `<div class="btns"><button class="btn" data-action="scene_new" ${anyLevel ? "" : "disabled"}>${icon("plus")}${esc(this._t("save_preset"))}</button>
         ${anyLevel ? "" : `<span class="hint">${esc(this._t("mix_empty"))}</span>`}</div>`;
     }
 
     return `<section class="card" aria-labelledby="h-presets">
-        <div class="card-head"><div><h2 id="h-presets">${esc(this._t("presets"))}</h2><p class="hint">${esc(this._t("presets_hint"))}</p></div></div>
-        <div class="tiles">${tiles}</div>
+        <div class="card-head"><div><h2 id="h-presets">${esc(this._t("presets"))}</h2><p class="hint">${esc(this._t("presets_hint"))}</p></div>
+          <button class="btn" data-action="scene_new">${icon("plus")}${esc(this._t("new_scene"))}</button></div>
+        ${tiles}
       </section>
       <section class="card" aria-labelledby="h-mixer">
         <div class="card-head"><div><h2 id="h-mixer">${esc(this._t("mixer"))}</h2><p class="hint">${esc(this._t("mixer_hint"))}</p></div></div>
@@ -1493,6 +1702,10 @@ class DuskDawnPanel extends HTMLElement {
           <div class="field-head"><label for="au-stop">${esc(this._t("presence_stop"))}</label><output for="au-stop">${stopMin ? esc(this._t("presence_stop_after", { m: stopMin })) : esc(this._t("never"))}</output></div>
           <input type="range" id="au-stop" min="0" max="60" step="5" value="${stopMin}" style="--p:${(stopMin / 60) * 100}%" data-input="auto_stop" ${disP}>
         </div>
+      </section>
+      <section class="card" aria-labelledby="h-startscene">
+        <div class="card-head"><div><h2 id="h-startscene">${esc(this._t("start_scene"))}</h2><p class="hint">${esc(this._t("start_scene_desc"))}</p></div></div>
+        <div class="chips scenes" role="group" aria-labelledby="h-startscene">${(st.presets || []).map((p) => `<button class="chip" data-action="auto_scene" data-id="${esc(p.id)}" aria-pressed="${(au.start_scene || "gute_nacht") === p.id}">${icon(this._presetIcon(p))}${esc(this._presetName(p))}</button>`).join("")}</div>
       </section>
       <section class="card" aria-labelledby="h-music">
         <div class="card-head"><h2 id="h-music">${esc(this._t("music_title"))}</h2></div>
@@ -1681,6 +1894,40 @@ class DuskDawnPanel extends HTMLElement {
         this._cmd("good_night", {}, (s) => { s.playing = true; }).then((r) => { if (r) this._toast(this._t("good_night_done")); }); break;
       case "stop_alarm":
         this._cmd("stop_alarm", {}, (s) => { s.alarm_ringing = false; }); break;
+      case "scene": {
+        const p = (st.presets || []).find((x) => x.id === el.dataset.id);
+        this._cmd("activate_scene", { preset_id: el.dataset.id }, (s) => {
+          s.preset = el.dataset.id; s.playing = true;
+          if (p) { const lv = {}; Object.keys(s.levels || {}).forEach((k) => { lv[k] = p.levels?.[k] || 0; }); SOUNDS.forEach((k) => { lv[k] = p.levels?.[k] || 0; }); s.levels = lv; }
+          if (p?.volume != null) s.volume = p.volume;
+        }).then((r) => { if (r && p) this._toast(this._t("scene_started", { n: this._presetName(p) })); });
+        break;
+      }
+      case "scene_new": this._openScene(null, el); break;
+      case "scene_edit": this._openScene((st.presets || []).find((x) => x.id === el.dataset.id), el); break;
+      case "restore_presets": this._cmd("restore_presets"); break;
+      case "auto_scene": {
+        const auto = { ...(st.auto || {}), start_scene: el.dataset.id };
+        this._cmd("set_auto", { auto }, (s) => { s.auto = auto; }); break;
+      }
+      case "sd_scrim": if (e.target === el) this._closeScene(); break;
+      case "sd_close": this._closeScene(); break;
+      case "sd_icon": this._sdlg.icon = ICON_TO_MDI[el.dataset.icon] || "mdi:weather-night"; this._schedule(); break;
+      case "sd_takemix": this._sdlg.takeMix = !this._sdlg.takeMix; this._schedule(); break;
+      case "sd_volmode": this._sdlg.volume = el.dataset.on === "1" ? (st.volume ?? 0.3) : null; this._schedule(); break;
+      case "sd_timer": {
+        const m = el.dataset.min;
+        this._sdlg.timer = m === "keep" ? "keep" : m ? Number(m) : null; this._schedule(); break;
+      }
+      case "sd_lmode": this._sdlg.light.mode = el.dataset.mode; this._schedule(); break;
+      case "sd_save": this._saveScene(); break;
+      case "sd_delete": {
+        const d = this._sdlg;
+        if (!d.confirm) { d.confirm = true; this._schedule(); break; }
+        this._closeScene();
+        this._cmd("delete_preset", { preset_id: d.id }, (s) => { s.presets = s.presets.filter((x) => x.id !== d.id); if (s.preset === d.id) s.preset = null; });
+        break;
+      }
       case "preset": {
         const p = st.presets.find((x) => x.id === el.dataset.id);
         this._cmd("apply_preset", { preset_id: el.dataset.id }, (s) => {
@@ -1817,6 +2064,19 @@ class DuskDawnPanel extends HTMLElement {
         if (btn) btn.disabled = !el.value.trim();
         break;
       }
+      case "sd_name": {
+        this._sdlg.name = el.value;
+        const btn = this._root.querySelector('[data-action="sd_save"]');
+        if (btn) btn.disabled = !el.value.trim();
+        return;
+      }
+      case "sd_vol": this._sdlg.volume = v / 100; break;
+      case "sd_lbri": this._sdlg.light.brightness = v; break;
+      case "sd_lkel": this._sdlg.light.kelvin = v; break;
+      case "sd_ltob": this._sdlg.light.to_brightness = v; break;
+      case "sd_lmin": this._sdlg.light.minutes = v; break;
+      case "sd_lcolor": this._sdlg.light.color = el.value; break;
+      case "sd_lto": this._sdlg.light.to_color = el.value; break;
       case "dlg_time": this._dlg.alarm.time = el.value; break;
       case "dlg_dur": this._dlg.alarm.duration_min = v; break;
       case "dlg_vol": this._dlg.alarm.volume = v / 100; break;
@@ -1873,12 +2133,20 @@ class DuskDawnPanel extends HTMLElement {
     // Esc closes dialog / save form
     if (e.key === "Escape") {
       if (this._dlg) { e.preventDefault(); this._closeDialog(); return; }
+      if (this._sdlg) { e.preventDefault(); this._closeScene(); return; }
       if (this._saveForm) { this._saveForm = null; this._schedule(); return; }
     }
     // Enter in the preset name field saves
     if (e.key === "Enter" && e.target?.dataset?.input === "preset_name") { e.preventDefault(); this._savePreset(); return; }
+    if (e.key === "Enter" && e.target?.dataset?.input === "sd_name") { e.preventDefault(); this._saveScene(); return; }
+    const grip = e.target?.closest?.("[data-drag]");
+    if (grip && (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      e.preventDefault();
+      this._moveScene(grip.dataset.drag, e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 1);
+      return;
+    }
     // focus trap in dialog
-    if (e.key === "Tab" && this._dlg) {
+    if (e.key === "Tab" && (this._dlg || this._sdlg)) {
       const dlg = this.shadowRoot.querySelector(".dialog");
       const f = [...dlg.querySelectorAll("button:not([disabled]),input:not([disabled])")];
       if (!f.length) return;
@@ -1926,6 +2194,63 @@ class DuskDawnPanel extends HTMLElement {
         };
     this._focusNext = "#dlg-time";
     this._schedule();
+  }
+
+  /* drag and drop of scene tiles (pointer events: mouse, touch, pen) */
+  _dragStart(e) {
+    const h = e.target.closest?.("[data-drag]");
+    if (!h || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const tile = h.closest(".tile");
+    if (!tile) return;
+    e.preventDefault();
+    try { h.setPointerCapture(e.pointerId); } catch (_e) { /* old browsers */ }
+    this._drag = { id: h.dataset.drag, tile, grid: tile.parentElement, moved: false };
+    tile.classList.add("dragging");
+  }
+
+  _dragMove(e) {
+    const d = this._drag;
+    if (!d) return;
+    e.preventDefault();
+    const over = this.shadowRoot.elementFromPoint(e.clientX, e.clientY)?.closest?.(".tile");
+    if (!over || over === d.tile || over.parentElement !== d.grid) return;
+    const r = over.getBoundingClientRect();
+    const sameRow = e.clientY > r.top && e.clientY < r.bottom;
+    const after = sameRow ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2;
+    d.grid.insertBefore(d.tile, after ? over.nextSibling : over);
+    d.moved = true;
+  }
+
+  _dragEnd() {
+    const d = this._drag;
+    if (!d) return;
+    this._drag = null;
+    d.tile.classList.remove("dragging");
+    if (!d.moved) { this._schedule(); return; }
+    const order = [...this.shadowRoot.querySelectorAll(".tile[data-pid]")].map((t) => t.dataset.pid);
+    this._sendOrder(order);
+  }
+
+  _moveScene(id, dir) {
+    const st = this._spot()?.state;
+    if (!st) return;
+    const list = st.presets.map((p) => p.id);
+    const i = list.indexOf(id);
+    const own = this._isUserPreset(st.presets[i]);
+    const j = i + dir;
+    if (j < 0 || j >= list.length || this._isUserPreset(st.presets[j]) !== own) return; // stays in its group
+    [list[i], list[j]] = [list[j], list[i]];
+    this._focusNext = `[data-drag="${CSS.escape(id)}"]`;
+    this._sendOrder(list);
+  }
+
+  _sendOrder(order) {
+    this._lastHtml = null;
+    this._cmd("reorder_presets", { order }, (s) => {
+      const map = new Map((s.presets || []).map((p) => [p.id, p]));
+      const sorted = order.map((i) => map.get(i)).filter(Boolean).concat((s.presets || []).filter((p) => !order.includes(p.id)));
+      s.presets = [...sorted.filter((p) => !p.builtin), ...sorted.filter((p) => p.builtin)];
+    });
   }
 
   _closeDialog() {

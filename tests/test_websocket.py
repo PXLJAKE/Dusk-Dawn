@@ -24,7 +24,7 @@ async def test_spots(hass: HomeAssistant, setup_spot: MockConfigEntry, hass_ws_c
     for key in ("playing", "preset", "levels", "volume", "timer", "light", "alarms", "auto", "presets",
                 "alarm_ringing", "next_alarm"):
         assert key in state
-    assert len(state["presets"]) == 7
+    assert len(state["presets"]) == 8
     assert all(p["builtin"] and p["icon"].startswith("mdi:") for p in state["presets"])
 
 
@@ -56,12 +56,16 @@ async def test_commands(
     msg = await cmd("save_preset", name="Mix", icon="mdi:star")
     preset_id = msg["result"]["state"]["preset"]
     assert preset_id.startswith("user_")
-    assert msg["result"]["state"]["presets"][-1]["builtin"] is False
+    assert msg["result"]["state"]["presets"][0]["builtin"] is False
     msg = await cmd("apply_preset", preset_id="regen")
     assert msg["result"]["state"]["levels"]["waves"] == 0.0
     msg = await cmd("delete_preset", preset_id=preset_id)
     assert all(p["id"] != preset_id for p in msg["result"]["state"]["presets"])
-    msg = await cmd("delete_preset", preset_id="regen")
+    msg = await cmd("delete_preset", preset_id="regen")  # a suggestion: hidden, can be restored
+    assert all(p["id"] != "regen" for p in msg["result"]["state"]["presets"])
+    msg = await cmd("restore_presets")
+    assert any(p["id"] == "regen" for p in msg["result"]["state"]["presets"])
+    msg = await cmd("delete_preset", preset_id="nope")
     assert not msg["success"]
 
     msg = await cmd("set_volume", volume=0.7)

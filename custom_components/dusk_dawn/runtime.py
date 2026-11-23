@@ -47,7 +47,17 @@ from .diy import DiyLamp
 from .lights import LightController
 from .native import engine_kind
 from .scheduler import Scheduler
-from .state import alarm_taper, find_preset, master_taper, merge_stored, normalize_alarm, normalize_auto
+from .lights import hex_to_rgb
+from .state import (
+    alarm_taper,
+    find_preset,
+    master_taper,
+    merge_stored,
+    normalize_alarm,
+    normalize_auto,
+    normalize_scene,
+    sort_presets,
+)
 from .samples import SampleEngine, is_own
 from .stream import SpotStream
 from .uploads import get_library
@@ -341,32 +351,101 @@ class SpotRuntime:
         if notify:
             self.async_changed()
 
-    async def async_save_preset(self, name: str, icon: str | None = None) -> str:
-        name = str(name).strip()
-        if not name:
-            raise SpotError("A preset needs a name")
+    async def async_save_preset(self, name: str, icon: str | None = None, **extras: Any) -> str:
+        """Save the current mix (plus optional volume/timer/light) as a new own scene, at the top."""
+        data = {"name": name, "icon": icon, "levels": self.state["levels"],
+                **{k: v for k, v in extras.items() if k in ("volume", "timer", "light")}}
+        try:
+            scene = normalize_scene(data)
+        except (ValueError, TypeError) as err:
+            raise SpotError(str(err)) from err
         preset_id = f"user_{secrets.token_hex(4)}"
-        self.presets.append({
-            "id": preset_id,
-            "name": name,
-            "builtin": False,
-            "icon": icon if str(icon or "").startswith("mdi:") else "mdi:playlist-music",
-            "levels": {k: v for k, v in self.state["levels"].items() if v > 0},
-        })
+        scene = {"id": preset_id, "builtin": False, "icon": "mdi:playlist-music", **scene}
+        self.state["presets"] = sort_presets([scene, *self.presets])
         self.state["preset"] = preset_id
         self.async_changed()
         return preset_id
 
-    async def async_delete_preset(self, preset_id: str) -> None:
-        if preset_id in BUILTIN_PRESET_IDS:
-            raise SpotError("Built-in presets cannot be deleted")
-        before = len(self.presets)
-        self.state["presets"] = [p for p in self.presets if p["id"] != preset_id]
-        if len(self.presets) == before:
+    async def async_update_preset(self, preset_id: str, data: dict[str, Any], take_mix: bool = False) -> None:
+        """Edit a scene: name, icon, volume, timer, light; ``take_mix`` stores the current mix as its sounds."""
+        preset = find_preset(self.presets, preset_id)
+        if preset is None:
             raise SpotError(f"Unknown preset {preset_id!r}")
+        data = {k: v for k, v in data.items() if k in ("name", "icon", "levels", "volume", "timer", "light")}
+        if take_mix:
+            data["levels"] = self.state["levels"]
+        try:
+            new = normalize_scene(data, preset)
+        except (ValueError, TypeError) as err:
+            raise SpotError(str(err)) from err
+        if preset.get("builtin"):
+            new["edited"] = True
+        preset.clear()
+        preset.update(new)
+        self.async_changed()
+
+    async def async_reorder_presets(self, order: list[str]) -> None:
+        """Drag and drop: new order of the scene ids (own scenes always stay above the suggestions)."""
+        pos = {pid: i for i, pid in enumerate(order)}
+        ranked = sorted(enumerate(self.presets), key=lambda ip: (pos.get(ip[1]["id"], len(pos) + ip[0])))
+        self.state["presets"] = sort_presets([p for _, p in ranked])
+        self.async_changed()
+
+    async def async_restore_presets(self) -> None:
+        """Bring back the removed and edited built-in suggestions in their original form."""
+        own = [p for p in self.presets if not p.get("builtin")]
+        self.state["hidden_presets"] = []
+        self.state["presets"] = merge_stored({"presets": own})["presets"]
+        self.async_changed()
+
+    async def async_delete_preset(self, preset_id: str) -> None:
+        preset = find_preset(self.presets, preset_id)
+        if preset is None or preset["id"] != preset_id:
+            raise SpotError(f"Unknown preset {preset_id!r}")
+        if preset.get("builtin"):  # a suggestion: hide it (restore_presets brings it back)
+            self.state.setdefault("hidden_presets", []).append(preset_id)
+        self.state["presets"] = [p for p in self.presets if p["id"] != preset_id]
         if self.state["preset"] == preset_id:
             self.state["preset"] = None
         self.async_changed()
+
+    async def async_activate_scene(self, preset_id: str) -> None:
+        """Start a scene: its sounds, and, where the scene sets them, volume, sleep timer and light."""
+        preset = find_preset(self.presets, preset_id)
+        if preset is None:
+            raise SpotError(f"Unknown preset {preset_id!r}")
+        timer = preset.get("timer", "keep")
+        await self.async_play(preset=preset["id"], volume=preset.get("volume"),
+                              timer=-1 if timer == "keep" else timer)
+        await self._apply_scene_light(preset.get("light"))
+
+    async def _apply_scene_light(self, light: dict[str, Any] | None) -> None:
+        if not light or not (self.lights or self.diy is not None):
+            return
+        mode = light["mode"]
+
+        def bri(pct: int) -> int:
+            return max(0, min(255, round(pct * 255 / 100)))
+
+        if mode == "off":
+            await self.async_light(on=False)
+        elif mode == "white":
+            await self.async_light(on=True, brightness=bri(light["brightness"]), kelvin=light["kelvin"])
+        elif mode == "color":
+            await self.lights_ctl.async_set_color(hex_to_rgb(light["color"]), bri(light["brightness"]))
+            self.async_changed()
+        elif mode == "candle":
+            await self.async_light(effect="candle", brightness=bri(light["brightness"]))
+        elif mode == "gradient":
+            self.lights_ctl.start_gradient(hex_to_rgb(light["color"]), bri(light["brightness"]),
+                                           hex_to_rgb(light["to_color"]), bri(light["to_brightness"]),
+                                           float(light["minutes"]))
+            self.async_changed()
+        elif mode == "fade":  # night light that dims out with the sleep timer (only if a light is wanted)
+            if self.lights_ctl.any_on() or self.state["light"]["on"] or self.state["auto"]["night_light_with_sound"]:
+                await self.async_light(on=True, brightness=bri(light["brightness"]), kelvin=light["kelvin"])
+                if self.state["timer"]["minutes"]:
+                    await self.async_light(effect="fade", minutes=self.state["timer"]["minutes"])
 
     # ------------------------------------------------------------ sleep timer
     async def async_set_timer(self, minutes: int | None) -> None:
@@ -408,16 +487,16 @@ class SpotRuntime:
         self._timer("timer_end", async_track_point_in_utc_time(self.hass, _end, ends))
 
     async def async_good_night(self) -> None:
-        """Good-night routine: default sound with sleep timer, dim light fading out."""
-        minutes = self.state["timer"]["minutes"]  # stays off if the user switched the sleep timer off
-        preset = self.state["preset"] or DEFAULT_PRESET
-        await self.async_play(preset=preset)
-        has_light = bool(self.lights) or self.diy is not None
-        if has_light and (self.lights_ctl.any_on() or self.state["light"]["on"]
-                          or self.state["auto"]["night_light_with_sound"]):
-            await self.async_light(on=True, brightness=NIGHT_LIGHT_BRIGHTNESS, kelvin=NIGHT_LIGHT_KELVIN)
-            if minutes:
-                await self.async_light(effect="fade", minutes=minutes)
+        """Start the evening scene (Automatik → start scene, by default the editable „Gute Nacht“)."""
+        scene = find_preset(self.presets, self.state["auto"].get("start_scene") or "") or find_preset(
+            self.presets, "gute_nacht")
+        if scene is not None:
+            await self.async_activate_scene(scene["id"])
+            return
+        # no scene left (all removed): last sound with a warm, dimmed light
+        await self.async_play(preset=self.state["preset"] or None)
+        await self._apply_scene_light({"mode": "fade", "brightness": round(NIGHT_LIGHT_BRIGHTNESS * 100 / 255),
+                                       "kelvin": NIGHT_LIGHT_KELVIN})
 
     # ------------------------------------------------------------ light
     async def async_light(
@@ -452,10 +531,12 @@ class SpotRuntime:
                 light["brightness"] = int(min(max(brightness, 1), 255))
             if kelvin is not None:
                 light["kelvin"] = int(kelvin)
+                light["rgb"] = None
             if on is None:
                 on = True if (brightness is not None or kelvin is not None) else light["on"]
+            self.lights_ctl.cancel_effect()
             light.update(on=on, effect=None)
-            await self.diy.light(on, light["brightness"], light["kelvin"])
+            await self.diy.light(on, light["brightness"], light["kelvin"], light.get("rgb"))
         else:
             await self.lights_ctl.async_set(on, brightness, kelvin)
         self.async_changed()
