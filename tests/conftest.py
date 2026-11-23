@@ -40,6 +40,19 @@ def force_python_engine(request: pytest.FixtureRequest):
         yield
 
 
+@pytest.fixture(autouse=True)
+def clean_sound_library():
+    """The test config dir is shared between tests: start every test without own sounds."""
+    import shutil  # noqa: PLC0415
+
+    from pytest_homeassistant_custom_component.common import get_test_config_dir  # noqa: PLC0415
+
+    folder = get_test_config_dir("dusk_dawn_sounds")
+    shutil.rmtree(folder, ignore_errors=True)
+    yield
+    shutil.rmtree(folder, ignore_errors=True)
+
+
 @pytest.fixture
 def config_entry() -> MockConfigEntry:
     return MockConfigEntry(domain=DOMAIN, title="Bedroom", data=dict(SPOT_DATA))

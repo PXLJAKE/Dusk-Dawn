@@ -75,23 +75,11 @@
       "level_waves": {
         "name": "Ocean waves"
       },
-      "level_stream": {
-        "name": "Brook"
-      },
       "level_wind": {
         "name": "Wind"
       },
       "level_thunder": {
         "name": "Thunder"
-      },
-      "level_birds": {
-        "name": "Birds"
-      },
-      "level_leaves": {
-        "name": "Rustling leaves"
-      },
-      "level_fire": {
-        "name": "Fireplace"
       },
       "level_fan": {
         "name": "Fan"

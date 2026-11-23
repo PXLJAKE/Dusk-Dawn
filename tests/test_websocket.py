@@ -24,7 +24,7 @@ async def test_spots(hass: HomeAssistant, setup_spot: MockConfigEntry, hass_ws_c
     for key in ("playing", "preset", "levels", "volume", "timer", "light", "alarms", "auto", "presets",
                 "alarm_ringing", "next_alarm"):
         assert key in state
-    assert len(state["presets"]) == 10
+    assert len(state["presets"]) == 7
     assert all(p["builtin"] and p["icon"].startswith("mdi:") for p in state["presets"])
 
 

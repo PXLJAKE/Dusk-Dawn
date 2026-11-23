@@ -208,14 +208,14 @@ def test_mqtt_end_to_end(tmp_path):
         assert "homeassistant/light/sleepgen/lamp/config" in got
         assert got.get("sleepgen/sleepgen/status") == "online"
 
-        c.publish("sleepgen/sleepgen/preset/set", "Kaminabend")
+        c.publish("sleepgen/sleepgen/preset/set", "Meer")
         deadline = time.time() + 5
         while time.time() < deadline:
             st = json.loads(got.get("sleepgen/sleepgen/state", "{}"))
-            if st.get("preset") == "Kaminabend":
+            if st.get("preset") == "Meer":
                 break
             time.sleep(0.1)
-        assert st["preset"] == "Kaminabend"
+        assert st["preset"] == "Meer"
         c.loop_stop()
         app.stop()
     finally:

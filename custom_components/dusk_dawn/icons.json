@@ -23,23 +23,11 @@
       "level_waves": {
         "default": "mdi:waves"
       },
-      "level_stream": {
-        "default": "mdi:waves-arrow-right"
-      },
       "level_wind": {
         "default": "mdi:weather-windy"
       },
       "level_thunder": {
         "default": "mdi:weather-lightning"
-      },
-      "level_birds": {
-        "default": "mdi:bird"
-      },
-      "level_leaves": {
-        "default": "mdi:leaf"
-      },
-      "level_fire": {
-        "default": "mdi:fireplace"
       },
       "level_fan": {
         "default": "mdi:fan"

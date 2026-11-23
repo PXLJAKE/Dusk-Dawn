@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
@@ -24,6 +25,7 @@ from .const import (
     PANEL_FILE,
     PANEL_ICON,
     PANEL_URL_PATH,
+    REMOVED_SOUNDS,
     SAMPLE_RATE,
     STATIC_URL,
     STORAGE_KEY,
@@ -133,8 +135,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: DuskDawnConfigEntry) -> 
     entry.async_on_unload(hass.bus.async_listen(EVENT_HOMEASSISTANT_STOP, _on_stop))
     await _async_register_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _remove_stale_entities(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
+
+
+def _remove_stale_entities(hass: HomeAssistant, entry: DuskDawnConfigEntry) -> None:
+    """Drop the level sliders of sounds that no longer exist (stream, birds, leaves, fire)."""
+    registry = er.async_get(hass)
+    for sound in REMOVED_SOUNDS:
+        entity_id = registry.async_get_entity_id("number", DOMAIN, f"{entry.entry_id}_level_{sound}")
+        if entity_id:
+            registry.async_remove(entity_id)
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: DuskDawnConfigEntry) -> None:

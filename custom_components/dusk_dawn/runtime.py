@@ -48,7 +48,7 @@ from .lights import LightController
 from .native import engine_kind
 from .scheduler import Scheduler
 from .state import alarm_taper, find_preset, master_taper, merge_stored, normalize_alarm, normalize_auto
-from .samples import FILE_SOUNDS, SampleEngine
+from .samples import SampleEngine, is_own
 from .stream import SpotStream
 from .uploads import get_library
 
@@ -149,9 +149,6 @@ class SpotRuntime:
             self.engine.set_master(0.0)
             for sound, level in self.state["levels"].items():
                 self.engine.set_level(sound, level)
-            if isinstance(self.engine, SampleEngine):
-                for sound, mode in self.state["sources"].items():
-                    self.engine.set_source(sound, mode)
         if self.diy:
             await self.diy.async_start()
             await self._push_alarms()
@@ -249,7 +246,8 @@ class SpotRuntime:
 
     # ------------------------------------------------------------ sound
     def _apply_levels(self, levels: dict[str, float]) -> None:
-        for sound in SOUNDS:
+        known = [*SOUNDS, *(k for k in levels if is_own(k))]
+        for sound in {*known, *(k for k in self.state["levels"] if is_own(k))}:
             level = min(max(float(levels.get(sound, 0.0)), 0.0), 1.0)
             self.state["levels"][sound] = level
             if self.engine is not None:
@@ -305,7 +303,7 @@ class SpotRuntime:
             await self.async_play()
 
     async def async_set_level(self, sound: str, level: float) -> None:
-        if sound not in SOUNDS:
+        if sound not in SOUNDS and not (is_own(sound) and get_library(self.hass).has_sound(sound)):
             raise SpotError(f"Unknown sound {sound!r}")
         level = min(max(float(level), 0.0), 1.0)
         self.state["levels"][sound] = level
@@ -316,25 +314,12 @@ class SpotRuntime:
             await self.diy.set_level(sound, level)
         self.async_changed()
 
-    async def async_set_source(self, sound: str, mode: str) -> None:
-        """Choose synthesised sound or own recordings for one nature sound."""
-        if sound not in FILE_SOUNDS:
-            raise SpotError(f"{sound!r} cannot use own files")
-        if mode not in ("synth", "file"):
-            raise SpotError(f"Unknown source {mode!r}")
-        if mode == "file" and not get_library(self.hass).files(sound):
-            raise SpotError("Upload a recording for this sound first")
-        self.state["sources"][sound] = mode
-        if isinstance(self.engine, SampleEngine):
-            self.engine.set_source(sound, mode)
-        self.async_changed()
-
     @callback
     def async_library_changed(self) -> None:
-        """A recording was added or deleted: drop to synth when none is left."""
-        for sound, mode in self.state["sources"].items():
-            if mode == "file" and not get_library(self.hass).files(sound):
-                self.state["sources"][sound] = "synth"
+        """A sound was added, renamed or deleted: forget the levels of sounds that are gone."""
+        library = get_library(self.hass)
+        for sound in [k for k in self.state["levels"] if is_own(k) and not library.has_sound(k)]:
+            del self.state["levels"][sound]
         self.async_changed()
 
     async def async_set_volume(self, volume: float) -> None:
