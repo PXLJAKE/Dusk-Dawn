@@ -31,7 +31,6 @@ from .const import (
     CONF_LIGHTS,
     CONF_PRESENCE,
     CONF_SPEAKERS,
-    DEFAULT_GOOD_NIGHT_TIMER,
     DEFAULT_PRESET,
     FADE_IN_S,
     FADE_OUT_STOP_S,
@@ -48,7 +47,7 @@ from .diy import DiyLamp
 from .lights import LightController
 from .native import engine_kind
 from .scheduler import Scheduler
-from .state import find_preset, merge_stored, normalize_alarm, normalize_auto
+from .state import alarm_taper, find_preset, master_taper, merge_stored, normalize_alarm, normalize_auto
 from .samples import FILE_SOUNDS, SampleEngine
 from .stream import SpotStream
 from .uploads import get_library
@@ -277,7 +276,7 @@ class SpotRuntime:
             if not was_playing:
                 self.engine.set_master(0.0)
                 self._output_active = False  # new play session: new token, play_media again
-            self.engine.set_master(self.state["volume"], FADE_IN_S if not was_playing else 0.5)
+            self.engine.set_master(master_taper(self.state["volume"]), FADE_IN_S if not was_playing else 0.5)
             await self._ensure_output()
         self._start_timer()
         self.async_changed()
@@ -341,7 +340,7 @@ class SpotRuntime:
     async def async_set_volume(self, volume: float) -> None:
         self.state["volume"] = min(max(float(volume), 0.0), 1.0)
         if self.engine is not None and self.state["playing"]:
-            self.engine.set_master(self.state["volume"], 0.3)
+            self.engine.set_master(master_taper(self.state["volume"]), 0.3)
         if self.diy:
             await self.diy.set_volume(self.state["volume"])
         self.async_changed()
@@ -389,7 +388,7 @@ class SpotRuntime:
         self.state["timer"]["minutes"] = int(minutes) if minutes else None
         if self.state["playing"]:
             if self.engine is not None:  # undo a fade that may have started
-                self.engine.set_master(self.state["volume"], 2.0)
+                self.engine.set_master(master_taper(self.state["volume"]), 2.0)
             if self.diy:
                 await self.diy.set_timer(self.state["timer"]["minutes"])
             self._start_timer()
@@ -425,14 +424,15 @@ class SpotRuntime:
 
     async def async_good_night(self) -> None:
         """Good-night routine: default sound with sleep timer, dim light fading out."""
-        minutes = self.state["timer"]["minutes"] or DEFAULT_GOOD_NIGHT_TIMER
+        minutes = self.state["timer"]["minutes"]  # stays off if the user switched the sleep timer off
         preset = self.state["preset"] or DEFAULT_PRESET
-        await self.async_play(preset=preset, timer=minutes)
+        await self.async_play(preset=preset)
         has_light = bool(self.lights) or self.diy is not None
         if has_light and (self.lights_ctl.any_on() or self.state["light"]["on"]
                           or self.state["auto"]["night_light_with_sound"]):
             await self.async_light(on=True, brightness=NIGHT_LIGHT_BRIGHTNESS, kelvin=NIGHT_LIGHT_KELVIN)
-            await self.async_light(effect="fade", minutes=minutes)
+            if minutes:
+                await self.async_light(effect="fade", minutes=minutes)
 
     # ------------------------------------------------------------ light
     async def async_light(
@@ -527,7 +527,7 @@ class SpotRuntime:
         if self.diy:
             await self.diy.ring(tone, duration_min, volume)
         elif self.engine is not None:
-            self.engine.start_alarm(tone, duration_min * 60, volume, 40.0)
+            self.engine.start_alarm(tone, duration_min * 60, alarm_taper(volume), 40.0)
             await self._ensure_output()
 
         async def _end(_now: datetime) -> None:
@@ -567,7 +567,7 @@ class SpotRuntime:
         if self.engine is None:
             return
         self._previewing = True
-        self.engine.start_alarm(tone, PREVIEW_S, volume, 0.0)
+        self.engine.start_alarm(tone, PREVIEW_S, alarm_taper(volume), 0.0)
         await self._ensure_output()
 
         async def _end(_now: datetime) -> None:
@@ -583,6 +583,7 @@ class SpotRuntime:
             self.state["auto"] = normalize_auto(auto, self.state["auto"])
         except (ValueError, TypeError) as err:
             raise SpotError(str(err)) from err
+        self.scheduler.async_auto_changed()
         self.async_changed()
 
     # ------------------------------------------------------------ DIY feedback

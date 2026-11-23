@@ -140,6 +140,10 @@ const STR = {
     presence_title: "Anwesenheit", presence_start: "Klang automatisch starten",
     presence_start_desc: "Wenn {s} jemanden erkennt – nur im Zeitfenster.", from: "Von", to: "Bis",
     presence_stop: "Stoppen, wenn niemand mehr da ist", presence_stop_after: "nach {m} min", never: "nie",
+    mode_presence: "Bei Anwesenheit", mode_window: "Nur nach Zeitraum",
+    mode_presence_desc: "Startet erst, wenn jemand im Zeitraum mindestens so lange im Raum ist.",
+    mode_window_desc: "Startet zum Beginn des Zeitraums und stoppt an dessen Ende, ohne Sensor.",
+    presence_min: "Erst starten, wenn jemand da ist seit", presence_min_after: "{m} min", presence_min_now: "sofort",
     no_presence: "Kein Anwesenheitssensor gewählt.", choose_in_settings: "In den Einstellungen wählen",
     music_title: "Musik", pause_on_music: "Pausieren, wenn Musik läuft", pause_desc: "Hält an, sobald auf dem Lautsprecher etwas anderes gespielt wird, und macht danach weiter.",
     light_title: "Licht", night_light: "Nachtlicht mit Klang", night_light_desc: "Schaltet das Licht gedimmt und warm ein, wenn der Klang startet.",
@@ -192,6 +196,10 @@ const STR = {
     presence_title: "Presence", presence_start: "Start sound automatically",
     presence_start_desc: "When {s} detects someone – only within the time window.", from: "From", to: "To",
     presence_stop: "Stop when nobody is there", presence_stop_after: "after {m} min", never: "never",
+    mode_presence: "When someone is there", mode_window: "Time window only",
+    mode_presence_desc: "Starts only once someone has been in the room for the time below, inside the time window.",
+    mode_window_desc: "Starts when the window begins and stops when it ends, no sensor needed.",
+    presence_min: "Only start after someone has been there for", presence_min_after: "{m} min", presence_min_now: "right away",
     no_presence: "No presence sensor selected.", choose_in_settings: "Choose one in settings",
     music_title: "Music", pause_on_music: "Pause while music plays", pause_desc: "Pauses as soon as something else plays on the speaker and resumes afterwards.",
     light_title: "Light", night_light: "Night light with sound", night_light_desc: "Turns the light on dimmed and warm when the sound starts.",
@@ -1428,20 +1436,30 @@ class DuskDawnPanel extends HTMLElement {
   /* ---- Automatik */
   _tplAuto(spot) {
     const st = spot.state || {};
-    const au = { presence_start: false, presence_from: "20:00", presence_to: "02:00", presence_stop_min: 0, pause_on_music: false, night_light_with_sound: false, ...(st.auto || {}) };
+    const au = { presence_start: false, presence_from: "20:00", presence_to: "02:00", presence_stop_min: 0, presence_mode: "presence", presence_min: 10, pause_on_music: false, night_light_with_sound: false, ...(st.auto || {}) };
     const hasPresence = !!spot.presence;
     const hasLight = (spot.lights || []).length || spot.diy_device;
     const stopMin = au.presence_stop_min || 0;
-    const presenceDesc = hasPresence
+    const presenceDesc = au.presence_mode === "window" ? esc(this._t("mode_window")) : hasPresence
       ? esc(this._t("presence_start_desc", { s: this._entityName(spot.presence) }))
       : `${esc(this._t("no_presence"))}${this._isAdmin() ? ` <button class="linkbtn" data-action="settings">${esc(this._t("choose_in_settings"))}</button>` : ""}`;
-    const dis = hasPresence ? "" : "disabled";
+    const winMode = au.presence_mode === "window";
+    const dis = hasPresence || winMode ? "" : "disabled";
+    const disP = hasPresence && !winMode ? "" : "disabled";
+    const minP = au.presence_min ?? 10;
     return `<section class="card" aria-labelledby="h-presence">
         <div class="card-head"><h2 id="h-presence">${esc(this._t("presence_title"))}</h2></div>
         <div class="row">
           <span class="lead">${icon("person")}</span>
           <div class="txt"><b id="au-ps-l">${esc(this._t("presence_start"))}</b><span>${presenceDesc}</span></div>
-          <button class="switch" role="switch" data-action="auto" data-key2="presence_start" aria-checked="${!!au.presence_start && hasPresence}" aria-labelledby="au-ps-l" ${dis}></button>
+          <button class="switch" role="switch" data-action="auto" data-key2="presence_start" aria-checked="${!!au.presence_start && (hasPresence || winMode)}" aria-labelledby="au-ps-l" ${dis}></button>
+        </div>
+        <div class="field" style="padding-left:54px">
+          <div class="chips" role="group" aria-label="${esc(this._t("presence_start"))}">
+            <button class="chip" data-action="auto_mode" data-mode="presence" aria-pressed="${!winMode}">${esc(this._t("mode_presence"))}</button>
+            <button class="chip" data-action="auto_mode" data-mode="window" aria-pressed="${winMode}">${esc(this._t("mode_window"))}</button>
+          </div>
+          <p class="hint">${esc(this._t(winMode ? "mode_window_desc" : "mode_presence_desc"))}</p>
         </div>
         <div class="row" style="justify-content:flex-start;flex-wrap:wrap;gap:16px;padding-left:54px">
           <div class="field"><label class="lbl" for="au-from" style="color:var(--muted);font-size:13px">${esc(this._t("from"))}</label>
@@ -1450,8 +1468,12 @@ class DuskDawnPanel extends HTMLElement {
             <input class="text" id="au-to" type="time" value="${esc(au.presence_to)}" data-change="auto_time" data-key2="presence_to" ${dis}></div>
         </div>
         <div class="field" style="padding-left:54px">
+          <div class="field-head"><label for="au-min">${esc(this._t("presence_min"))}</label><output for="au-min">${minP ? esc(this._t("presence_min_after", { m: minP })) : esc(this._t("presence_min_now"))}</output></div>
+          <input type="range" id="au-min" min="0" max="30" step="5" value="${minP}" style="--p:${(minP / 30) * 100}%" data-input="auto_min" ${disP}>
+        </div>
+        <div class="field" style="padding-left:54px">
           <div class="field-head"><label for="au-stop">${esc(this._t("presence_stop"))}</label><output for="au-stop">${stopMin ? esc(this._t("presence_stop_after", { m: stopMin })) : esc(this._t("never"))}</output></div>
-          <input type="range" id="au-stop" min="0" max="60" step="5" value="${stopMin}" style="--p:${(stopMin / 60) * 100}%" data-input="auto_stop" ${dis}>
+          <input type="range" id="au-stop" min="0" max="60" step="5" value="${stopMin}" style="--p:${(stopMin / 60) * 100}%" data-input="auto_stop" ${disP}>
         </div>
       </section>
       <section class="card" aria-labelledby="h-music">
@@ -1697,6 +1719,10 @@ class DuskDawnPanel extends HTMLElement {
         const auto = { ...(st.auto || {}), [key]: !st.auto?.[key] };
         this._cmd("set_auto", { auto }, (s) => { s.auto = auto; }); break;
       }
+      case "auto_mode": {
+        const auto = { ...(st.auto || {}), presence_mode: el.dataset.mode };
+        this._cmd("set_auto", { auto }, (s) => { s.auto = auto; }); break;
+      }
       case "cfg_reset": this._initCfg(); this._schedule(); break;
       case "cfg_save": this._saveCfg(); break;
       default: break;
@@ -1735,6 +1761,12 @@ class DuskDawnPanel extends HTMLElement {
         spot.state.light = { ...(spot.state.light || {}), kelvin: v };
         this._setOv("light.kelvin", v);
         this._debounce("kelvin", () => this._cmd("light", { kelvin: v }));
+        break;
+      }
+      case "auto_min": {
+        const auto = { ...(spot.state.auto || {}), presence_min: v };
+        spot.state.auto = auto; this._setOv("auto.presence_min", v);
+        this._debounce("auto_min", () => this._cmd("set_auto", { auto: { ...(this._spot()?.state.auto || auto) } }));
         break;
       }
       case "auto_stop": {

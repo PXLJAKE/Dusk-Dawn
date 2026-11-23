@@ -113,7 +113,7 @@ async def test_commands(
     assert msg["result"]["state"]["playing"] is False
     msg = await cmd("good_night")
     assert msg["result"]["state"]["playing"] is True
-    assert msg["result"]["state"]["timer"]["minutes"] == 45
+    assert msg["result"]["state"]["timer"]["minutes"] is None  # a switched-off sleep timer stays off
 
     await client.send_json_auto_id({"type": "dusk_dawn/command", "entry_id": "nope", "action": "stop"})
     msg = await client.receive_json()

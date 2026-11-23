@@ -18,6 +18,8 @@ DEFAULT_AUTO: dict[str, Any] = {
     "presence_from": "20:00",
     "presence_to": "02:00",
     "presence_stop_min": 15,
+    "presence_mode": "presence",  # "presence": only with someone there; "window": by time only
+    "presence_min": 10,           # presence mode: somebody must be there this long (minutes) before sounds start
     "pause_on_music": False,
     "night_light_with_sound": False,
 }
@@ -119,6 +121,12 @@ def normalize_auto(auto: dict[str, Any], current: dict[str, Any]) -> dict[str, A
             out[key] = str(value)
         elif key == "presence_stop_min":
             out[key] = int(_clamp(value, 0, 240))
+        elif key == "presence_min":
+            out[key] = int(_clamp(value, 0, 120))
+        elif key == "presence_mode":
+            if value not in ("presence", "window"):
+                raise ValueError(f"invalid presence_mode {value!r}")
+            out[key] = value
         else:
             out[key] = bool(value)
     return out
@@ -160,3 +168,48 @@ def find_preset(presets: list[dict[str, Any]], key: str) -> dict[str, Any] | Non
         if p["name"].casefold() == low:
             return p
     return None
+
+
+# Volume taper of the synthesised sounds. The old slider (0 dB at 100 %, -20 dB at 50 %) was too loud next to
+# music from AirPlay / Music Assistant, so the slider now tops out at -8 dB and falls off faster (about 56 dB
+# down at 10 %). ``master_taper`` converts a slider position into the value the engines' own curve needs.
+TAPER_TOP = 0.4      # gain at slider 100 %  (-8 dB)
+TAPER_SLOPE = 2.4    # decades of gain over the slider range
+
+
+def _engine_gain(m: float) -> float:
+    """Gain the engines' ``volume_curve`` gives to master value ``m`` (same formula as the Rust core)."""
+    return 0.0 if m <= 0 else 10 ** ((m - 1.0) * 2.0) * min(1.0, m * 10)
+
+
+def master_gain(v: float) -> float:
+    """Target gain for slider position ``v`` (0..1)."""
+    v = min(max(float(v), 0.0), 1.0)
+    return 0.0 if v <= 0 else TAPER_TOP * 10 ** ((v - 1.0) * TAPER_SLOPE) * min(1.0, v * 10)
+
+
+def _engine_master_for(gain: float) -> float:
+    """Inverse of ``_engine_gain``: the engine value that gives ``gain``."""
+    if gain <= 0:
+        return 0.0
+    lo, hi = 0.0, 1.0
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        if _engine_gain(mid) < gain:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def master_taper(v: float) -> float:
+    """Master value for the engines (0..1) that yields ``master_gain(v)``."""
+    return _engine_master_for(master_gain(v))
+
+
+ALARM_TRIM = 0.5  # alarm tones were too loud: half the amplitude (-6 dB) at every slider position
+
+
+def alarm_taper(v: float) -> float:
+    """Alarm volume for the engines that is ``ALARM_TRIM`` times as loud as the slider position ``v`` used to be."""
+    return _engine_master_for(ALARM_TRIM * _engine_gain(min(max(float(v), 0.0), 1.0)))

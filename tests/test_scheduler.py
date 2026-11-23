@@ -98,32 +98,102 @@ async def test_presence_start_and_stop(
 ) -> None:
     rt = setup_spot.runtime_data
     hass.states.async_set("binary_sensor.bedroom_presence", "off")
+    await hass.async_block_till_done()
     await rt.async_set_auto({"presence_start": True, "presence_from": "21:00", "presence_to": "02:00",
-                             "presence_stop_min": 15})
+                             "presence_stop_min": 15, "presence_min": 10})
 
-    # outside the window: nothing happens
+    # outside the window: nothing happens, even after 10 minutes
     await _tick(hass, freezer, _local(1, 18, 0))
     hass.states.async_set("binary_sensor.bedroom_presence", "on")
     await hass.async_block_till_done()
+    await _tick(hass, freezer, _local(0, 18, 15))
     assert rt.state["playing"] is False
     hass.states.async_set("binary_sensor.bedroom_presence", "off")
     await hass.async_block_till_done()
 
-    # inside the window (after midnight, the window wraps): good night starts
-    await _tick(hass, freezer, _local(1, 0, 30))
+    # inside the window (after midnight, the window wraps): nothing at first ...
+    await _tick(hass, freezer, _local(0, 0, 30))
     hass.states.async_set("binary_sensor.bedroom_presence", "on")
     await hass.async_block_till_done()
+    assert rt.state["playing"] is False
+    await _tick(hass, freezer, _local(0, 0, 38))
+    assert rt.state["playing"] is False
+    # ... and good night after 10 minutes of presence in a row
+    await _tick(hass, freezer, _local(0, 0, 41))
     assert rt.state["playing"] is True
-    assert rt.state["timer"]["minutes"] == 45
     assert play_media_calls
 
     # gone for 15 minutes: stop
     hass.states.async_set("binary_sensor.bedroom_presence", "off")
     await hass.async_block_till_done()
-    await _tick(hass, freezer, _local(0, 0, 40))
+    await _tick(hass, freezer, _local(0, 0, 50))
     assert rt.state["playing"] is True
-    await _tick(hass, freezer, _local(0, 0, 46))
+    await _tick(hass, freezer, _local(0, 0, 57))
     assert rt.state["playing"] is False
+
+
+async def test_presence_flicker_does_not_start(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, setup_spot: MockConfigEntry
+) -> None:
+    rt = setup_spot.runtime_data
+    hass.states.async_set("binary_sensor.bedroom_presence", "off")
+    await hass.async_block_till_done()
+    await rt.async_set_auto({"presence_start": True, "presence_from": "21:00", "presence_to": "02:00"})
+    await _tick(hass, freezer, _local(1, 23, 0))
+    hass.states.async_set("binary_sensor.bedroom_presence", "on")
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, _local(0, 23, 6))
+    hass.states.async_set("binary_sensor.bedroom_presence", "unavailable")  # sensor dropout
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, _local(0, 23, 7))
+    hass.states.async_set("binary_sensor.bedroom_presence", "on")  # does not count as arriving for 10 min
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, _local(0, 23, 14))
+    assert rt.state["playing"] is False
+    await _tick(hass, freezer, _local(0, 23, 18))
+    assert rt.state["playing"] is True
+
+
+async def test_presence_waits_for_the_window_and_starts_once(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, setup_spot: MockConfigEntry
+) -> None:
+    rt = setup_spot.runtime_data
+    hass.states.async_set("binary_sensor.bedroom_presence", "off")
+    await hass.async_block_till_done()
+    await rt.async_set_auto({"presence_start": True, "presence_from": "21:00", "presence_to": "02:00"})
+    await _tick(hass, freezer, _local(1, 20, 0))
+    hass.states.async_set("binary_sensor.bedroom_presence", "on")
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, _local(0, 20, 30))
+    assert rt.state["playing"] is False  # window not open yet
+    await _tick(hass, freezer, _local(0, 21, 0))  # window opens: somebody has been there for a while
+    assert rt.state["playing"] is True
+    await rt.async_stop()
+    await _tick(hass, freezer, _local(0, 22, 0))
+    assert rt.state["playing"] is False  # stopped by hand: not restarted during the same stay
+
+
+async def test_window_mode_starts_and_stops_by_time(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, setup_spot: MockConfigEntry
+) -> None:
+    rt = setup_spot.runtime_data
+    await _tick(hass, freezer, _local(1, 20, 0))
+    await rt.async_set_auto({"presence_start": True, "presence_mode": "window",
+                             "presence_from": "21:00", "presence_to": "23:30"})
+    await _tick(hass, freezer, _local(0, 20, 59))
+    assert rt.state["playing"] is False
+    await _tick(hass, freezer, _local(0, 21, 0))  # nobody needs to be there
+    assert rt.state["playing"] is True
+    await _tick(hass, freezer, _local(0, 23, 30))
+    assert rt.state["playing"] is False
+
+
+async def test_good_night_keeps_a_switched_off_timer_off(hass: HomeAssistant, setup_spot: MockConfigEntry) -> None:
+    rt = setup_spot.runtime_data
+    await rt.async_set_timer(None)
+    await rt.async_good_night()
+    assert rt.state["playing"] is True and rt.state["timer"]["minutes"] is None
+    assert rt.state["timer"]["ends_at"] is None
 
 
 async def test_pause_on_music(hass: HomeAssistant, setup_spot: MockConfigEntry) -> None:
