@@ -14,6 +14,8 @@ DEFAULTS: dict = {
         "sample_rate": 48000,
         "block": 2048,
         "device": None,  # None = system default (ALSA "default", shared via dmix)
+        "buffer_s": 1.0,   # audio rendered ahead, absorbs slow blocks (more = fewer dropouts, slower sliders)
+        "latency": 0.25,   # sound card buffer in seconds
         "fade_in_s": 8,
         "fade_out_min": 10,
     },

@@ -11,6 +11,7 @@ mqtt:
 audio:
   fade_in_s: 8               # sounds fade in when started
   fade_out_min: 10           # the last 10 minutes of the sleep timer fade out
+  buffer_s: 1.0              # audio rendered ahead; raise to 2 if the sound still stutters
 
 # Available layers. Built-in, generated live: rain waves thunder wind fan white pink brown
 # Your own recordings replace a built-in sound: "rain=file:/home/admin/sounds/rain" (a file or a folder with

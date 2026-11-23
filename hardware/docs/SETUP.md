@@ -88,6 +88,10 @@ AirPlay 2 wird beim Installieren aus dem Quellcode gebaut (shairport-sync mit nq
 
 Alle mitgelieferten Klänge werden live auf dem Pi erzeugt (keine Dateien, keine Lizenzfragen). Eigene Aufnahmen gehen zusätzlich: 16-bit-WAV auf den Pi kopieren und in `config.yaml` unter `sounds:` eintragen, z. B. `file:/home/pi/sounds/regen-am-fenster.wav`. Die Datei wird automatisch nahtlos geloopt und in der Lautstärke angeglichen. Legale Quellen: freesound.org mit Filter CC0, Pixabay oder eigene Handyaufnahmen.
 
+## Wenn der Klang stottert
+
+Die Lampe rechnet den Klang eine Sekunde im Voraus (`audio.buffer_s` in `config.yaml`). Stottert es trotzdem, wenn viele Klänge gleichzeitig laufen, `buffer_s: 2` setzen und `sudo systemctl restart sleepgen`. Regler reagieren dann entsprechend später. `journalctl -u sleepgen` zeigt „audio render too slow“, wenn der Pi nicht hinterherkommt.
+
 ## 5. Entwicklung am PC
 
 ```bash

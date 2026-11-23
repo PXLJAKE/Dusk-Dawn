@@ -2,6 +2,7 @@ import json
 import shutil
 import socket
 import subprocess
+import threading
 import time
 
 import numpy as np
@@ -30,7 +31,7 @@ def test_generators_are_calibrated_and_finite(name):
 @pytest.mark.parametrize("name", ["thunder", "birds"])
 def test_event_generators_fire(name):
     g = make_generator(name, SR, seed=3)
-    g.trigger()
+    g.trigger(wait=False)
     x = np.concatenate([g.render(1024) for _ in range(47 * 3)])
     assert np.abs(x).max() > 0.01 and np.isfinite(x).all()
 
@@ -243,6 +244,8 @@ def test_alarm_rings_and_stops(tmp_path):
 def test_alarm_tones(tone):
     eng = Engine(sr=SR, sources=["rain"], seed=1)
     eng.start_alarm(tone, 1, 1.0)
+    eng.render(256)
+    time.sleep(0.5)  # birds build their first phrases in the background
     x = run(eng, 3)
     assert np.isfinite(x).all() and np.abs(x).max() <= 1.0 and np.abs(x).max() > 0.01
 
@@ -376,3 +379,61 @@ def test_alarms_set_over_mqtt_command(tmp_path):
     app = make_app(tmp_path)
     handle_command(app, "alarms/set", json.dumps({"enabled": True, "alarms": [alarm_dict()]}))
     assert app.alarms.snapshot()["alarms"][0]["time"] == "06:30"
+
+
+def test_thunder_never_builds_a_roll_in_the_audio_thread(monkeypatch):
+    from sleepgen.dsp import Thunder
+
+    g = Thunder(SR, seed=3)
+    built = []
+    real = g.make_event
+    monkeypatch.setattr(g, "make_event", lambda: (built.append(threading.current_thread().name), real())[1])
+    g.countdown = 0
+    g.render(1024)  # due now, but nothing ready yet: postpone instead of building here
+    for _ in range(100):
+        if g._ready is not None:
+            break
+        time.sleep(0.02)
+    g.countdown = 0
+    g.render(1024)
+    assert g.active and built and threading.current_thread().name not in built
+
+
+def test_audio_output_renders_ahead(monkeypatch):
+    import sys
+    import types
+
+    from sleepgen.hardware import AudioOutput
+
+    written = []
+
+    class Stream:
+        def __init__(self, **kw):
+            self.kw = kw
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def write(self, block):
+            written.append(block)
+            time.sleep(0.005)
+            return False
+
+    monkeypatch.setitem(sys.modules, "sounddevice", types.SimpleNamespace(OutputStream=Stream))
+    calls = []
+
+    def render(n):
+        calls.append(n)
+        return np.full((n, 2), 0.1, dtype="float32")
+
+    out = AudioOutput(render, 48000, 2048, buffer_s=1.0)
+    out.start()
+    time.sleep(0.3)
+    out.stop()
+    out.join(2)
+    assert out._queue.maxsize == 24
+    assert len(calls) >= len(written) + 10  # rendering stays well ahead of the sound card
+    assert written and all(b.shape == (2048, 2) for b in written)
