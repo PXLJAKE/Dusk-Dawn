@@ -55,6 +55,7 @@ timer: {minutes: int|None, ends_at: iso|None},
 light: {on: bool, brightness: int 0..255, kelvin: int},
 alarms: [ {id, enabled, time "HH:MM", days [0..6 Mon=0], tone, duration_min, volume, sunrise: bool, sunrise_min} ],
 auto: {presence_start: bool, presence_from "HH:MM", presence_to "HH:MM", presence_stop_min: int,
+       presence_mode: "presence"|"window", presence_min: int (minutes somebody must be there before sounds start),
        pause_on_music: bool, night_light_with_sound: bool},
 presets: [ {id, name, icon, levels} ]    # built-ins + user presets (built-ins: copy from hardware/device/sleepgen/config.py)
 alarm_ringing: bool, next_alarm: iso|None

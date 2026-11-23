@@ -25,6 +25,18 @@ def volume_curve(v: float) -> float:
     return float(10 ** ((v - 1.0) * 2.0)) * min(1.0, v * 10)
 
 
+def master_curve(v: float) -> float:
+    """Master slider of the sounds: tops out at -8 dB and falls off faster, so the sounds sit well below music
+    from AirPlay / Spotify / Music Assistant (same taper as the Home Assistant integration)."""
+    v = min(max(v, 0.0), 1.0)
+    if v <= 0:
+        return 0.0
+    return 0.4 * float(10 ** ((v - 1.0) * 2.4)) * min(1.0, v * 10)
+
+
+ALARM_TRIM = 0.5  # alarm tones were too loud: half the amplitude
+
+
 @dataclass
 class Layer:
     source: str
@@ -58,7 +70,7 @@ class Engine:
             seed = None if self.seed is None else self.seed + i
             self.layers[key] = Layer(src, make_generator(src, self.sr, seed))
         self.master = 0.6
-        self._master_gain = volume_curve(self.master)
+        self._master_gain = master_curve(self.master)
         self.playing = False
         self._fade = 0.0  # 0..1 start/stop fade
         self.clock = 0.0  # seconds of audio rendered
@@ -179,7 +191,7 @@ class Engine:
                 self._fade = f1
 
                 m0 = self._master_gain
-                m1 = m0 + (volume_curve(self.master) - m0) * min(1.0, n / (0.05 * self.sr))
+                m1 = m0 + (master_curve(self.master) - m0) * min(1.0, n / (0.05 * self.sr))
                 master = m0 + (m1 - m0) * ramp[:, 0]
                 self._master_gain = m1
 
@@ -188,7 +200,7 @@ class Engine:
             if self.alarm is not None:
                 age = t - self._alarm_t0
                 ramp = 0.15 + 0.85 * np.minimum(age / max(self.alarm_ramp_s, 1e-3), 1.0)
-                out += self.alarm.render(n) * (ramp * volume_curve(self.alarm_volume))[:, None]
+                out += self.alarm.render(n) * (ramp * volume_curve(self.alarm_volume) * ALARM_TRIM)[:, None]
                 if self.alarm_end is not None and t[-1] >= self.alarm_end:
                     self.alarm, self.alarm_end, alarm_done = None, None, True
             out = np.tanh(out * 1.2) / 1.2  # soft limiter, transparent below ~-6 dBFS

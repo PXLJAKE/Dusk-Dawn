@@ -201,3 +201,18 @@ async def test_upload_api_and_sources(
     assert msg["success"] and msg["result"]["files"]["rain"] == []
     assert setup_spot.runtime_data.snapshot()["sources"]["rain"] == "synth"  # fell back
     assert (await call({"type": "dusk_dawn/sound_delete", "file_id": file_id}))["success"] is False
+
+
+def test_master_taper_is_quieter_and_monotonic() -> None:
+    from custom_components.dusk_dawn.state import _engine_gain, master_gain, master_taper  # noqa: PLC0415
+
+    assert master_taper(0) == 0.0
+    assert abs(master_gain(1.0) - 0.4) < 1e-9  # -8 dB at the top (it was 0 dB)
+    prev = 0.0
+    for i in range(1, 101):
+        v = i / 100
+        m = master_taper(v)
+        assert m >= prev and 0 < m <= 1
+        assert abs(_engine_gain(m) - master_gain(v)) < 1e-6 * max(1.0, master_gain(v)) + 1e-9
+        prev = m
+    assert master_gain(0.5) < 0.05 and master_gain(0.1) < 0.003  # much more room at the bottom

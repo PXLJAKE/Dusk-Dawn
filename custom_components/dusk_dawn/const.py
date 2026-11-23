@@ -55,7 +55,6 @@ FADE_OUT_STOP_S: Final = 2.0
 TIMER_FADE_MAX_S: Final = 600.0  # last 10 minutes of the sleep timer fade out
 
 DEFAULT_VOLUME: Final = 0.5
-DEFAULT_GOOD_NIGHT_TIMER: Final = 45
 NIGHT_LIGHT_BRIGHTNESS: Final = 60
 NIGHT_LIGHT_KELVIN: Final = 2200
 

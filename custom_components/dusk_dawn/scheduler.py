@@ -4,9 +4,11 @@
   sunrise ``sunrise_min`` minutes before. One timer is armed for the next
   event; after it fired the next one is computed. With a DIY lamp the lamp
   itself rings (it stores the list), so only ``next_alarm`` is computed here.
-* Presence: start the good-night routine when presence is detected inside the
-  time window; stop sounds and lights after presence has been gone for
-  ``presence_stop_min`` minutes.
+* Presence: start the good-night routine once somebody has been there for
+  ``presence_min`` minutes in a row inside the time window (once per stay, a
+  sensor dropout or a short flicker does not count); stop sounds and lights
+  after presence has been gone for ``presence_stop_min`` minutes. In "window"
+  mode no sensor is needed: sounds start at the window start and stop at its end.
 * Pause on music: stop the sounds when another media player starts playing.
 """
 
@@ -16,7 +18,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.const import EVENT_STATE_CHANGED, STATE_ON, STATE_PLAYING
+from homeassistant.const import EVENT_STATE_CHANGED, STATE_OFF, STATE_ON, STATE_PLAYING
 from homeassistant.core import CALLBACK_TYPE, Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.helpers.event import (
     async_call_later,
@@ -39,6 +41,10 @@ class Scheduler:
         self.rt = runtime
         self._alarm_unsub: CALLBACK_TYPE | None = None
         self._presence_stop: CALLBACK_TYPE | None = None
+        self._presence_start: CALLBACK_TYPE | None = None
+        self._window_unsub: CALLBACK_TYPE | None = None
+        self._presence_episode_done = False  # good night already started (or skipped) during this stay
+        self._window_started = False
         self._unsubs: list[CALLBACK_TYPE] = []
         self._planned: list[tuple[str, dict[str, Any], datetime]] = []
         self._sunrise_started: set[tuple[str, str]] = set()  # (alarm id, ring time)
@@ -47,6 +53,9 @@ class Scheduler:
     @callback
     def async_start(self) -> None:
         self.async_reschedule()
+        # somebody already there when Home Assistant (re)starts: that stay does not start anything
+        self._presence_episode_done = self._presence_on()
+        self._arm_window()
         if self.rt.presence:
             self._unsubs.append(
                 async_track_state_change_event(self.hass, [self.rt.presence], self._presence_changed)
@@ -61,9 +70,9 @@ class Scheduler:
             unsub()
         self._unsubs.clear()
         self._cancel_alarm_timer()
-        if self._presence_stop:
-            self._presence_stop()
-            self._presence_stop = None
+        self._cancel_presence_stop()
+        self._cancel_presence_timer()
+        self._cancel_window()
 
     def _cancel_alarm_timer(self) -> None:
         if self._alarm_unsub:
@@ -145,30 +154,81 @@ class Scheduler:
         if self.rt.lights or self.rt.diy:
             await self.rt.async_light(effect="sunrise", minutes=minutes)
 
-    # ------------------------------------------------------------ presence
+    # ------------------------------------------------------------ presence / time window
+    def _presence_on(self) -> bool:
+        state = self.hass.states.get(self.rt.presence) if self.rt.presence else None
+        return state is not None and state.state == STATE_ON
+
+    def _cancel_presence_timer(self) -> None:
+        if self._presence_start:
+            self._presence_start()
+            self._presence_start = None
+
+    def _cancel_presence_stop(self) -> None:
+        if self._presence_stop:
+            self._presence_stop()
+            self._presence_stop = None
+
+    @callback
+    def async_auto_changed(self) -> None:
+        """The automation settings changed: re-arm the window edges and drop a pending start."""
+        self._cancel_presence_timer()
+        self._arm_window()
+
+    def _presence_ready(self) -> bool:
+        """Presence mode on, sensor chosen, somebody there for ``presence_min`` minutes in a row."""
+        auto = self.rt.state["auto"]
+        if not (auto["presence_start"] and auto["presence_mode"] == "presence" and self._presence_on()):
+            return False
+        state = self.hass.states.get(self.rt.presence)
+        return state is not None and dt_util.utcnow() - state.last_changed >= timedelta(minutes=auto["presence_min"])
+
+    async def _maybe_start_by_presence(self) -> None:
+        """Start the good-night routine once per stay: only inside the window and after ``presence_min``."""
+        auto = self.rt.state["auto"]
+        if self._presence_episode_done or not self._presence_ready():
+            return
+        if not in_window(dt_util.now().time(), auto["presence_from"], auto["presence_to"]):
+            return  # the window start checks again
+        self._presence_episode_done = True
+        if not self.rt.state["playing"] and not self.rt.state["alarm_ringing"]:
+            _LOGGER.debug("Presence for %s min, starting good night (%s)", auto["presence_min"], self.rt.name)
+            await self.rt.async_good_night()
+
     async def _presence_changed(self, event: Event[EventStateChangedData]) -> None:
         new, old = event.data["new_state"], event.data["old_state"]
         if new is None:
             return
         auto = self.rt.state["auto"]
         if new.state == STATE_ON:
-            if self._presence_stop:
-                self._presence_stop()
-                self._presence_stop = None
+            self._cancel_presence_stop()
             if old is not None and old.state == STATE_ON:
-                return
-            if (
-                auto["presence_start"]
-                and not self.rt.state["playing"]
-                and not self.rt.state["alarm_ringing"]
-                and in_window(dt_util.now().time(), auto["presence_from"], auto["presence_to"])
-            ):
-                _LOGGER.debug("Presence detected, starting good night (%s)", self.rt.name)
-                await self.rt.async_good_night()
-        elif old is not None and old.state == STATE_ON:
-            minutes = auto["presence_stop_min"]
-            if auto["presence_start"] and minutes > 0 and self.rt.state["playing"]:
-                self._presence_stop = async_call_later(self.hass, minutes * 60, self._presence_gone)
+                return  # only attributes changed
+            self._cancel_presence_timer()
+            if auto["presence_start"] and auto["presence_mode"] == "presence":
+                minutes = auto["presence_min"]
+                if minutes > 0:
+                    self._presence_start = async_call_later(self.hass, minutes * 60 + 1, self._presence_confirmed)
+                else:
+                    await self._maybe_start_by_presence()
+        else:
+            self._cancel_presence_timer()  # a short flicker or a sensor dropout does not count
+            if new.state == STATE_OFF:
+                self._presence_episode_done = False
+                minutes = auto["presence_stop_min"]
+                if (
+                    old is not None
+                    and old.state == STATE_ON
+                    and auto["presence_start"]
+                    and auto["presence_mode"] == "presence"
+                    and minutes > 0
+                    and self.rt.state["playing"]
+                ):
+                    self._presence_stop = async_call_later(self.hass, minutes * 60, self._presence_gone)
+
+    async def _presence_confirmed(self, _now: datetime) -> None:
+        self._presence_start = None
+        await self._maybe_start_by_presence()
 
     async def _presence_gone(self, _now: datetime) -> None:
         self._presence_stop = None
@@ -177,6 +237,48 @@ class Scheduler:
             await self.rt.async_stop()
             if self.rt.lights or self.rt.diy:
                 await self.rt.async_light(on=False)
+
+    # window edges: presence mode re-checks at the start, "window" mode starts and stops by time alone
+    def _cancel_window(self) -> None:
+        if self._window_unsub:
+            self._window_unsub()
+            self._window_unsub = None
+
+    @callback
+    def _arm_window(self) -> None:
+        self._cancel_window()
+        auto = self.rt.state["auto"]
+        if not auto["presence_start"]:
+            return
+        now = dt_util.now()
+        edges = []
+        for key in ("presence_from", "presence_to"):
+            edge = next_ring({"time": auto[key], "days": []}, now)
+            if edge is not None:
+                edges.append(edge)
+        if edges:
+            self._window_unsub = async_track_point_in_utc_time(self.hass, self._window_edge, dt_util.as_utc(min(edges)))
+
+    async def _window_edge(self, _now: datetime) -> None:
+        self._window_unsub = None
+        auto = self.rt.state["auto"]
+        if auto["presence_start"]:
+            # a minute of slack: the timer fires on the edge, the clock may be a hair before it
+            inside = in_window((dt_util.now() + timedelta(seconds=30)).time(), auto["presence_from"], auto["presence_to"])
+            if auto["presence_mode"] == "window":
+                if inside:
+                    if not self.rt.state["playing"] and not self.rt.state["alarm_ringing"]:
+                        self._window_started = True
+                        await self.rt.async_good_night()
+                elif self._window_started:
+                    self._window_started = False
+                    if self.rt.state["playing"]:
+                        await self.rt.async_stop()
+                        if self.rt.lights or self.rt.diy:
+                            await self.rt.async_light(on=False)
+            elif inside:
+                await self._maybe_start_by_presence()
+        self._arm_window()
 
     # ------------------------------------------------------------ pause on music
     @callback

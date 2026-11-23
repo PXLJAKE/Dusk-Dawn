@@ -18,7 +18,8 @@ Danach erscheint links in der Seitenleiste **Dusk & Dawn**.
 - **Jetzt:** Start/Stopp, Lautstärke, Sleep-Timer, Licht, „Gute Nacht“ (Klang, gedimmtes Licht und Timer in einem Schritt).
 - **Klänge:** Klangwelten antippen oder im Mischpult jede der 12 Ebenen einzeln einstellen und als eigene Klangwelt speichern.
 - **Wecker:** beliebig viele Weckzeiten mit Wochentagen, Weckton (Glocken, Klassisch, Vogelchor) mit Vorhören, Dauer, Lautstärke und Sonnenaufgang davor.
-- **Automatik:** Start bei Anwesenheit im Zeitfenster, Aus wenn niemand mehr da ist, Pause bei Musik.
+- **Automatik:** Start im Zeitfenster entweder erst, wenn jemand mindestens 10 Minuten (einstellbar) im Raum ist, oder nur nach Zeitraum ohne Sensor (Start zu Beginn, Stopp am Ende). Aus, wenn niemand mehr da ist. Pause bei Musik. Ein ausgeschalteter Sleep-Timer bleibt aus.
+- **Lautstärke:** Die Klänge sind absichtlich leiser als Musik über AirPlay oder Music Assistant. Regler ganz oben entspricht −8 dB, nach unten fällt er schneller ab.
 - **Zahnrad:** Lautsprecher, Lampen und Melder ändern.
 - **Sonne/Mond oben rechts:** Design wechseln: wie Home Assistant (automatisch), hell oder dunkel. Die Wahl merkt sich jeder Browser selbst.
 
