@@ -167,10 +167,10 @@ def find_preset(presets: list[dict[str, Any]], key: str) -> dict[str, Any] | Non
 
 
 # Volume taper of the synthesised sounds. The old slider (0 dB at 100 %, -20 dB at 50 %) was too loud next to
-# music from AirPlay / Music Assistant, so the slider now tops out at -8 dB and falls off faster (about 56 dB
+# music from AirPlay / Music Assistant, so the slider now tops out at -18 dB and falls off at the same rate (about 54 dB
 # down at 10 %). ``master_taper`` converts a slider position into the value the engines' own curve needs.
-TAPER_TOP = 0.4      # gain at slider 100 %  (-8 dB)
-TAPER_SLOPE = 2.4    # decades of gain over the slider range
+TAPER_TOP = 0.13     # gain at slider 100 %  (-18 dB, about half as loud as before to the ear)
+TAPER_SLOPE = 2.0    # decades of gain over the slider range
 
 
 def _engine_gain(m: float) -> float:
@@ -203,7 +203,7 @@ def master_taper(v: float) -> float:
     return _engine_master_for(master_gain(v))
 
 
-ALARM_TRIM = 0.5  # alarm tones were too loud: half the amplitude (-6 dB) at every slider position
+ALARM_TRIM = 0.25  # alarm tones were still too loud: -12 dB at every slider position
 
 
 def alarm_taper(v: float) -> float:

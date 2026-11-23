@@ -258,7 +258,7 @@ def test_master_taper_is_quieter_and_monotonic() -> None:
     from custom_components.dusk_dawn.state import _engine_gain, master_gain, master_taper  # noqa: PLC0415
 
     assert master_taper(0) == 0.0
-    assert abs(master_gain(1.0) - 0.4) < 1e-9  # -8 dB at the top (it was 0 dB)
+    assert abs(master_gain(1.0) - 0.13) < 1e-9  # -18 dB at the top (it was 0 dB)
     prev = 0.0
     for i in range(1, 101):
         v = i / 100
