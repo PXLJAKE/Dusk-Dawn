@@ -41,7 +41,7 @@ async def test_entities_created(hass: HomeAssistant, setup_spot: MockConfigEntry
 
     assert hass.states.get("switch.bedroom_sounds").state == "off"
     assert hass.states.get("select.bedroom_sleep_timer").state == "off"
-    assert hass.states.get("select.bedroom_sound").attributes["options"][0] == "Regen"
+    assert hass.states.get("select.bedroom_sound").attributes["options"][0] == "Gute Nacht"
     assert hass.states.get("number.bedroom_volume").state == "50"
     assert hass.states.get("binary_sensor.bedroom_alarm_ringing").state == "off"
 
@@ -106,5 +106,5 @@ async def test_state_persisted(hass: HomeAssistant, setup_spot: MockConfigEntry)
     await hass.async_block_till_done()
     rt = setup_spot.runtime_data
     assert rt.state["levels"]["rain"] == 0.42
-    assert rt.state["presets"][-1]["name"] == "Mine"
+    assert rt.state["presets"][0]["name"] == "Mine"
     assert rt.state["playing"] is False

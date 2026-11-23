@@ -139,11 +139,14 @@ class DiyLamp:
         await self._publish("alarms/set", {"enabled": enabled, "alarms": alarms}, retain=True)
 
     # ------------------------------------------------------------ light
-    async def light(self, on: bool, brightness: int | None = None, kelvin: int | None = None) -> None:
+    async def light(self, on: bool, brightness: int | None = None, kelvin: int | None = None,
+                    rgb: Any = None) -> None:
         cmd: dict[str, Any] = {"state": "ON" if on else "OFF"}
         if on and brightness is not None:
             cmd["brightness"] = brightness
-        if on and kelvin is not None:
+        if on and rgb:
+            cmd["color"] = {"r": int(rgb[0]), "g": int(rgb[1]), "b": int(rgb[2])}
+        elif on and kelvin is not None:
             cmd["color_temp_kelvin"] = kelvin
         await self._publish("lamp/set", cmd)
 

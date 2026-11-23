@@ -6,6 +6,7 @@ light (Hue, Zigbee, WLED, ...):
 * sunrise  stepped brightness/colour temperature with long transitions
 * fade     dim down to off over the sleep timer
 * candle   gentle flicker, at most one command per second
+* gradient colour/brightness glide from one colour to another (scenes); also drives the DIY lamp
 
 The DIY Soundlampe renders the same effects natively (see ``diy.py``).
 """
@@ -17,7 +18,7 @@ import logging
 import random
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN, ATTR_TRANSITION
+from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN, ATTR_RGB_COLOR, ATTR_TRANSITION
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, SERVICE_TURN_ON, STATE_ON
 from homeassistant.core import HomeAssistant
 
@@ -30,6 +31,19 @@ LIGHT_DOMAIN = "light"
 MIN_STEP_S = 20.0  # sunrise/fade: one command every >= 20 s
 MAX_STEPS = 90
 CANDLE_INTERVAL_S = 1.5
+DIY_STEP_S = 3.0  # the DIY lamp has no colour transitions: small steps instead
+
+
+def hex_to_rgb(value: str) -> tuple[int, int, int]:
+    value = value.lstrip("#")
+    return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
+
+
+def gradient_point(p: float, rgb0, bri0: int, rgb1, bri1: int) -> tuple[tuple[int, int, int], int]:
+    """Colour and brightness (0..255) at progress ``p`` of a gradient."""
+    p = min(max(p, 0.0), 1.0)
+    rgb = tuple(round(a + (b - a) * p) for a, b in zip(rgb0, rgb1))
+    return rgb, round(bri0 + (bri1 - bri0) * p)
 
 
 def sunrise_point(p: float) -> tuple[int, int]:
@@ -67,9 +81,12 @@ class LightController:
         except Exception as err:  # noqa: BLE001 - a missing light must not break the spot
             _LOGGER.warning("light.%s failed for %s: %s", service, self.lights, err)
 
-    async def _on(self, brightness: int, kelvin: int | None = None, transition: float | None = None) -> None:
+    async def _on(self, brightness: int, kelvin: int | None = None, transition: float | None = None,
+                  rgb: tuple[int, int, int] | None = None) -> None:
         data: dict[str, Any] = {ATTR_BRIGHTNESS: int(min(max(brightness, 1), 255))}
-        if kelvin:
+        if rgb:
+            data[ATTR_RGB_COLOR] = list(rgb)
+        elif kelvin:
             data[ATTR_COLOR_TEMP_KELVIN] = int(kelvin)
         if transition is not None:
             data[ATTR_TRANSITION] = round(transition, 1)
@@ -107,11 +124,13 @@ class LightController:
             light["brightness"] = int(min(max(brightness, 1), 255))
         if kelvin is not None:
             light["kelvin"] = int(kelvin)
+            light["rgb"] = None
         if on is None:
             on = True if (brightness is not None or kelvin is not None) else light["on"]
         light["on"], light["effect"] = on, None
         if on:
-            await self._on(light["brightness"], light["kelvin"], 1)
+            rgb = light.get("rgb")
+            await self._on(light["brightness"], None if rgb else light["kelvin"], 1, tuple(rgb) if rgb else None)
         else:
             await self._off(1)
 
@@ -123,6 +142,44 @@ class LightController:
         start = self.current_brightness() or self.runtime.state["light"]["brightness"]
         self.runtime.state["light"].update(effect="fade")
         self._run(self._fade(minutes, start), "fade")
+
+    async def async_set_color(self, rgb: tuple[int, int, int], brightness: int) -> None:
+        """Plain colour; ends any running effect."""
+        self.cancel_effect()
+        light = self.runtime.state["light"]
+        light.update(on=True, effect=None, brightness=int(min(max(brightness, 1), 255)), rgb=list(rgb))
+        await self._send(light["brightness"], None, rgb, 1)
+
+    def start_gradient(self, rgb0, bri0: int, rgb1, bri1: int, minutes: float) -> None:
+        self.runtime.state["light"].update(on=True, effect="gradient")
+        self._run(self._gradient(rgb0, bri0, rgb1, bri1, minutes), "gradient")
+
+    async def _send(self, brightness: int, kelvin: int | None, rgb, transition: float | None) -> None:
+        """Colour command to the DIY lamp or the spot's lights."""
+        if self.runtime.diy is not None:
+            await self.runtime.diy.light(brightness > 0, max(1, brightness), kelvin, rgb)
+        elif brightness <= 0:
+            await self._off(transition)
+        else:
+            await self._on(brightness, kelvin, transition, rgb)
+
+    async def _gradient(self, rgb0, bri0: int, rgb1, bri1: int, minutes: float) -> None:
+        total = max(minutes * 60, 1.0)
+        if self.runtime.diy is not None:
+            steps = max(1, int(total // DIY_STEP_S))
+        else:
+            steps = int(min(MAX_STEPS, max(1, total // MIN_STEP_S)))
+        step_s = total / steps
+        rgb, bri = gradient_point(0, rgb0, bri0, rgb1, bri1)
+        await self._send(bri, None, rgb, 1)
+        for i in range(1, steps + 1):
+            await asyncio.sleep(step_s if i > 1 else 1)
+            rgb, bri = gradient_point(i / steps, rgb0, bri0, rgb1, bri1)
+            await self._send(bri, None, rgb, step_s)
+        if bri <= 0:
+            self._effect_done(on=False)
+        else:
+            self._effect_done(on=True, brightness=bri, rgb=list(rgb))
 
     def start_candle(self) -> None:
         self.runtime.state["light"].update(on=True, effect="candle")

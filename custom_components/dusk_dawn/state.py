@@ -22,6 +22,7 @@ DEFAULT_AUTO: dict[str, Any] = {
     "presence_min": 10,           # presence mode: somebody must be there this long (minutes) before sounds start
     "pause_on_music": False,
     "night_light_with_sound": False,
+    "start_scene": "gute_nacht",  # scene started by the presence automation and the good-night action
 }
 
 DEFAULT_ALARM: dict[str, Any] = {
@@ -45,12 +46,13 @@ def default_state() -> dict[str, Any]:
         "volume": 0.5,
         "timer": {"minutes": None, "ends_at": None},
         # "effect" is an addition to the contract: the running light effect, if any
-        "light": {"on": False, "brightness": 128, "kelvin": 2700, "effect": None},
+        "light": {"on": False, "brightness": 128, "kelvin": 2700, "effect": None, "rgb": None},
         "alarms": [],
         # addition to the contract: master switch behind switch.alarms_enabled
         "alarms_enabled": True,
         "auto": dict(DEFAULT_AUTO),
         "presets": copy.deepcopy(BUILTIN_PRESETS),
+        "hidden_presets": [],  # built-in suggestions the user removed
         "alarm_ringing": False,
         "next_alarm": None,
     }
@@ -69,15 +71,119 @@ def merge_stored(stored: dict[str, Any] | None) -> dict[str, Any]:
     light = stored.get("light", {})
     state["light"].update({k: light[k] for k in ("brightness", "kelvin") if k in light})
     state["auto"].update({k: v for k, v in stored.get("auto", {}).items() if k in DEFAULT_AUTO})
-    # built-ins always come from the code (so fixes reach users), user presets from storage
-    user = [{**p, "builtin": False} for p in stored.get("presets", []) if str(p.get("id", "")).startswith("user_")]
-    state["presets"].extend(user)
+    state["presets"] = merge_presets(stored.get("presets", []), stored.get("hidden_presets", []))
+    state["hidden_presets"] = [i for i in stored.get("hidden_presets", []) if i in {p["id"] for p in BUILTIN_PRESETS}]
     state["alarms"] = [normalize_alarm(a) for a in state["alarms"]]
     return state
 
 
 def _clamp(value: Any, lo: float, hi: float) -> float:
     return min(max(float(value), lo), hi)
+
+
+# ---------------------------------------------------------------- scenes (presets)
+# A scene ("Klangwelt") is a preset with optional extras: volume, sleep timer and light. Missing extras leave the
+# current value alone. Built-ins are suggestions: they can be edited (stored with ``edited``) and removed (hidden).
+LIGHT_MODES = ("keep", "off", "white", "color", "gradient", "candle", "fade")
+HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+SCENE_EXTRAS = ("volume", "timer", "light")
+
+
+def _hex(value: Any, default: str) -> str:
+    value = str(value or "")
+    return value.lower() if HEX_RE.match(value) else default
+
+
+def normalize_light(light: Any) -> dict[str, Any] | None:
+    """Validate a scene's light setting; ``None`` = leave the light alone."""
+    if not isinstance(light, dict):
+        return None
+    mode = light.get("mode", "keep")
+    if mode not in LIGHT_MODES:
+        raise ValueError(f"unknown light mode {mode!r}")
+    if mode == "keep":
+        return None
+    out: dict[str, Any] = {"mode": mode}
+    bri = int(_clamp(light.get("brightness", 40), 1, 100))
+    if mode in ("white", "fade"):
+        out.update(brightness=bri, kelvin=int(_clamp(light.get("kelvin", 2200), 1800, 6500)))
+    elif mode == "color":
+        out.update(brightness=bri, color=_hex(light.get("color"), "#ff8a3d"))
+    elif mode == "candle":
+        out.update(brightness=bri)
+    elif mode == "gradient":
+        out.update(
+            color=_hex(light.get("color"), "#ff8a3d"), brightness=bri,
+            to_color=_hex(light.get("to_color"), "#3b1f6e"),
+            to_brightness=int(_clamp(light.get("to_brightness", 0), 0, 100)),
+            minutes=int(_clamp(light.get("minutes", 30), 1, 180)),
+        )
+    return out
+
+
+def normalize_scene(data: dict[str, Any], current: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Validate the editable fields of a scene (name, icon, levels, volume, timer, light)."""
+    out = dict(current or {})
+    if "name" in data:
+        name = str(data["name"]).strip()[:40]
+        if not name:
+            raise ValueError("A scene needs a name")
+        out["name"] = name
+    if "icon" in data and str(data["icon"] or "").startswith("mdi:"):
+        out["icon"] = str(data["icon"])
+    if "levels" in data:
+        out["levels"] = {
+            str(k): round(_clamp(v, 0, 1), 3) for k, v in dict(data["levels"]).items()
+            if (k in SOUNDS or is_own(str(k))) and float(v) > 0
+        }
+    if "volume" in data:
+        out["volume"] = None if data["volume"] is None else round(_clamp(data["volume"], 0, 1), 3)
+    if "timer" in data:  # "keep" = leave the sleep timer alone, None = off, minutes
+        t = data["timer"]
+        out["timer"] = "keep" if t == "keep" else (int(_clamp(t, 1, 240)) if t else None)
+    if "light" in data:
+        out["light"] = normalize_light(data["light"])
+    return out
+
+
+def merge_presets(stored: list[dict[str, Any]], hidden: list[str]) -> list[dict[str, Any]]:
+    """Built-ins from the code (or their edited copy) plus the user's scenes, in the stored order,
+    the user's own scenes always first."""
+    builtins = {p["id"]: p for p in copy.deepcopy(BUILTIN_PRESETS)}
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in stored:
+        pid = str(raw.get("id", ""))
+        if pid in seen:
+            continue
+        if pid in builtins:
+            if pid in hidden:
+                continue
+            p = builtins[pid]
+            if raw.get("edited"):
+                try:
+                    p = {**p, **normalize_scene(raw), "edited": True}
+                except (ValueError, TypeError):
+                    pass
+        elif pid.startswith("user_"):
+            try:
+                p = {"id": pid, "builtin": False, "icon": "mdi:playlist-music", "levels": {},
+                     **normalize_scene({k: raw[k] for k in ("name", "icon", "levels", *SCENE_EXTRAS) if k in raw})}
+            except (ValueError, TypeError):
+                continue
+            if "name" not in p:
+                continue
+        else:
+            continue
+        out.append(p)
+        seen.add(pid)
+    out += [p for pid, p in builtins.items() if pid not in seen and pid not in hidden]
+    return sort_presets(out)
+
+
+def sort_presets(presets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Own scenes first, built-in suggestions after; the order inside each group is kept."""
+    return [p for p in presets if not p.get("builtin")] + [p for p in presets if p.get("builtin")]
 
 
 def normalize_alarm(alarm: dict[str, Any], existing: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -119,6 +225,8 @@ def normalize_auto(auto: dict[str, Any], current: dict[str, Any]) -> dict[str, A
             out[key] = int(_clamp(value, 0, 240))
         elif key == "presence_min":
             out[key] = int(_clamp(value, 0, 120))
+        elif key == "start_scene":
+            out[key] = str(value or "")[:40]
         elif key == "presence_mode":
             if value not in ("presence", "window"):
                 raise ValueError(f"invalid presence_mode {value!r}")
