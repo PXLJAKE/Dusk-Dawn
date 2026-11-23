@@ -18,7 +18,7 @@ Loader in integration: `try: from dusk_dawn_core import Engine` / `except Import
 The Rust wheel is OPTIONAL (not in manifest requirements until published on PyPI).
 
 ```python
-SOUNDS = ["rain","waves","stream","wind","thunder","birds","leaves","fire","fan","white","pink","brown"]
+SOUNDS = ["rain","waves","wind","thunder","fan","white","pink","brown"]   # built-in; own sounds are extra ids "own_<hex>" mixed by the integration
 ALARM_TONES = ["bells","classic","birds"]
 
 class Engine:
