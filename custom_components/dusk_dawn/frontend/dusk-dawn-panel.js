@@ -10,7 +10,10 @@
  * the live tree, so focused inputs and sliders that are being dragged are kept.
  */
 
-const VERSION = "0.3.0";
+// version from the module URL (?v=<version>-<stamp>, set by the integration), so the console banner is always right
+const VERSION = (() => {
+  try { return (new URL(import.meta.url).searchParams.get("v") || "dev").split("-")[0]; } catch (_e) { return "dev"; }
+})();
 
 /* ------------------------------------------------------------------ data */
 
