@@ -1,8 +1,9 @@
 # dusk-dawn-core
 
 Rust sound engine for the **Dusk & Dawn** Home Assistant integration, with Python
-bindings (PyO3). It renders procedural sleep sounds: rain, waves, stream, wind,
-thunder, birds, leaves, fire, fan, and white, pink and brown noise. It also renders
+bindings (PyO3). It renders procedural sleep sounds: rain, waves, wind, thunder, fan, and white, pink
+and brown noise (the engine can also render stream, birds, leaves and fire, which the
+integration no longer exposes). It also renders
 alarm tones (bells, classic, birds). Output is mono signed 16-bit little-endian PCM.
 
 The engine is a port of `hardware/device/sleepgen/dsp.py` and `engine.py`. White, pink and

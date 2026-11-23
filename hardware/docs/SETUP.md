@@ -33,9 +33,9 @@ journalctl -u sleepgen -f                          # Log des Dienstes
 | Entität | Funktion |
 |---|---|
 | `switch.sleepgen_sound` | Sounds an/aus |
-| `select.sleepgen_preset` | Regen, Gewitternacht, Meer, Kaminabend … |
+| `select.sleepgen_preset` | Regen, Gewitternacht, Meer, Ventilator, Brown/Pink/White Noise |
 | `select.sleepgen_timer` | Sleep-Timer 15–120 min (die letzten 10 min werden ausgeblendet) |
-| `number.sleepgen_layer_*` | ein Regler je Klang: rain, thunder, waves, wind, fire, birds, leaves, stream, fan, white, pink, brown |
+| `number.sleepgen_layer_*` | ein Regler je Klang: rain, thunder, waves, wind, fan, white, pink, brown |
 | `number.sleepgen_master` | Lautstärke der Sounds |
 | `number.sleepgen_device_volume` | Gerätelautstärke (wie der Drehknopf, gilt auch für Musik) |
 | `light.sleepgen_lamp` | Lampe: Helligkeit, Farbtemperatur 1800–6500 K, Farbe, Effekte *Sonnenaufgang*, *Kerze*, *Einschlafen* |
@@ -86,7 +86,7 @@ AirPlay 2 wird beim Installieren aus dem Quellcode gebaut (shairport-sync mit nq
 
 ## 4. Eigene Aufnahmen
 
-Alle mitgelieferten Klänge werden live erzeugt (keine Dateien, keine Lizenzfragen). Eigene Aufnahmen gehen zusätzlich: 16-bit-WAV auf den Pi kopieren und in `config.yaml` unter `sounds:` eintragen, z. B. `file:/home/pi/sounds/regen-am-fenster.wav`. Die Datei wird automatisch nahtlos geloopt und in der Lautstärke angeglichen. Legale Quellen: freesound.org mit Filter CC0, Pixabay oder eigene Handyaufnahmen.
+Alle mitgelieferten Klänge werden live auf dem Pi erzeugt (keine Dateien, keine Lizenzfragen). Eigene Aufnahmen gehen zusätzlich: 16-bit-WAV auf den Pi kopieren und in `config.yaml` unter `sounds:` eintragen, z. B. `file:/home/pi/sounds/regen-am-fenster.wav`. Die Datei wird automatisch nahtlos geloopt und in der Lautstärke angeglichen. Legale Quellen: freesound.org mit Filter CC0, Pixabay oder eigene Handyaufnahmen.
 
 ## 5. Entwicklung am PC
 

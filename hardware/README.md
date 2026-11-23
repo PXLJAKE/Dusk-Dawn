@@ -1,6 +1,6 @@
 # Soundlampe – eigene Hardware für Dusk & Dawn
 
-Optionaler Zusatz zur Integration: eine Nachttischlampe mit Lautsprecher, die die Klänge selbst berechnet (ohne Verzögerung, Wecker auch ohne WLAN) und über MQTT in Home Assistant erscheint. Musik spielt sie per AirPlay 2, Spotify Connect und Music Assistant.
+Optionaler Zusatz zur [Integration](../README.md): Die Integration läuft auch ohne diese Hardware mit jedem Lautsprecher, dann berechnet Home Assistant die Klänge. Die Soundlampe ist eine Nachttischlampe mit Lautsprecher, die die Klänge **selbst auf dem Raspberry Pi berechnet** (ohne Stream-Verzögerung, Wecker auch ohne WLAN oder Home Assistant) und über MQTT in Home Assistant erscheint. Musik spielt sie per AirPlay 2, Spotify Connect und Music Assistant.
 
 ![Explosionszeichnung](gehaeuse/renders/explosion_beide.png)
 
