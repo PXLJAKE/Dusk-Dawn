@@ -40,44 +40,83 @@ def library(tmp_path: Path) -> SoundLibrary:
     return lib
 
 
+@pytest.fixture
+def snd(library: SoundLibrary) -> str:
+    return library.add_sound("Waldbach").id
+
+
 @pytest.mark.parametrize("fmt", ["wav", "mp3", "flac", "ogg"])
-def test_add_decodes_any_format_and_normalises(library: SoundLibrary, tmp_path: Path, fmt: str) -> None:
+def test_add_decodes_any_format_and_normalises(library: SoundLibrary, snd: str, tmp_path: Path, fmt: str) -> None:
     src = _make_audio(tmp_path, 8, amp=0.4, fmt=fmt)
-    entry = library.add("ffmpeg", "rain", src, "regen")
+    entry = library.add("ffmpeg", snd, src, "regen")
     assert abs(entry.duration - 8) < 0.3
     data = np.asarray(entry.array(), dtype=np.float64) / 32768 * entry.gain
     assert np.sqrt(np.mean(data**2)) == pytest.approx(TARGET_RMS, rel=0.1)
     # survives a restart
     again = SoundLibrary(library.root, RATE)
     again.load()
-    assert [f.id for f in again.files("rain")] == [entry.id]
-    assert again.listing()["rain"][0]["name"] == "regen"
+    assert [f.id for f in again.files(snd)] == [entry.id]
+    assert again.listing()["sounds"][0]["name"] == "Waldbach"
+    assert again.listing()["sounds"][0]["files"][0]["name"] == "regen"
 
 
-def test_add_rejects_bad_input(library: SoundLibrary, tmp_path: Path) -> None:
+def test_unlimited_named_sounds(library: SoundLibrary) -> None:
+    ids = [library.add_sound(f"Klang {i}").id for i in range(30)]  # no upper limit
+    assert len(set(ids)) == 30 and all(i.startswith("own_") for i in ids)
+    library.rename_sound(ids[0], "  Heizung ")
+    assert library.name_of(ids[0]) == "Heizung"
+    with pytest.raises(DecodeError):
+        library.add_sound("   ")
+    with pytest.raises(DecodeError):
+        library.rename_sound("own_nope", "x")
+
+
+def test_add_rejects_bad_input(library: SoundLibrary, snd: str, tmp_path: Path) -> None:
     junk = tmp_path / "junk.wav"
     junk.write_bytes(b"not audio at all")
     with pytest.raises(DecodeError):
-        library.add("ffmpeg", "rain", junk, "x")
+        library.add("ffmpeg", snd, junk, "x")
     with pytest.raises(DecodeError):
-        library.add("ffmpeg", "rain", _make_audio(tmp_path, 1), "short")
+        library.add("ffmpeg", snd, _make_audio(tmp_path, 1), "short")
     with pytest.raises(DecodeError):
-        library.add("ffmpeg", "thunder", _make_audio(tmp_path, 6), "wrong sound")
-    assert library.files("rain") == []
+        library.add("ffmpeg", "own_unknown", _make_audio(tmp_path, 6), "wrong sound")
+    assert library.files(snd) == []
     assert not list(library.root.glob("*.raw"))
 
 
-def test_delete_removes_file(library: SoundLibrary, tmp_path: Path) -> None:
-    entry = library.add("ffmpeg", "fire", _make_audio(tmp_path, 6), "f")
+def test_delete_file_and_sound(library: SoundLibrary, snd: str, tmp_path: Path) -> None:
+    entry = library.add("ffmpeg", snd, _make_audio(tmp_path, 6), "f")
     assert library.delete(entry.id) is not None
     assert not entry.path.exists()
-    assert library.files("fire") == []
+    assert library.files(snd) == []
     assert library.delete(entry.id) is None
+    e2 = library.add("ffmpeg", snd, _make_audio(tmp_path, 6, 500), "g")
+    assert [f.id for f in library.delete_sound(snd)] == [e2.id]
+    assert not e2.path.exists() and not library.has_sound(snd)
 
 
-def test_layer_is_continuous_and_rotates(library: SoundLibrary, tmp_path: Path) -> None:
-    a = library.add("ffmpeg", "wind", _make_audio(tmp_path, 20, 300), "a")
-    b = library.add("ffmpeg", "wind", _make_audio(tmp_path, 20, 700), "b")
+def test_old_library_is_migrated(tmp_path: Path) -> None:
+    """Version 0.3.0 stored files per built-in sound; they become named own sounds."""
+    import json  # noqa: PLC0415
+
+    root = tmp_path / "old"
+    root.mkdir()
+    (root / "abc.raw").write_bytes(np.zeros(RATE * 5, dtype="<i2").tobytes())
+    (root / "index.json").write_text(json.dumps({"files": [
+        {"id": "abc", "sound": "fire", "name": "kamin", "duration": 5.0, "gain": 2.0, "added": 1.0}]}))
+    lib = SoundLibrary(root, RATE)
+    lib.load()
+    (sound,) = lib.sounds()
+    assert sound.id == "own_fire" and "Feuer" in sound.name
+    assert [f.id for f in lib.files("own_fire")] == ["abc"]
+    again = SoundLibrary(root, RATE)
+    again.load()  # the migrated index was written back
+    assert [c.id for c in again.sounds()] == ["own_fire"]
+
+
+def test_layer_is_continuous_and_rotates(library: SoundLibrary, snd: str, tmp_path: Path) -> None:
+    a = library.add("ffmpeg", snd, _make_audio(tmp_path, 20, 300), "a")
+    b = library.add("ffmpeg", snd, _make_audio(tmp_path, 20, 700), "b")
     layer = FileLayer(RATE, seed=3)
     layer.set_files([a, b])
     block = RATE // 20
@@ -95,8 +134,8 @@ def test_layer_is_continuous_and_rotates(library: SoundLibrary, tmp_path: Path) 
     assert spec[np.argmin(abs(freqs - 700))] > 10 * np.median(spec)
 
 
-def test_layer_handles_short_and_changing_files(library: SoundLibrary, tmp_path: Path) -> None:
-    short = library.add("ffmpeg", "birds", _make_audio(tmp_path, 4), "short")
+def test_layer_handles_short_and_changing_files(library: SoundLibrary, snd: str, tmp_path: Path) -> None:
+    short = library.add("ffmpeg", snd, _make_audio(tmp_path, 4), "short")
     layer = FileLayer(RATE, seed=1)
     assert not np.any(layer.render(1000))  # nothing loaded: silence
     layer.set_files([short])
@@ -109,7 +148,7 @@ def test_layer_handles_short_and_changing_files(library: SoundLibrary, tmp_path:
     assert not np.any(layer.render(2205))
 
 
-def test_engine_switches_between_synth_and_file(library: SoundLibrary, tmp_path: Path) -> None:
+def test_engine_plays_own_sounds_next_to_synth(library: SoundLibrary, tmp_path: Path) -> None:
     engine = SampleEngine(Engine(RATE, seed=1), library, seed=1)
     engine.set_master(0.8)
     engine.set_level("rain", 0.8)
@@ -119,33 +158,35 @@ def test_engine_switches_between_synth_and_file(library: SoundLibrary, tmp_path:
         data = np.frombuffer(b"".join(engine.render(2205) for _ in range(int(20 * seconds))), "<i2")
         return float(np.sqrt(np.mean((data / 32768.0) ** 2)))
 
-    rms(1.0)  # let the level smoothing settle
-    synth = rms()
-    assert synth > 0.001
-    with pytest.raises(ValueError):
-        engine.set_source("thunder", "file")
-    engine.set_source("rain", "file")  # no file yet: stays synthetic
-    assert rms() > 0.001
-    library.add("ffmpeg", "rain", _make_audio(tmp_path, 10, amp=0.5), "tone")
-    engine.refresh("rain")
     rms(1.0)
-    file_level = rms()
-    assert file_level > 0.002
-    assert engine.inner.levels()["rain"] == 0.0  # synth muted while the file plays
+    assert rms() > 0.001  # synth rain
+    a = library.add_sound("Heizung")
+    b = library.add_sound("Bach")
+    library.add("ffmpeg", a.id, _make_audio(tmp_path, 10, amp=0.5), "tone")
+    library.add("ffmpeg", b.id, _make_audio(tmp_path, 10, 700, amp=0.5), "tone")
+    engine.refresh()
     engine.set_level("rain", 0.0)
+    assert engine.has_layer(a.id) and engine.has_layer(b.id)
     rms(1.0)
-    assert rms() == 0.0
-    engine.set_source("rain", "synth")
-    assert engine.inner.levels()["rain"] == 0.0
-    engine.set_level("rain", 0.8)
-    assert engine.inner.levels()["rain"] == 0.8
+    assert rms() == 0.0  # own sounds still at 0
+    engine.set_level(a.id, 0.8)
+    rms(1.0)
+    only_a = rms()
+    assert only_a > 0.002
+    engine.set_level(b.id, 0.8)
+    rms(1.0)
+    assert rms() > only_a  # two own sounds at once
+    library.delete_sound(a.id)
+    engine.refresh()
+    assert not engine.has_layer(a.id) and engine.has_layer(b.id)
+    engine.set_level(a.id, 1.0)  # deleted sound: ignored
+    rms(0.5)
 
 
-def test_engine_master_scales_file_sound(library: SoundLibrary, tmp_path: Path) -> None:
-    library.add("ffmpeg", "waves", _make_audio(tmp_path, 10, amp=0.5), "tone")
+def test_engine_master_scales_file_sound(library: SoundLibrary, snd: str, tmp_path: Path) -> None:
+    library.add("ffmpeg", snd, _make_audio(tmp_path, 10, amp=0.5), "tone")
     engine = SampleEngine(Engine(RATE, seed=1), library, seed=1)
-    engine.set_source("waves", "file")
-    engine.set_level("waves", 1.0)
+    engine.set_level(snd, 1.0)
     engine.set_master(1.0)
     for _ in range(40):
         engine.render(2205)
@@ -161,7 +202,7 @@ def test_engine_master_scales_file_sound(library: SoundLibrary, tmp_path: Path) 
     assert not any(engine.render(2205))
 
 
-async def test_upload_api_and_sources(
+async def test_own_sound_api(
     hass: HomeAssistant,
     setup_spot: MockConfigEntry,
     hass_client: ClientSessionGenerator,
@@ -171,36 +212,46 @@ async def test_upload_api_and_sources(
     client = await hass_client()
     ws = await hass_ws_client(hass)
     entry_id = setup_spot.entry_id
+    rt = setup_spot.runtime_data
 
     async def call(payload):
         await ws.send_json_auto_id(payload)
         return await ws.receive_json()
 
-    msg = await call({"type": "dusk_dawn/command", "entry_id": entry_id, "action": "set_source",
-                      "sound": "rain", "mode": "file"})
-    assert not msg["success"]  # nothing uploaded yet
-    assert (await call({"type": "dusk_dawn/sounds"}))["result"]["files"]["rain"] == []
+    assert (await call({"type": "dusk_dawn/sounds"}))["result"]["sounds"] == []
+    assert not (await call({"type": "dusk_dawn/sound_add", "name": "  "}))["success"]
+    msg = await call({"type": "dusk_dawn/sound_add", "name": "Waldbach"})
+    sound = msg["result"]["sound"]
+    assert msg["result"]["sounds"][0]["name"] == "Waldbach"
+    assert not (await call({"type": "dusk_dawn/command", "entry_id": entry_id, "action": "set_level",
+                            "sound": "own_nope", "level": 0.5}))["success"]
 
     audio = (await hass.async_add_executor_job(_make_audio, tmp_path, 8)).read_bytes()
-    resp = await client.post("/api/dusk_dawn/upload/rain?name=Gartenregen.wav", data=audio)
+    resp = await client.post(f"/api/dusk_dawn/upload/{sound}?name=Gartenbach.wav", data=audio)
     assert resp.status == 200, await resp.text()
     body = await resp.json()
     file_id = body["file"]["id"]
-    assert body["file"]["name"] == "Gartenregen"
-    assert body["files"]["rain"][0]["id"] == file_id
+    assert body["file"]["name"] == "Gartenbach"
+    assert body["sounds"][0]["files"][0]["id"] == file_id
+    assert (await client.post("/api/dusk_dawn/upload/own_nope", data=audio)).status == 404
+    assert (await client.post(f"/api/dusk_dawn/upload/{sound}", data=b"garbage")).status == 422
 
-    assert (await client.post("/api/dusk_dawn/upload/thunder", data=audio)).status == 404
-    assert (await client.post("/api/dusk_dawn/upload/rain", data=b"garbage")).status == 422
+    msg = await call({"type": "dusk_dawn/command", "entry_id": entry_id, "action": "set_level",
+                      "sound": sound, "level": 0.6})
+    assert msg["result"]["state"]["levels"][sound] == 0.6
+    assert rt.engine.has_layer(sound)
 
-    msg = await call({"type": "dusk_dawn/command", "entry_id": entry_id, "action": "set_source",
-                      "sound": "rain", "mode": "file"})
-    assert msg["result"]["state"]["sources"]["rain"] == "file"
-    assert setup_spot.runtime_data.engine.source("rain") == "file"
+    msg = await call({"type": "dusk_dawn/sound_rename", "sound": sound, "name": "Bach"})
+    assert msg["result"]["sounds"][0]["name"] == "Bach"
 
     msg = await call({"type": "dusk_dawn/sound_delete", "file_id": file_id})
-    assert msg["success"] and msg["result"]["files"]["rain"] == []
-    assert setup_spot.runtime_data.snapshot()["sources"]["rain"] == "synth"  # fell back
+    assert msg["success"] and msg["result"]["sounds"][0]["files"] == []
     assert (await call({"type": "dusk_dawn/sound_delete", "file_id": file_id}))["success"] is False
+
+    msg = await call({"type": "dusk_dawn/sound_remove", "sound": sound})
+    assert msg["success"] and msg["result"]["sounds"] == []
+    assert sound not in rt.snapshot()["levels"]  # its level is forgotten
+    assert not rt.engine.has_layer(sound)
 
 
 def test_master_taper_is_quieter_and_monotonic() -> None:

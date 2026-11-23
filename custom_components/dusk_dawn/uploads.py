@@ -18,7 +18,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN, UPLOAD_URL
-from .samples import FILE_SOUNDS, DecodeError, SampleEngine, SoundLibrary
+from .samples import DecodeError, SampleEngine, SoundLibrary
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class UploadView(HomeAssistantView):
         user = request.get("hass_user")
         if user is None or not user.is_admin:
             return web.json_response({"error": "admin required"}, status=HTTPStatus.FORBIDDEN)
-        if sound not in FILE_SOUNDS:
+        if not get_library(hass).has_sound(sound):
             return web.json_response({"error": "unknown sound"}, status=HTTPStatus.NOT_FOUND)
         name = Path(request.query.get("name", "Aufnahme")).stem or "Aufnahme"
         library = get_library(hass)
@@ -77,4 +77,4 @@ class UploadView(HomeAssistantView):
             tmp_path.unlink(missing_ok=True)
         refresh_engines(hass, sound)
         _LOGGER.info("Added sound file %s for %s (%.0f s)", entry.name, sound, entry.duration)
-        return web.json_response({"file": entry.info(), "files": library.listing()})
+        return web.json_response({"file": entry.info(), **library.listing()})

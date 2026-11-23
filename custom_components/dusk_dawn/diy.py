@@ -22,7 +22,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DIY_BASE_TOPIC, DIY_EFFECTS, DIY_TIMER_OPTIONS, DIY_TONES, SOUNDS
+from .const import DIY_BASE_TOPIC, DIY_EFFECTS, DIY_TIMER_OPTIONS, DIY_TONES, REMOVED_SOUNDS, SOUNDS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -112,6 +112,8 @@ class DiyLamp:
     async def set_levels(self, levels: dict[str, float]) -> None:
         for sound in SOUNDS:
             await self.set_level(sound, levels.get(sound, 0.0))
+        for sound in REMOVED_SOUNDS:  # the lamp still knows these: keep them silent
+            await self.set_level(sound, 0.0)
 
     async def set_level(self, sound: str, level: float) -> None:
         await self._publish(f"layer/{sound}/set", round(level * 100))

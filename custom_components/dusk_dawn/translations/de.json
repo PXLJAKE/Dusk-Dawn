@@ -75,23 +75,11 @@
       "level_waves": {
         "name": "Meereswellen"
       },
-      "level_stream": {
-        "name": "Bach"
-      },
       "level_wind": {
         "name": "Wind"
       },
       "level_thunder": {
         "name": "Gewitter"
-      },
-      "level_birds": {
-        "name": "Vögel"
-      },
-      "level_leaves": {
-        "name": "Blätterrauschen"
-      },
-      "level_fire": {
-        "name": "Kaminfeuer"
       },
       "level_fan": {
         "name": "Ventilator"

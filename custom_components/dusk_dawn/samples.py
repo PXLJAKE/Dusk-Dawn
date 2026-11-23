@@ -1,6 +1,7 @@
 """Own sound recordings: library on disk and a seamless-loop player.
 
-Users upload long recordings (five minutes or more) for the nature sounds. Each
+Users upload long recordings (five minutes or more) and give each sound a name
+("Waldbach", "Heizung" ...), as many sounds as they like. Each
 file is decoded once with ffmpeg to mono 16-bit PCM at the engine rate, stored as
 a raw file (memory mapped on playback, so a 30 minute file costs no RAM) and
 loudness-normalised with a stored gain. :class:`FileLayer` plays the files of one
@@ -8,7 +9,7 @@ sound as an endless chain of random segments with long equal-power crossfades,
 rotating between the files, so the loop never repeats at the same place.
 
 :class:`SampleEngine` wraps the synth engine (Rust or Python) and mixes the file
-layers into its output. A sound can be switched between "synth" and "file".
+layers into its output. Every custom sound is one more mixer layer with the id ``own_<hex>``.
 """
 
 from __future__ import annotations
@@ -29,8 +30,15 @@ import numpy as np
 
 _LOGGER = logging.getLogger(__name__)
 
-# sounds that can be replaced by recordings
-FILE_SOUNDS = ("rain", "waves", "wind", "birds", "leaves", "fire")
+OWN_PREFIX = "own_"
+MAX_NAME = 40
+# recordings uploaded for a built-in sound (before sounds could be named freely) become own sounds
+LEGACY_NAMES = {"rain": "Regen", "waves": "Wellen", "wind": "Wind", "birds": "Vögel", "leaves": "Blätter",
+                "fire": "Feuer"}
+
+
+def is_own(sound: str) -> bool:
+    return isinstance(sound, str) and sound.startswith(OWN_PREFIX)
 
 TARGET_RMS = 0.10  # loudness every recording is normalised to (full scale = 1.0)
 MAX_GAIN = 12.0  # never amplify very quiet recordings by more than ~21 dB
@@ -105,6 +113,13 @@ def measure(path: Path, rate: int) -> tuple[float, float]:
 
 
 # --------------------------------------------------------------------------- library
+@dataclass(frozen=True)
+class CustomSound:
+    id: str
+    name: str
+    added: float
+
+
 class SoundLibrary:
     """All uploaded recordings, shared by every spot. Blocking methods run in an executor."""
 
@@ -113,6 +128,7 @@ class SoundLibrary:
         self.rate = rate
         self._lock = threading.Lock()
         self._files: dict[str, SampleFile] = {}
+        self._sounds: dict[str, CustomSound] = {}
         self._loaded = False
 
     # ---- persistence
@@ -123,36 +139,109 @@ class SoundLibrary:
     def load(self) -> None:
         with self._lock:
             self._files = {}
+            self._sounds = {}
             try:
-                items = json.loads(self._index.read_text(encoding="utf-8")).get("files", [])
+                data = json.loads(self._index.read_text(encoding="utf-8"))
             except (OSError, ValueError):
-                items = []
-            for it in items:
+                data = {}
+            for it in data.get("sounds", []):
+                try:
+                    if is_own(it["id"]):
+                        self._sounds[it["id"]] = CustomSound(it["id"], str(it["name"])[:MAX_NAME],
+                                                             float(it.get("added", 0)))
+                except (KeyError, TypeError, ValueError):
+                    continue
+            migrated = False
+            for it in data.get("files", []):
                 try:
                     path = self.root / f"{it['id']}.raw"
-                    if it["sound"] in FILE_SOUNDS and path.exists():
-                        self._files[it["id"]] = SampleFile(
-                            id=it["id"], sound=it["sound"], name=str(it.get("name", it["id"])),
-                            duration=float(it["duration"]), gain=float(it["gain"]),
-                            added=float(it.get("added", 0)), path=path)
+                    if not path.exists():
+                        continue
+                    sound = it["sound"]
+                    if not is_own(sound):  # older version: files belonged to a built-in sound
+                        new = OWN_PREFIX + sound
+                        if new not in self._sounds:
+                            name = LEGACY_NAMES.get(sound, sound.capitalize())
+                            self._sounds[new] = CustomSound(new, f"{name} (eigene Aufnahme)", float(it.get("added", 0)))
+                        sound, migrated = new, True
+                    if sound not in self._sounds:
+                        continue
+                    self._files[it["id"]] = SampleFile(
+                        id=it["id"], sound=sound, name=str(it.get("name", it["id"])),
+                        duration=float(it["duration"]), gain=float(it["gain"]),
+                        added=float(it.get("added", 0)), path=path)
                 except (KeyError, TypeError, ValueError):
                     continue
             self._loaded = True
+            if migrated:
+                self._save()
 
     def _save(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
         items = [{"id": f.id, "sound": f.sound, "name": f.name, "duration": f.duration, "gain": f.gain,
                   "added": f.added} for f in self._files.values()]
+        sounds = [{"id": c.id, "name": c.name, "added": c.added} for c in self._sounds.values()]
         tmp = self._index.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"files": items}), encoding="utf-8")
+        tmp.write_text(json.dumps({"sounds": sounds, "files": items}), encoding="utf-8")
         os.replace(tmp, self._index)
 
+    # ---- sounds
+    def sounds(self) -> list[CustomSound]:
+        with self._lock:
+            return sorted(self._sounds.values(), key=lambda c: c.added)
+
+    def has_sound(self, sound: str) -> bool:
+        with self._lock:
+            return sound in self._sounds
+
+    def name_of(self, sound: str) -> str | None:
+        with self._lock:
+            c = self._sounds.get(sound)
+            return c.name if c else None
+
+    def add_sound(self, name: str) -> CustomSound:
+        name = str(name).strip()[:MAX_NAME]
+        if not name:
+            raise DecodeError("a sound needs a name")
+        entry = CustomSound(OWN_PREFIX + secrets.token_hex(4), name, time.time())
+        with self._lock:
+            self._sounds[entry.id] = entry
+            self._save()
+        return entry
+
+    def rename_sound(self, sound: str, name: str) -> CustomSound:
+        name = str(name).strip()[:MAX_NAME]
+        if not name:
+            raise DecodeError("a sound needs a name")
+        with self._lock:
+            old = self._sounds.get(sound)
+            if old is None:
+                raise DecodeError("unknown sound")
+            entry = CustomSound(old.id, name, old.added)
+            self._sounds[sound] = entry
+            self._save()
+        return entry
+
+    def delete_sound(self, sound: str) -> list[SampleFile]:
+        with self._lock:
+            if self._sounds.pop(sound, None) is None:
+                return []
+            gone = [f for f in self._files.values() if f.sound == sound]
+            for f in gone:
+                del self._files[f.id]
+            self._save()
+        for f in gone:
+            f.path.unlink(missing_ok=True)
+        return gone
+
+    # ---- files
     def files(self, sound: str) -> list[SampleFile]:
         with self._lock:
             return sorted((f for f in self._files.values() if f.sound == sound), key=lambda f: f.added)
 
-    def listing(self) -> dict[str, list[dict[str, Any]]]:
-        return {s: [f.info() for f in self.files(s)] for s in FILE_SOUNDS}
+    def listing(self) -> dict[str, Any]:
+        return {"sounds": [{"id": c.id, "name": c.name, "files": [f.info() for f in self.files(c.id)]}
+                           for c in self.sounds()]}
 
     def get(self, file_id: str) -> SampleFile | None:
         with self._lock:
@@ -160,9 +249,9 @@ class SoundLibrary:
 
     # ---- changes
     def add(self, ffmpeg: str, sound: str, source: Path, name: str) -> SampleFile:
-        """Decode ``source`` and add it. Raises DecodeError."""
-        if sound not in FILE_SOUNDS:
-            raise DecodeError(f"{sound} cannot use own files")
+        """Decode ``source`` and add it to ``sound``. Raises DecodeError."""
+        if not self.has_sound(sound):
+            raise DecodeError("unknown sound")
         if len(self.files(sound)) >= MAX_FILES_PER_SOUND:
             raise DecodeError(f"at most {MAX_FILES_PER_SOUND} files per sound")
         self.root.mkdir(parents=True, exist_ok=True)
@@ -183,6 +272,9 @@ class SoundLibrary:
         gain = min(TARGET_RMS / rms, MAX_GAIN)
         entry = SampleFile(file_id, sound, name[:80] or "Aufnahme", duration, gain, time.time(), target)
         with self._lock:
+            if sound not in self._sounds:  # deleted while decoding
+                target.unlink(missing_ok=True)
+                raise DecodeError("unknown sound")
             self._files[file_id] = entry
             self._save()
         return entry
@@ -310,17 +402,16 @@ class FileLayer:
 
 # --------------------------------------------------------------------------- engine wrapper
 class SampleEngine:
-    """The synth engine plus file layers for the sounds in :data:`FILE_SOUNDS`."""
+    """The synth engine plus one file layer per custom sound of the library."""
 
     def __init__(self, inner: Any, library: SoundLibrary, seed: int | None = None) -> None:
         self.inner = inner
         self.library = library
         self._rate = int(inner.rate)
-        self._layers = {s: FileLayer(self._rate, None if seed is None else seed + i)
-                        for i, s in enumerate(FILE_SOUNDS)}
-        self._source = dict.fromkeys(FILE_SOUNDS, "synth")
-        self._levels = dict.fromkeys(FILE_SOUNDS, 0.0)
-        self._gains = dict.fromkeys(FILE_SOUNDS, 0.0)
+        self._seed = seed
+        self._layers: dict[str, FileLayer] = {}
+        self._levels: dict[str, float] = {}
+        self._gains: dict[str, float] = {}
         self._master = 0.0
         self._master_target = 0.0
         self._master_step = 0.0
@@ -335,34 +426,32 @@ class SampleEngine:
     def rate(self) -> int:
         return self._rate
 
-    # ---- sources
+    # ---- sounds
     def refresh(self, sound: str | None = None) -> None:
-        """Re-read the library (after an upload or delete)."""
-        for s in (sound,) if sound else FILE_SOUNDS:
-            if s in self._layers:
-                self._layers[s].set_files(self.library.files(s))
-                self._apply(s)
+        """Re-read the library (after an upload, rename or delete)."""
+        ids = [c.id for c in self.library.sounds()]
+        with self._lock:
+            for gone in [i for i in self._layers if i not in ids]:
+                del self._layers[gone]
+                self._levels.pop(gone, None)
+                self._gains.pop(gone, None)
+            for i, sid in enumerate(ids):
+                if sid not in self._layers:
+                    self._layers[sid] = FileLayer(self._rate, None if self._seed is None else self._seed + i)
+                    self._levels[sid] = 0.0
+                    self._gains[sid] = 0.0
+        for sid in ids:
+            if sound is None or sid == sound:
+                self._layers[sid].set_files(self.library.files(sid))
 
-    def source(self, sound: str) -> str:
-        return self._source.get(sound, "synth")
-
-    def set_source(self, sound: str, mode: str) -> None:
-        if sound not in self._layers or mode not in ("synth", "file"):
-            raise ValueError(f"bad source {mode!r} for {sound!r}")
-        self._source[sound] = mode
-        self._apply(sound)
-
-    def _file_active(self, sound: str) -> bool:
-        return self._source[sound] == "file" and self._layers[sound].has_files
-
-    def _apply(self, sound: str) -> None:
-        level = self._levels[sound]
-        self.inner.set_level(sound, 0.0 if self._file_active(sound) else level)
+    def has_layer(self, sound: str) -> bool:
+        return sound in self._layers
 
     def set_level(self, sound: str, level: float) -> None:
-        if sound in self._layers:
-            self._levels[sound] = min(max(float(level), 0.0), 1.0)
-            self._apply(sound)
+        if is_own(sound):
+            with self._lock:
+                if sound in self._layers:
+                    self._levels[sound] = min(max(float(level), 0.0), 1.0)
         else:
             self.inner.set_level(sound, level)
 
@@ -394,8 +483,8 @@ class SampleEngine:
         if n <= 0:
             return base
         with self._lock:
-            active = [s for s in FILE_SOUNDS if self._file_active(s) and (self._gains[s] > _SILENT
-                                                                         or self._levels[s] > 0)]
+            active = [s for s, layer in self._layers.items()
+                      if layer.has_files and (self._gains[s] > _SILENT or self._levels[s] > 0)]
             m0 = self._master
             m1 = self._advance_master(n)
         if not active:
@@ -404,13 +493,16 @@ class SampleEngine:
         k = min(1.0, n / (0.15 * self._rate))
         mix = np.zeros(n)
         for s in active:
-            g0 = self._gains[s]
-            target = volume_curve(self._levels[s])
+            layer = self._layers.get(s)
+            if layer is None:  # deleted while rendering
+                continue
+            g0 = self._gains.get(s, 0.0)
+            target = volume_curve(self._levels.get(s, 0.0))
             g1 = g0 + (target - g0) * k
             if g1 < _SILENT and target == 0.0:
                 g1 = 0.0
             self._gains[s] = g1
-            mix += self._layers[s].render(n) * (g0 + (g1 - g0) * ramp)
+            mix += layer.render(n) * (g0 + (g1 - g0) * ramp)
         c0, c1 = volume_curve(m0), volume_curve(m1)
         mix *= c0 + (c1 - c0) * ramp
         mix = np.tanh(mix * 1.2) / 1.2

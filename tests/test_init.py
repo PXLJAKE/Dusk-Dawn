@@ -77,16 +77,16 @@ async def test_services(
 ) -> None:
     rt = setup_spot.runtime_data
     device = dr.async_get(hass).async_get_device({(DOMAIN, setup_spot.entry_id)})
-    await hass.services.async_call(DOMAIN, "play", {"device_id": device.id, "preset": "Kaminabend",
+    await hass.services.async_call(DOMAIN, "play", {"device_id": device.id, "preset": "Meer",
                                                     "volume": 0.4, "timer": 15}, blocking=True)
-    assert rt.state["playing"] and rt.state["preset"] == "kaminabend"
+    assert rt.state["playing"] and rt.state["preset"] == "meer"
     assert rt.state["volume"] == 0.4 and rt.state["timer"]["minutes"] == 15
     call = play_media_calls[-1]
     assert call.data["media_content_type"] == "music"
     assert call.data["media_content_id"].startswith(
         f"http://ha.local:8123/api/dusk_dawn/stream/{setup_spot.entry_id}.mp3?token="
     )
-    assert call.data["extra"]["title"] == "Dusk & Dawn – Kaminabend"
+    assert call.data["extra"]["title"] == "Dusk & Dawn – Meer"
 
     await hass.services.async_call(DOMAIN, "ring", {"config_entry_id": setup_spot.entry_id, "tone": "birds"},
                                    blocking=True)

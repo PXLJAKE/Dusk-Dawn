@@ -34,12 +34,8 @@ BLOCK_S: Final = 0.05  # engine renders 50 ms blocks
 SOUNDS: Final = [
     "rain",
     "waves",
-    "stream",
     "wind",
     "thunder",
-    "birds",
-    "leaves",
-    "fire",
     "fan",
     "white",
     "pink",
@@ -47,7 +43,9 @@ SOUNDS: Final = [
 ]
 ALARM_TONES: Final = ["bells", "classic", "birds"]
 # Level entities enabled by default (the rest is disabled to keep the device page tidy)
-DEFAULT_ENABLED_LEVELS: Final = {"rain", "waves", "fire", "brown"}
+DEFAULT_ENABLED_LEVELS: Final = {"rain", "waves", "brown"}
+# Synth sounds that were removed (the lamp still knows them; they are set to 0 there)
+REMOVED_SOUNDS: Final = ["stream", "birds", "leaves", "fire"]
 
 TIMER_OPTIONS: Final = [None, 15, 30, 45, 60, 90]  # minutes, None = off
 FADE_IN_S: Final = 8.0
@@ -61,12 +59,8 @@ NIGHT_LIGHT_KELVIN: Final = 2200
 SOUND_ICONS: Final = {  # also in icons.json
     "rain": "mdi:weather-pouring",
     "waves": "mdi:waves",
-    "stream": "mdi:waves-arrow-right",
     "wind": "mdi:weather-windy",
     "thunder": "mdi:weather-lightning",
-    "birds": "mdi:bird",
-    "leaves": "mdi:leaf",
-    "fire": "mdi:fireplace",
     "fan": "mdi:fan",
     "white": "mdi:waveform",
     "pink": "mdi:waveform",
@@ -95,27 +89,6 @@ BUILTIN_PRESETS: Final = [
         "builtin": True,
         "icon": "mdi:waves",
         "levels": {"waves": 0.85, "wind": 0.25, "brown": 0.2},
-    },
-    {
-        "id": "kaminabend",
-        "name": "Kaminabend",
-        "builtin": True,
-        "icon": "mdi:fireplace",
-        "levels": {"fire": 0.8, "rain": 0.4},
-    },
-    {
-        "id": "waldmorgen",
-        "name": "Waldmorgen",
-        "builtin": True,
-        "icon": "mdi:weather-sunset-up",
-        "levels": {"birds": 0.65, "leaves": 0.45, "stream": 0.3, "wind": 0.15},
-    },
-    {
-        "id": "wald",
-        "name": "Wald",
-        "builtin": True,
-        "icon": "mdi:pine-tree",
-        "levels": {"leaves": 0.6, "stream": 0.5, "birds": 0.3},
     },
     {"id": "ventilator", "name": "Ventilator", "builtin": True, "icon": "mdi:fan", "levels": {"fan": 0.8}},
     {"id": "brown_noise", "name": "Brown Noise", "builtin": True, "icon": "mdi:waveform", "levels": {"brown": 0.8}},

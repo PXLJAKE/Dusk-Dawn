@@ -14,6 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import CONF_LIGHTS, CONF_PRESENCE, CONF_SPEAKERS, DOMAIN, SIGNAL_STATE
 from .runtime import SpotError
+from .samples import DecodeError
 from .uploads import get_library, refresh_engines
 
 if TYPE_CHECKING:
@@ -25,7 +26,7 @@ PRESENCE_CLASSES = ("occupancy", "motion", "presence")
 ACTIONS = (
     "play", "stop", "toggle", "set_level", "set_volume", "apply_preset", "save_preset", "delete_preset",
     "set_timer", "good_night", "light", "set_alarm", "delete_alarm", "ring", "stop_alarm", "preview_tone",
-    "set_auto", "set_source",
+    "set_auto",
 )
 
 
@@ -38,6 +39,9 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_entities)
     websocket_api.async_register_command(hass, ws_sounds)
     websocket_api.async_register_command(hass, ws_sound_delete)
+    websocket_api.async_register_command(hass, ws_sound_add)
+    websocket_api.async_register_command(hass, ws_sound_rename)
+    websocket_api.async_register_command(hass, ws_sound_remove)
 
 
 def _spots(hass: HomeAssistant) -> list[SpotRuntime]:
@@ -138,8 +142,6 @@ async def _dispatch(rt: SpotRuntime, action: str, msg: dict[str, Any]) -> None:
         await rt.async_stop_alarm()
     elif action == "preview_tone":
         await rt.async_preview_tone(msg["tone"])
-    elif action == "set_source":
-        await rt.async_set_source(msg["sound"], msg["mode"])
     elif action == "set_auto":
         await rt.async_set_auto(dict(msg["auto"]))
 
@@ -223,8 +225,8 @@ def ws_entities(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
 @websocket_api.websocket_command({vol.Required("type"): "dusk_dawn/sounds"})
 @callback
 def ws_sounds(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """The library of own recordings: ``{sound: [{id, name, duration, added}]}``."""
-    connection.send_result(msg["id"], {"files": get_library(hass).listing()})
+    """The own sounds: ``{sounds: [{id, name, files: [{id, name, duration, added}]}]}``."""
+    connection.send_result(msg["id"], get_library(hass).listing())
 
 
 @websocket_api.websocket_command({vol.Required("type"): "dusk_dawn/sound_delete", vol.Required("file_id"): str})
@@ -232,10 +234,56 @@ def ws_sounds(hass: HomeAssistant, connection: websocket_api.ActiveConnection, m
 @websocket_api.async_response
 async def ws_sound_delete(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
                           msg: dict[str, Any]) -> None:
+    """Delete one recording of an own sound."""
     library = get_library(hass)
     entry = await hass.async_add_executor_job(library.delete, msg["file_id"])
     if entry is None:
         connection.send_error(msg["id"], websocket_api.ERR_NOT_FOUND, "Unknown file")
         return
     refresh_engines(hass, entry.sound)
-    connection.send_result(msg["id"], {"files": library.listing()})
+    connection.send_result(msg["id"], library.listing())
+
+
+@websocket_api.websocket_command({vol.Required("type"): "dusk_dawn/sound_add", vol.Required("name"): str})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_sound_add(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
+                       msg: dict[str, Any]) -> None:
+    """Create a new, empty own sound with a name."""
+    library = get_library(hass)
+    try:
+        sound = await hass.async_add_executor_job(library.add_sound, msg["name"])
+    except DecodeError as err:
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT, str(err))
+        return
+    refresh_engines(hass)
+    connection.send_result(msg["id"], {**library.listing(), "sound": sound.id})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "dusk_dawn/sound_rename", vol.Required("sound"): str, vol.Required("name"): str,
+})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_sound_rename(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
+                          msg: dict[str, Any]) -> None:
+    library = get_library(hass)
+    try:
+        await hass.async_add_executor_job(library.rename_sound, msg["sound"], msg["name"])
+    except DecodeError as err:
+        connection.send_error(msg["id"], websocket_api.ERR_INVALID_FORMAT, str(err))
+        return
+    refresh_engines(hass)
+    connection.send_result(msg["id"], library.listing())
+
+
+@websocket_api.websocket_command({vol.Required("type"): "dusk_dawn/sound_remove", vol.Required("sound"): str})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_sound_remove(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
+                          msg: dict[str, Any]) -> None:
+    """Delete an own sound together with all its recordings."""
+    library = get_library(hass)
+    gone = await hass.async_add_executor_job(library.delete_sound, msg["sound"])
+    refresh_engines(hass)
+    connection.send_result(msg["id"], {**library.listing(), "removed": len(gone)})
