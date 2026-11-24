@@ -133,8 +133,7 @@
     "tone": {
       "options": {
         "bells": "Glocken",
-        "classic": "Klassisch",
-        "birds": "Vogelchor"
+        "classic": "Klassisch"
       }
     }
   },

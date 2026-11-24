@@ -44,7 +44,7 @@ journalctl -u sleepgen -f                          # Log des Dienstes
 | `switch.sleepgen_lamp_follows_timer` | Licht dimmt mit dem Sleep-Timer herunter |
 | `sensor.sleepgen_timer_remaining` | Restzeit |
 | `switch.sleepgen_alarm` | Wecker: an = klingelt jetzt, aus = stoppen |
-| `select.sleepgen_alarm_tone` | Weckton: Glocken, Klassisch, Vogelchor |
+| `select.sleepgen_alarm_tone` | Weckton: Glocken oder Klassisch |
 | `number.sleepgen_alarm_minutes` | Weckdauer 1–60 min, danach hört er von selbst auf |
 | `number.sleepgen_alarm_volume` | Wecklautstärke |
 

@@ -59,7 +59,7 @@ DEFAULTS: dict = {
         "max_brightness": 0.7,  # limits current draw and heat inside the shade
     },
     "alarm": {
-        "tone": "Glocken",        # Glocken / Klassisch / Vogelchor
+        "tone": "Glocken",        # Glocken / Klassisch
         "minutes": 10,            # rings at most this long, a knob press stops it earlier
         "volume": 0.7,
         "min_device_volume": 0.5,  # amp volume is raised to at least this while ringing

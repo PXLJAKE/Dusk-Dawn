@@ -41,7 +41,8 @@ SOUNDS: Final = [
     "pink",
     "brown",
 ]
-ALARM_TONES: Final = ["bells", "classic", "birds"]
+ALARM_TONES: Final = ["bells", "classic"]
+REMOVED_TONES: Final = {"birds": "bells"}  # removed alarm tone -> replacement for existing alarms
 # Level entities enabled by default (the rest is disabled to keep the device page tidy)
 DEFAULT_ENABLED_LEVELS: Final = {"rain", "waves", "brown"}
 # Synth sounds that were removed (the lamp still knows them; they are set to 0 there)
@@ -109,7 +110,7 @@ DEFAULT_PRESET: Final = "regen"
 
 # DIY Soundlampe (hardware/device/sleepgen) – MQTT names it uses
 DIY_BASE_TOPIC: Final = "sleepgen/{device}"
-DIY_TONES: Final = {"bells": "Glocken", "classic": "Klassisch", "birds": "Vogelchor"}
+DIY_TONES: Final = {"bells": "Glocken", "classic": "Klassisch"}
 DIY_EFFECTS: Final = {"sunrise": "Sonnenaufgang", "candle": "Kerze", "fade": "Einschlafen"}
 DIY_TIMER_OPTIONS: Final = (15, 30, 45, 60, 90, 120)
 

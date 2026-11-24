@@ -8,7 +8,7 @@ import secrets
 from datetime import datetime, time, timedelta
 from typing import Any
 
-from .const import ALARM_TONES, BUILTIN_PRESETS, SOUNDS
+from .const import ALARM_TONES, BUILTIN_PRESETS, REMOVED_TONES, SOUNDS
 from .samples import is_own
 
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
@@ -197,6 +197,7 @@ def normalize_alarm(alarm: dict[str, Any], existing: dict[str, Any] | None = Non
     days = sorted({int(d) for d in out["days"]})
     if any(d < 0 or d > 6 for d in days):
         raise ValueError("days must be 0..6 (Monday = 0)")
+    out["tone"] = REMOVED_TONES.get(out["tone"], out["tone"])  # alarms with the removed bird chorus ring bells
     if out["tone"] not in ALARM_TONES:
         raise ValueError(f"unknown tone {out['tone']!r}")
     return {

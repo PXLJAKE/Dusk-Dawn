@@ -133,8 +133,7 @@
     "tone": {
       "options": {
         "bells": "Bells",
-        "classic": "Classic",
-        "birds": "Dawn chorus"
+        "classic": "Classic"
       }
     }
   },
