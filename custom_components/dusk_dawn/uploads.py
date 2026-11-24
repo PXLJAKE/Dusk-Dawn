@@ -10,6 +10,7 @@ import logging
 import tempfile
 from http import HTTPStatus
 from pathlib import Path
+from typing import IO
 
 from aiohttp import web
 
@@ -40,6 +41,17 @@ def refresh_engines(hass: HomeAssistant, sound: str | None = None) -> None:
         entry.runtime_data.async_library_changed()
 
 
+def _open_temp() -> tuple[IO[bytes], Path]:
+    """Create the temp file for an upload (blocking, run in the executor)."""
+    tmp = tempfile.NamedTemporaryFile(prefix="dusk_dawn_", delete=False)  # noqa: SIM115
+    return tmp, Path(tmp.name)
+
+
+def _remove(path: Path) -> None:
+    """Delete a temp file (blocking, run in the executor)."""
+    path.unlink(missing_ok=True)
+
+
 class UploadView(HomeAssistantView):
     url = UPLOAD_URL
     name = "api:dusk_dawn:upload"
@@ -55,8 +67,8 @@ class UploadView(HomeAssistantView):
         name = Path(request.query.get("name", "Aufnahme")).stem or "Aufnahme"
         library = get_library(hass)
         size = 0
-        with tempfile.NamedTemporaryFile(prefix="dusk_dawn_", delete=False) as tmp:
-            tmp_path = Path(tmp.name)
+        tmp, tmp_path = await hass.async_add_executor_job(_open_temp)
+        try:
             try:
                 async for chunk in request.content.iter_chunked(1 << 20):
                     size += len(chunk)
@@ -64,17 +76,15 @@ class UploadView(HomeAssistantView):
                         return web.json_response({"error": "file too large (max 400 MB)"},
                                                  status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
                     await hass.async_add_executor_job(tmp.write, chunk)
-            except BaseException:
-                tmp_path.unlink(missing_ok=True)
-                raise
-        try:
+            finally:
+                await hass.async_add_executor_job(tmp.close)
             from . import ffmpeg_binary  # noqa: PLC0415
 
             entry = await hass.async_add_executor_job(library.add, ffmpeg_binary(hass), sound, tmp_path, name)
         except DecodeError as err:
             return web.json_response({"error": str(err)}, status=HTTPStatus.UNPROCESSABLE_ENTITY)
         finally:
-            tmp_path.unlink(missing_ok=True)
+            await hass.async_add_executor_job(_remove, tmp_path)
         refresh_engines(hass, sound)
         _LOGGER.info("Added sound file %s for %s (%.0f s)", entry.name, sound, entry.duration)
         return web.json_response({"file": entry.info(), **library.listing()})
