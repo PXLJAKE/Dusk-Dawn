@@ -240,7 +240,7 @@ def test_alarm_rings_and_stops(tmp_path):
     assert app.engine.playing
 
 
-@pytest.mark.parametrize("tone", ["Glocken", "Klassisch", "Vogelchor"])
+@pytest.mark.parametrize("tone", ["Glocken", "Klassisch", "Vogelchor"])  # Vogelchor: old configs still render
 def test_alarm_tones(tone):
     eng = Engine(sr=SR, sources=["rain"], seed=1)
     eng.start_alarm(tone, 1, 1.0)

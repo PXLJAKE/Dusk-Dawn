@@ -44,7 +44,6 @@ ring:
           options:
             - bells
             - classic
-            - birds
     duration:
       selector:
         number:

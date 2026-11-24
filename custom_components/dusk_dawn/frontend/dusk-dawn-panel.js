@@ -24,7 +24,7 @@ const GROUPS = [
   { key: "weather", sounds: ["wind", "thunder"] },
   { key: "noise", sounds: ["fan", "white", "pink", "brown"] },
 ];
-const TONES = ["bells", "classic", "birds"];
+const TONES = ["bells", "classic"];
 const TIMERS = [null, 15, 30, 45, 60, 90];
 const BUILTIN_PRESETS = ["Gute Nacht", "Regen", "Gewitternacht", "Meer", "Ventilator", "Brown Noise", "Pink Noise", "White Noise"];
 const PRESET_ICON_CHOICES = ["moon", "rain", "thunder", "waves", "wind", "fan", "brown", "bulb", "candle", "sunrise", "music"];

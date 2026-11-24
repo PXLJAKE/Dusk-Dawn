@@ -755,7 +755,7 @@ class AlarmTone(Generator):
     """
 
     name = "alarm"
-    TONES = ["Glocken", "Klassisch", "Vogelchor"]
+    TONES = ["Glocken", "Klassisch"]  # "Vogelchor" removed from the choice (still renders for old configs)
 
     def __init__(self, sr, seed=None, tone="Glocken"):
         super().__init__(sr, seed)

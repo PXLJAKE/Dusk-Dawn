@@ -26,7 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 log = logging.getLogger(__name__)
 
-TONE_NAMES = {"bells": "Glocken", "classic": "Klassisch", "birds": "Vogelchor"}
+TONE_NAMES = {"bells": "Glocken", "classic": "Klassisch"}
 _KEYS = ("enabled", "time", "days", "tone", "duration_min", "volume", "sunrise", "sunrise_min")
 
 

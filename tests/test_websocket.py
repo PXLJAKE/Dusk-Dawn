@@ -85,9 +85,9 @@ async def test_commands(
     msg = await cmd("light", on=False)
     assert msg["result"]["state"]["light"]["effect"] is None
 
-    msg = await cmd("set_alarm", alarm={"time": "06:30", "days": [0, 1, 2, 3, 4], "tone": "birds"})
+    msg = await cmd("set_alarm", alarm={"time": "06:30", "days": [0, 1, 2, 3, 4], "tone": "birds"})  # removed tone: becomes bells
     (alarm,) = msg["result"]["state"]["alarms"]
-    assert alarm["time"] == "06:30" and alarm["tone"] == "birds" and alarm["sunrise"] is True
+    assert alarm["time"] == "06:30" and alarm["tone"] == "bells" and alarm["sunrise"] is True
     assert msg["result"]["state"]["next_alarm"]
     msg = await cmd("set_alarm", alarm={"id": alarm["id"], "enabled": False})
     assert msg["result"]["state"]["alarms"][0]["enabled"] is False

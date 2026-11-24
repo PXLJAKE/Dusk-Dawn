@@ -81,7 +81,7 @@ Eigene Klangwelten legst du in der Seitenleiste an (Mischpult einstellen, speich
 
 Auf der DIY-Lampe läuft der Wecker im Gerät selbst und spielt immer, auch ohne Home Assistant und ohne WLAN. Mit normalen Lautsprechern startet Home Assistant ihn zur Weckzeit.
 
-- **Töne:** Glocken (sanftes Glockenspiel-Arpeggio C-E-G-C), Klassisch (Doppelpiepen) oder Vogelchor (dichter Morgenchor).
+- **Töne:** Glocken (sanftes Glockenspiel-Arpeggio C-E-G-C) oder Klassisch (Doppelpiepen). Den früheren Vogelchor gibt es nicht mehr, Wecker damit klingeln mit Glocken.
 - **Wird lauter:** Er beginnt leise und wird in 40 s auf die eingestellte Wecklautstärke hochgefahren. Die Wecklautstärke ist halbiert gegenüber der Reglerskala, 5 % ist schon deutlich hörbar.
 - **Hört auf** nach der eingestellten Weckdauer (Standard 10 Minuten) oder sofort auf Knopfdruck (Soundlampe: Drehknopf, sonst Seitenleiste).
 - **Nicht zu leise:** Steht der Verstärker der Lampe nachts auf leise, hebt sie ihn beim Klingeln an und stellt danach den alten Wert wieder her.

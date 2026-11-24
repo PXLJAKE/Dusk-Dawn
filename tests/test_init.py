@@ -88,7 +88,7 @@ async def test_services(
     )
     assert call.data["extra"]["title"] == "Dusk & Dawn – Meer"
 
-    await hass.services.async_call(DOMAIN, "ring", {"config_entry_id": setup_spot.entry_id, "tone": "birds"},
+    await hass.services.async_call(DOMAIN, "ring", {"config_entry_id": setup_spot.entry_id, "tone": "classic"},
                                    blocking=True)
     assert rt.state["alarm_ringing"] is True
     assert hass.states.get("binary_sensor.bedroom_alarm_ringing").state == "on"
