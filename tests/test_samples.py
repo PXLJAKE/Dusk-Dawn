@@ -208,6 +208,7 @@ async def test_own_sound_api(
     hass_client: ClientSessionGenerator,
     hass_ws_client: WebSocketGenerator,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = await hass_client()
     ws = await hass_ws_client(hass)
@@ -235,6 +236,20 @@ async def test_own_sound_api(
     assert body["sounds"][0]["files"][0]["id"] == file_id
     assert (await client.post("/api/dusk_dawn/upload/own_nope", data=audio)).status == 404
     assert (await client.post(f"/api/dusk_dawn/upload/{sound}", data=b"garbage")).status == 422
+
+    # Too large: rejected, and the partial temp file is removed (as after every upload).
+    import tempfile  # noqa: PLC0415
+
+    from custom_components.dusk_dawn import uploads  # noqa: PLC0415
+
+    def leftovers():
+        return sorted(Path(tempfile.gettempdir()).glob("dusk_dawn_*"))
+
+    before = await hass.async_add_executor_job(leftovers)
+    monkeypatch.setattr(uploads, "MAX_UPLOAD_BYTES", 1024)
+    assert (await client.post(f"/api/dusk_dawn/upload/{sound}", data=audio)).status == 413
+    monkeypatch.setattr(uploads, "MAX_UPLOAD_BYTES", 400 * 1024 * 1024)
+    assert await hass.async_add_executor_job(leftovers) == before
 
     msg = await call({"type": "dusk_dawn/command", "entry_id": entry_id, "action": "set_level",
                       "sound": sound, "level": 0.6})
