@@ -65,6 +65,7 @@ Bauanleitung, Teileliste und Druckpakete: [`hardware/`](hardware/README.md).
 | `core/` | Klangkern in Rust (Python-Paket `dusk_dawn_core`) |
 | `tests/` | Tests der Integration |
 | `docs/` | Dokumentation der Integration |
+| `website/` | Quellen der Doku-Website (MkDocs, Deutsch und Englisch), Bauen und Deploy: [`tools/docs/`](tools/docs/README.md) |
 | `hardware/` | Optional: Soundlampe zum Selberbauen (Pi-Software, Gehäuse, Druckpakete, Anleitungen) |
 
 ## Mitmachen

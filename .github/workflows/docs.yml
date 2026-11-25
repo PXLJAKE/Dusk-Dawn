@@ -1,0 +1,203 @@
+name: Docs
+
+# Doku-Website (MkDocs, Quellen unter website/).
+#   - Pull Request:            Markdown-Lint und `mkdocs build --strict`.
+#   - Veröffentlichtes Release (keine Vorabversion, Tag v*):
+#                              Seite bauen, als dusk-dawn-docs-<version>.zip an das Release hängen
+#                              und, falls die DOCS_DEPLOY_*-Secrets gesetzt sind, per rsync auf Plesk kopieren.
+#   - release.yml ruft diesen Workflow nach jedem automatischen Release auf (workflow_call), weil
+#     Releases, die mit dem GITHUB_TOKEN erstellt werden, kein `release: published` auslösen.
+#   - Manuell (workflow_dispatch) mit einem Tag: ZIP neu anhängen und neu deployen.
+#
+# Optionaler Deploy, Repo-Secrets: DOCS_DEPLOY_HOST, DOCS_DEPLOY_USER, DOCS_DEPLOY_KEY,
+# DOCS_DEPLOY_PATH (voller Zielordner, muss auf /docs/dusk-dawn enden), DOCS_DEPLOY_KNOWN_HOSTS.
+# Optionale Repo-Variable DOCS_URL, z. B. https://example.com/docs/dusk-dawn/ (site_url für Sitemap und Canonical-Links).
+
+on:
+  pull_request:
+  release:
+    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: Release-Tag, z. B. v0.4.0
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release-Tag, z. B. v0.4.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_SLUG: dusk-dawn
+  NO_MKDOCS_2_WARNING: "1"
+
+jobs:
+  lint:
+    name: Markdown-Lint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - run: npm ci --prefix tools/docs --ignore-scripts
+      - run: tools/docs/node_modules/.bin/markdownlint-cli2
+
+  build:
+    name: mkdocs build --strict
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      publish: ${{ steps.release.outputs.publish }}
+    steps:
+      - name: Release bestimmen
+        id: release
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          tag=""
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          elif [ "$EVENT" = "release" ] && [ "$PRERELEASE" != "true" ]; then
+            tag="$RELEASE_TAG"
+          fi
+          publish=no
+          if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            publish=yes
+          elif [ -n "$tag" ]; then
+            echo "::notice::Tag '$tag' ist kein Versions-Tag (vX.Y.Z), es wird keine Doku veröffentlicht."
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.release.outputs.publish == 'yes' && steps.release.outputs.tag || '' }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: tools/docs/requirements.txt
+      - run: pip install --require-hashes -r tools/docs/requirements.txt
+      - name: Seite bauen
+        env:
+          DOCS_URL: ${{ vars.DOCS_URL }}
+        run: |
+          if [ -z "$DOCS_URL" ]; then unset DOCS_URL; fi
+          mkdocs build --strict
+      - name: ZIP erstellen
+        if: steps.release.outputs.publish == 'yes'
+        run: |
+          zip_name="${PROJECT_SLUG}-docs-${{ steps.release.outputs.version }}.zip"
+          (cd site && zip -qr "../$zip_name" .)
+          echo "ZIP_NAME=$zip_name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.release.outputs.publish == 'yes'
+        with:
+          name: docs-site
+          path: |
+            site/
+            ${{ env.ZIP_NAME }}
+          retention-days: 7
+          if-no-files-found: error
+
+  release-asset:
+    name: ZIP an das Release hängen
+    needs: build
+    if: needs.build.outputs.publish == 'yes'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: docs-site
+      - name: Hochladen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          gh release upload "$TAG" "${PROJECT_SLUG}-docs-${VERSION}.zip" --clobber --repo "$GITHUB_REPOSITORY"
+
+  deploy:
+    name: Deploy auf Plesk (rsync über SSH)
+    needs: build
+    if: needs.build.outputs.publish == 'yes'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.DOCS_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DOCS_DEPLOY_USER }}
+      DEPLOY_KEY: ${{ secrets.DOCS_DEPLOY_KEY }}
+      DEPLOY_PATH: ${{ secrets.DOCS_DEPLOY_PATH }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DOCS_DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Secrets prüfen
+        id: check
+        run: |
+          missing=""
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_KEY DEPLOY_PATH DEPLOY_KNOWN_HOSTS; do
+            [ -n "${!name}" ] || missing="$missing DOCS_$name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Deploy übersprungen, nicht gesetzt:$missing"
+            echo "run=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Zielordner absichern: nicht leer, nicht "/", keine "..", nur einfache Zeichen,
+          # und er muss auf /docs/<projekt> enden, damit rsync --delete nie etwas anderes leert.
+          path="${DEPLOY_PATH%/}"
+          if [ -z "$path" ] || [ "$path" = "/" ]; then
+            echo "::error::DOCS_DEPLOY_PATH ist leer oder '/'."; exit 1
+          fi
+          if ! [[ "$path" =~ ^/?[A-Za-z0-9._/-]+$ ]] || [[ "/$path/" == *"/../"* ]] || [[ "/$path/" == *"/./"* ]] || [[ "$path" == *"//"* ]]; then
+            echo "::error::DOCS_DEPLOY_PATH enthält unerlaubte Zeichen oder Segmente (erlaubt: A-Z a-z 0-9 . _ - /, keine '..')."; exit 1
+          fi
+          if [[ "$path" != */docs/"$PROJECT_SLUG" ]]; then
+            echo "::error::DOCS_DEPLOY_PATH muss auf /docs/$PROJECT_SLUG enden (ist: $path)."; exit 1
+          fi
+          if ! [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || ! [[ "$DEPLOY_USER" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::DOCS_DEPLOY_HOST oder DOCS_DEPLOY_USER enthält unerlaubte Zeichen."; exit 1
+          fi
+          echo "DEPLOY_DIR=$path" >> "$GITHUB_ENV"
+          echo "run=yes" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.check.outputs.run == 'yes'
+        with:
+          name: docs-site
+      - name: SSH einrichten (Host-Key aus DOCS_DEPLOY_KNOWN_HOSTS, strikte Prüfung)
+        if: steps.check.outputs.run == 'yes'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+      - name: Hochladen mit rsync
+        if: steps.check.outputs.run == 'yes'
+        run: |
+          ssh_cmd="ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes"
+          $ssh_cmd "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p -- '$DEPLOY_DIR'"
+          rsync -rlz --delete --checksum --chmod=D755,F644 -e "$ssh_cmd" \
+            site/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
+      - name: Schlüssel entfernen
+        if: always() && steps.check.outputs.run == 'yes'
+        run: rm -f ~/.ssh/deploy_key

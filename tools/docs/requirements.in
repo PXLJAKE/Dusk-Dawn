@@ -1,0 +1,5 @@
+# Werkzeuge für die Doku-Website (MkDocs). Nach einer Änderung neu erzeugen:
+#   pip-compile --generate-hashes --allow-unsafe -o tools/docs/requirements.txt tools/docs/requirements.in
+mkdocs==1.6.1
+mkdocs-material==9.8.2
+mkdocs-static-i18n==1.3.1
