@@ -134,6 +134,8 @@ def main() -> None:
     if site.exists():
         shutil.rmtree(site)
     env = dict(os.environ, DOCS_URL=PLACEHOLDER_ORIGIN + base_path, NO_MKDOCS_2_WARNING="1")
+    if args.zip is not None:
+        env["DOCS_VERSION"] = f"v{args.zip}"
     subprocess.run([sys.executable, "-m", "mkdocs", "build", "--strict", "--site-dir", str(site)], check=True, env=env)
     postprocess(site, base_path)
     print(f"Seite: {site}/  (gehört nach <docroot>{base_path})")

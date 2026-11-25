@@ -25,6 +25,8 @@ Fragen und Probleme: [FAQ](faq.md) und [Fehlersuche](troubleshooting.md).
 
 Die Integration funktioniert komplett ohne eigene Hardware. Wer will, baut sich zusätzlich die [Soundlampe](sound-lamp.md), eine Nachttischlampe mit Raspberry Pi, eingebautem Lautsprecher und LED-Lichtkern.
 
-## Lizenz und Quellcode
+## Projektseite, Lizenz und Quellcode
+
+Projektseite: [pxljake.com/projects/dusk-dawn](https://pxljake.com/projects/dusk-dawn/)
 
 Dusk & Dawn steht unter der [MIT-Lizenz](https://github.com/PXLJAKE/Dusk-Dawn/blob/main/LICENSE). Quellcode, Issues und Releases: [github.com/PXLJAKE/Dusk-Dawn](https://github.com/PXLJAKE/Dusk-Dawn).

@@ -18,6 +18,7 @@ site_dir: site
 
 theme:
   name: material
+  custom_dir: overrides # Leiste von pxljake.com oben, Quelle: dev.pxljake.de/docs/docs-bar
   language: de
   logo: assets/icon.svg
   favicon: assets/icon.svg
@@ -52,6 +53,10 @@ theme:
     - search.highlight
     - content.code.copy
     - toc.follow
+
+extra:
+  pxl_project: dusk-dawn # Leiste verlinkt auf /projects/dusk-dawn/
+  version_label: !ENV [DOCS_VERSION, ""] # build_site.py --zip setzt z. B. v0.4.0
 
 plugins:
   - search

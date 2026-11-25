@@ -30,6 +30,8 @@ SRCSET_RE = re.compile(r'\bsrcset=["\']([^"\']*)["\']')
 CONFIG_RE = re.compile(r'"(?:base|search)":\s*"([^"]*)"')
 JS_URL_RE = re.compile(r'new URL\("([^"]*)",\s*location\)')
 EXTERNAL = ("http:", "https:", "mailto:", "data:", "javascript:", "tel:", "//")
+# Gehören zur umgebenden Website (Leiste aus overrides/main.html), nicht zur Doku: nicht abrufbar hier.
+SITE_LINKS = ("/", "/assets/docs-bar.css")
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -54,6 +56,7 @@ def main() -> None:
 
     errors: list[str] = []
     targets: dict[str, str] = {}
+    site_links: set[str] = set()
     pages = sorted(site.rglob("*.html"))
     for page in pages:
         text = page.read_text(encoding="utf-8")
@@ -66,6 +69,9 @@ def main() -> None:
         for raw in urls:
             url = html.unescape(raw)
             if not url or url.startswith("#") or url.startswith(EXTERNAL):
+                continue
+            if url in SITE_LINKS or url == f"/projects/{args.slug}/":
+                site_links.add(url)
                 continue
             if not url.startswith(base_path):
                 errors.append(f"{where}: Link beginnt nicht mit {base_path}: {url}")
@@ -91,6 +97,8 @@ def main() -> None:
     server.shutdown()
 
     print(f"{len(pages)} Seiten, {len(targets)} verschiedene Links/Assets unter {base_path} abgerufen")
+    if site_links:
+        print(f"Links auf die umgebende Website (hier nicht abrufbar): {', '.join(sorted(site_links))}")
     if errors:
         print("\n".join(errors))
         sys.exit(f"{len(errors)} Fehler")
