@@ -1,0 +1,27 @@
+{#- Copy this file to overrides/main.html in your MkDocs project and set
+    theme.custom_dir: overrides and extra.pxl_project: <slug> in mkdocs.yml. -#}
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  <link rel="stylesheet" href="/assets/docs-bar.css">
+{% endblock %}
+
+{% block header %}
+  <div class="pxl-docs-bar" role="navigation" aria-label="dev.pxljake.de">
+    <a href="/" aria-label="dev.pxljake.de">
+      <svg viewBox="0 0 7 7" aria-hidden="true"><path class="p" d="M0 0h4v1H0zM0 1h1v6H0zM4 1h1v2H4zM1 3h3v1H1z"/><rect class="s" x="6" y="6" width="1" height="1"/></svg>
+    </a>
+    <a href="/">pxljake</a>
+    <span class="pxl-sep">/</span>
+    {%- if config.extra.pxl_project %}
+    <a href="/projects/{{ config.extra.pxl_project }}/">{{ config.site_name }}</a>
+    {%- else %}
+    <span>{{ config.site_name }}</span>
+    {%- endif %}
+    <span class="pxl-sep">/</span>
+    <span>docs</span>
+    {%- if config.extra.version_label %}<span class="pxl-right">{{ config.extra.version_label }}</span>{% endif %}
+  </div>
+  {{ super() }}
+{% endblock %}

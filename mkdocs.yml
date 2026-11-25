@@ -1,0 +1,136 @@
+# Doku-Website für Dusk & Dawn (MkDocs + Material), gehostet unter /docs/dusk-dawn/.
+# Ansehen: pip install --require-hashes -r tools/docs/requirements.txt && mkdocs serve
+# Fertige Seite für /docs/dusk-dawn/ (und ZIP): python tools/docs/build_site.py [--zip <version>]
+#   build_site.py setzt DOCS_URL auf eine Platzhalter-Domain und entfernt sie danach wieder,
+#   sodass alle Links mit /docs/dusk-dawn/ beginnen. Ohne DOCS_URL sind alle Links relativ.
+
+site_name: Dusk & Dawn
+site_description: Schlafklänge, Wecker und Sonnenaufgang für Home Assistant
+site_author: PXLJAKE
+site_url: !ENV DOCS_URL
+repo_url: https://github.com/PXLJAKE/Dusk-Dawn
+repo_name: PXLJAKE/Dusk-Dawn
+edit_uri: edit/main/website/
+copyright: Dusk & Dawn · MIT-Lizenz
+
+docs_dir: website
+site_dir: site
+
+theme:
+  name: material
+  custom_dir: overrides # Leiste von pxljake.com oben, Quelle: dev.pxljake.de/docs/docs-bar
+  language: de
+  logo: assets/icon.svg
+  favicon: assets/icon.svg
+  icon:
+    repo: fontawesome/brands/github
+  font: false # keine Google Fonts nachladen, Systemschriften genügen
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Hell/Dunkel wie das System
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Dunkles Design
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Design wie das System
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+extra:
+  pxl_project: dusk-dawn # Leiste verlinkt auf /projects/dusk-dawn/
+  version_label: !ENV [DOCS_VERSION, ""] # build_site.py --zip setzt z. B. v0.4.0
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      fallback_to_default: true # nötig, damit gemeinsame Bilder (assets/) auch in en/ landen; alle Seiten gibt es in beiden Sprachen
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: de
+          name: Deutsch
+          default: true
+          build: true
+        - locale: en
+          name: English
+          build: true
+          site_name: Dusk & Dawn
+          site_description: Sleep sounds, alarm clock and sunrise for Home Assistant
+          nav_translations:
+            Start: Home
+            Einstieg: Getting started
+            Installation: Installation
+            Konfiguration: Configuration
+            Nutzung: Usage
+            Seitenleiste: Sidebar
+            Eigene Klänge: Own sounds
+            Automationen: Automations
+            Wie die Klänge entstehen: How the sounds are made
+            Soundlampe (optional): Sound lamp (optional)
+            Hilfe: Help
+            FAQ: FAQ
+            Fehlersuche: Troubleshooting
+            Projekt: Project
+            Änderungen: Changelog
+            Mitmachen: Contributing
+
+nav:
+  - Start: index.md
+  - Einstieg:
+      - Installation: installation.md
+      - Konfiguration: configuration.md
+  - Nutzung:
+      - Seitenleiste: usage.md
+      - Eigene Klänge: own-sounds.md
+      - Automationen: automations.md
+      - Wie die Klänge entstehen: sound-design.md
+      - Soundlampe (optional): sound-lamp.md
+  - Hilfe:
+      - FAQ: faq.md
+      - Fehlersuche: troubleshooting.md
+  - Projekt:
+      - Änderungen: changelog.md
+      - Mitmachen: contributing.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    absolute_links: warn
+    unrecognized_links: warn
+    anchors: warn

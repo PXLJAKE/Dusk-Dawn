@@ -1,0 +1,9 @@
+{
+  "name": "dusk-dawn-docs-tools",
+  "private": true,
+  "description": "Markdown-Lint für die Doku-Website",
+  "scripts": {},
+  "devDependencies": {
+    "markdownlint-cli2": "0.24.2"
+  }
+}

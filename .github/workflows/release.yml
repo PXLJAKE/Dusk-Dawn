@@ -25,6 +25,8 @@ jobs:
     name: Version erhöhen und Release veröffentlichen
     if: "!contains(github.event.head_commit.message, '[skip release]')"
     runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ steps.v.outputs.new }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,3 +61,14 @@ jobs:
         run: |
           gh release create "v${{ steps.v.outputs.new }}" --target "$(git rev-parse HEAD)" \
             --title "v${{ steps.v.outputs.new }}" --generate-notes
+
+  docs:
+    # Releases, die mit dem GITHUB_TOKEN erstellt werden, lösen kein `release: published` aus.
+    # Deshalb wird die Doku-ZIP für das Release hier direkt angestoßen.
+    name: Doku bauen und anhängen
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/docs.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}

@@ -1,0 +1,10 @@
+# Markdown-Lint für die Doku-Website (website/). Aufruf aus dem Repo-Root:
+#   tools/docs/node_modules/.bin/markdownlint-cli2
+globs:
+  - "website/**/*.md"
+config:
+  default: true
+  MD013: false          # lange Zeilen sind in Fließtext gewollt
+  MD046: false          # Admonitions (!!! note) sind eingerückt und keine Codeblöcke
+  MD033:
+    allowed_elements: []

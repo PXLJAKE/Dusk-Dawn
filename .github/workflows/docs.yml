@@ -1,0 +1,129 @@
+name: Docs
+
+# Doku-Website (MkDocs, Quellen unter website/), gebaut für den Unterpfad /docs/dusk-dawn/.
+#   - Pull Request:            Markdown-Lint, `mkdocs build --strict` und Link-Prüfung unter /docs/dusk-dawn/.
+#   - Veröffentlichtes Release (keine Vorabversion, Tag vX.Y.Z):
+#                              Seite bauen und als dusk-dawn-docs-<version>.zip an das Release hängen.
+#                              Im ZIP liegt genau ein Ordner dusk-dawn/, der in den docs-Ordner der Website kommt.
+#   - release.yml ruft diesen Workflow nach jedem automatischen Release auf (workflow_call), weil
+#     Releases, die mit dem GITHUB_TOKEN erstellt werden, kein `release: published` auslösen.
+#   - Manuell (workflow_dispatch) mit einem Tag: ZIP neu bauen und anhängen.
+# Kein automatischer Deploy, keine Secrets.
+
+on:
+  pull_request:
+  release:
+    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: Release-Tag, z. B. v0.4.0
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release-Tag, z. B. v0.4.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_SLUG: dusk-dawn
+
+jobs:
+  lint:
+    name: Markdown-Lint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - run: npm ci --prefix tools/docs --ignore-scripts
+      - run: tools/docs/node_modules/.bin/markdownlint-cli2
+
+  build:
+    name: mkdocs build --strict
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      publish: ${{ steps.release.outputs.publish }}
+    steps:
+      - name: Release bestimmen
+        id: release
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          tag=""
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          elif [ "$EVENT" = "release" ] && [ "$PRERELEASE" != "true" ]; then
+            tag="$RELEASE_TAG"
+          fi
+          publish=no
+          if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            publish=yes
+          elif [ -n "$tag" ]; then
+            echo "::notice::Tag '$tag' ist kein Versions-Tag (vX.Y.Z), es wird keine Doku angehängt."
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.release.outputs.publish == 'yes' && steps.release.outputs.tag || '' }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: tools/docs/requirements.txt
+      - run: pip install --require-hashes -r tools/docs/requirements.txt
+      - name: Seite für /docs/dusk-dawn/ bauen
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          PUBLISH: ${{ steps.release.outputs.publish }}
+        run: |
+          if [ "$PUBLISH" = "yes" ]; then
+            python tools/docs/build_site.py --slug "$PROJECT_SLUG" --zip "$VERSION"
+          else
+            python tools/docs/build_site.py --slug "$PROJECT_SLUG"
+          fi
+      - name: Alle Links unter /docs/dusk-dawn/ abrufen
+        run: python tools/docs/check_site.py --slug "$PROJECT_SLUG"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.release.outputs.publish == 'yes'
+        with:
+          name: docs-zip
+          path: build/${{ env.PROJECT_SLUG }}-docs-${{ steps.release.outputs.version }}.zip
+          retention-days: 7
+          if-no-files-found: error
+
+  release-asset:
+    name: ZIP an das Release hängen
+    needs: build
+    if: needs.build.outputs.publish == 'yes'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: docs-zip
+      - name: Hochladen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          gh release upload "$TAG" "${PROJECT_SLUG}-docs-${VERSION}.zip" --clobber --repo "$GITHUB_REPOSITORY"

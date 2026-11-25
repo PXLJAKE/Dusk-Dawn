@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Dusk &amp; Dawn">
+  <rect width="512" height="512" rx="112" fill="#0b1020"/>
+  <path d="M136 282a120 120 0 0 1 240 0z" fill="#e3b062"/>
+  <rect x="136" y="312" width="240" height="14" rx="7" fill="#e3b062" opacity=".8"/>
+  <rect x="171" y="346" width="170" height="14" rx="7" fill="#e3b062" opacity=".5"/>
+  <rect x="206" y="380" width="100" height="14" rx="7" fill="#e3b062" opacity=".28"/>
+</svg>

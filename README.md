@@ -43,6 +43,8 @@ Updates bietet HACS automatisch an, sobald eine neue Version veröffentlicht ist
 
 | Thema | Datei |
 |---|---|
+| Doku-Website (Deutsch/Englisch) | https://pxljake.com/docs/dusk-dawn/ |
+| Projektseite | https://pxljake.com/projects/dusk-dawn/ |
 | Bedienung, Entitäten, Aktionen, Grenzen | [docs/DUSK_AND_DAWN.md](docs/DUSK_AND_DAWN.md) |
 | Eigene Aufnahmen hochladen und benennen | [docs/EIGENE_AUFNAHMEN.md](docs/EIGENE_AUFNAHMEN.md) |
 | Wie die Klänge entstehen | [docs/SOUND_DESIGN.md](docs/SOUND_DESIGN.md) |
@@ -65,6 +67,7 @@ Bauanleitung, Teileliste und Druckpakete: [`hardware/`](hardware/README.md).
 | `core/` | Klangkern in Rust (Python-Paket `dusk_dawn_core`) |
 | `tests/` | Tests der Integration |
 | `docs/` | Dokumentation der Integration |
+| `website/` | Quellen der Doku-Website (MkDocs, Deutsch und Englisch), Bauen und Deploy: [`tools/docs/`](tools/docs/README.md) |
 | `hardware/` | Optional: Soundlampe zum Selberbauen (Pi-Software, Gehäuse, Druckpakete, Anleitungen) |
 
 ## Mitmachen
