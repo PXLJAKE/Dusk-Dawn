@@ -38,10 +38,10 @@ pip install --require-hashes -r tools/docs/requirements.txt
 mkdocs serve
 ```
 
-Before opening a pull request, check (also runs in CI):
+Before opening a pull request, check (also runs in CI). `build_site.py` builds the site for the subpath `/docs/dusk-dawn/` into `build/docs/dusk-dawn/`, `check_site.py` fetches every link there:
 
 ```bash
-mkdocs build --strict
+python tools/docs/build_site.py && python tools/docs/check_site.py
 npm ci --prefix tools/docs && tools/docs/node_modules/.bin/markdownlint-cli2
 ```
 

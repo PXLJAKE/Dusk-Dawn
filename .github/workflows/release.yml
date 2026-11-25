@@ -64,7 +64,7 @@ jobs:
 
   docs:
     # Releases, die mit dem GITHUB_TOKEN erstellt werden, lösen kein `release: published` aus.
-    # Deshalb wird die Doku (ZIP am Release, optional Deploy auf Plesk) hier direkt angestoßen.
+    # Deshalb wird die Doku-ZIP für das Release hier direkt angestoßen.
     name: Doku bauen und anhängen
     needs: release
     permissions:
@@ -72,4 +72,3 @@ jobs:
     uses: ./.github/workflows/docs.yml
     with:
       tag: ${{ needs.release.outputs.tag }}
-    secrets: inherit

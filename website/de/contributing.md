@@ -38,10 +38,10 @@ pip install --require-hashes -r tools/docs/requirements.txt
 mkdocs serve
 ```
 
-Vor dem Pull Request prüfen (läuft auch in der CI):
+Vor dem Pull Request prüfen (läuft auch in der CI). `build_site.py` baut die Seite für den Unterpfad `/docs/dusk-dawn/` nach `build/docs/dusk-dawn/`, `check_site.py` ruft dort jeden Link ab:
 
 ```bash
-mkdocs build --strict
+python tools/docs/build_site.py && python tools/docs/check_site.py
 npm ci --prefix tools/docs && tools/docs/node_modules/.bin/markdownlint-cli2
 ```
 

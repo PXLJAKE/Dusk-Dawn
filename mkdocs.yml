@@ -1,8 +1,8 @@
-# Doku-Website für Dusk & Dawn (MkDocs + Material).
-# Bauen:   pip install --require-hashes -r tools/docs/requirements.txt && mkdocs build --strict
-# Ansehen: mkdocs serve
-# Die Adresse kommt aus DOCS_URL, z. B. DOCS_URL=https://example.com/docs/dusk-dawn/ mkdocs build
-# Ohne DOCS_URL baut MkDocs mit relativen Links (für die lokale Vorschau und die Release-ZIP).
+# Doku-Website für Dusk & Dawn (MkDocs + Material), gehostet unter /docs/dusk-dawn/.
+# Ansehen: pip install --require-hashes -r tools/docs/requirements.txt && mkdocs serve
+# Fertige Seite für /docs/dusk-dawn/ (und ZIP): python tools/docs/build_site.py [--zip <version>]
+#   build_site.py setzt DOCS_URL auf eine Platzhalter-Domain und entfernt sie danach wieder,
+#   sodass alle Links mit /docs/dusk-dawn/ beginnen. Ohne DOCS_URL sind alle Links relativ.
 
 site_name: Dusk & Dawn
 site_description: Schlafklänge, Wecker und Sonnenaufgang für Home Assistant

@@ -1,105 +1,44 @@
-# Doku-Website: Bauen, Release-ZIP und Deploy auf Plesk
+# Doku-Website: bauen und als ZIP bereitstellen
 
-Die Doku-Website entsteht mit MkDocs (Material-Theme) aus `website/de/` und `website/en/`, Einstellungen in [`mkdocs.yml`](../../mkdocs.yml). Ziel ist `https://<deine-domain>/docs/dusk-dawn/`.
+Die Doku-Website entsteht mit MkDocs (Material-Theme) aus `website/de/` und `website/en/`, Einstellungen in [`mkdocs.yml`](../../mkdocs.yml). Sie gehört auf deiner Website in den Ordner `docs/dusk-dawn/` und ist dann unter `/docs/dusk-dawn/` erreichbar. Die Domain muss dafür nicht bekannt sein.
+
+## Fertige Seite übernehmen
+
+1. Am GitHub-Release die Datei `dusk-dawn-docs-<version>.zip` herunterladen.
+2. Entpacken. Darin liegt genau ein Ordner `dusk-dawn/`.
+3. Diesen Ordner in den `docs`-Ordner deiner Website kopieren (vorher den alten `dusk-dawn/` löschen, damit keine veralteten Seiten liegen bleiben). Ergebnis: `<docroot>/docs/dusk-dawn/index.html`.
+
+Alle Links, Bilder, Skripte, die Suche und der Sprachumschalter verwenden Pfade ab `/docs/dusk-dawn/`. Die Seite funktioniert deshalb nur genau unter diesem Pfad.
 
 ## Lokal bauen
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install --require-hashes -r tools/docs/requirements.txt
-mkdocs serve                                                    # Vorschau auf http://127.0.0.1:8000/
-DOCS_URL=https://<deine-domain>/docs/dusk-dawn/ mkdocs build --strict   # fertige Seite in site/
+mkdocs serve                                   # Vorschau auf http://127.0.0.1:8000/ (relative Links)
+python tools/docs/build_site.py --zip 0.4.0    # build/docs/dusk-dawn/ und build/dusk-dawn-docs-0.4.0.zip
+python tools/docs/check_site.py                # liefert build/ per HTTP aus und ruft jeden Link ab
 ```
 
-`DOCS_URL` setzt `site_url` (Sitemap, Canonical-Links). Ohne `DOCS_URL` sind alle Links relativ, die Seite funktioniert dann in jedem Unterordner.
+`build_site.py` baut mit der Platzhalter-Domain `https://docs.example.invalid/docs/dusk-dawn/` als `site_url` und entfernt die Domain danach aus HTML und `sitemap.xml`. Relative Links schreibt es auf Pfade ab `/docs/dusk-dawn/` um. Die `hreflang`-Links im `<head>` fallen weg: Ohne Domain nützen sie Suchmaschinen nichts, und Material würde für jeden davon eine nicht vorhandene `sitemap.xml` abfragen. Der sichtbare Sprachumschalter bleibt.
+
+`check_site.py` bricht ab, wenn ein interner Link nicht mit `/docs/dusk-dawn/` beginnt, ein Abruf nicht 200 liefert oder die Platzhalter-Domain noch irgendwo steht.
 
 Markdown-Lint: `npm ci --prefix tools/docs && tools/docs/node_modules/.bin/markdownlint-cli2`
 
-Versionen aktualisieren: Versionen in `requirements.in` ändern, dann
-`pip-compile --generate-hashes --allow-unsafe --strip-extras -o tools/docs/requirements.txt tools/docs/requirements.in`;
-für den Lint `npm install --save-exact --save-dev markdownlint-cli2@<version>` in `tools/docs/`.
+## Versionen aktualisieren
+
+- Python: Versionen in `requirements.in` ändern, dann
+  `pip-compile --generate-hashes --allow-unsafe --strip-extras -o tools/docs/requirements.txt tools/docs/requirements.in`
+- Lint: in `tools/docs/` `npm install --save-exact --save-dev markdownlint-cli2@<version>`
 
 ## Was die CI macht (`.github/workflows/docs.yml`)
 
 | Auslöser | Was passiert |
 | --- | --- |
-| Pull Request | Markdown-Lint und `mkdocs build --strict` |
-| Release `vX.Y.Z` veröffentlicht (keine Vorabversion) | Seite bauen, `dusk-dawn-docs-X.Y.Z.zip` an das Release hängen, optional Deploy |
+| Pull Request | Markdown-Lint, `mkdocs build --strict`, Link-Prüfung unter `/docs/dusk-dawn/` |
+| Release `vX.Y.Z` veröffentlicht (keine Vorabversion) | Seite bauen, prüfen, `dusk-dawn-docs-X.Y.Z.zip` an das Release hängen |
 | automatisches Release aus `release.yml` | wie oben, `release.yml` ruft den Workflow direkt auf |
-| manuell (Actions → Docs → Run workflow, Tag angeben) | ZIP neu anhängen und neu deployen |
+| manuell (Actions → Docs → Run workflow, Tag angeben) | ZIP neu bauen und anhängen |
 
-Die ZIP enthält den Inhalt der Seite direkt (ohne Unterordner). Entpackt in `<docroot>/docs/dusk-dawn/` ist sie sofort online.
-
-## Deploy auf Plesk einrichten
-
-Der Deploy-Job läuft nur, wenn **alle fünf** Secrets gesetzt sind. Fehlt eins, wird er mit einem Hinweis übersprungen, die ZIP am Release gibt es trotzdem.
-
-### 1. SSH-Zugang für den Subscription-User in Plesk
-
-1. In Plesk **Websites & Domains → deine Domain → Hosting & DNS → Hosting** (in älteren Versionen **Hosting-Einstellungen**) öffnen.
-2. Bei **SSH-Zugriff** `/bin/bash` wählen und speichern. Mit `/bin/bash (chrooted)` geht es nur, wenn `rsync` in der chroot-Umgebung vorhanden ist; das bitte einmal per SSH mit `rsync --version` prüfen.
-3. Notiere dir den **Benutzernamen** der Subscription (steht auf derselben Seite, z. B. `meinedomain_xyz`). Das ist `DOCS_DEPLOY_USER`.
-
-### 2. Schlüsselpaar nur für den Deploy erzeugen
-
-Auf deinem Rechner, ohne Passphrase (GitHub Actions kann keine eingeben):
-
-```bash
-ssh-keygen -t ed25519 -N "" -C "github-actions dusk-dawn docs" -f dusk-dawn-docs
-```
-
-Das ergibt `dusk-dawn-docs` (privat, kommt als Secret zu GitHub) und `dusk-dawn-docs.pub` (öffentlich, kommt nach Plesk).
-
-### 3. Öffentlichen Schlüssel in Plesk hinterlegen
-
-- **Mit der Erweiterung „SSH Keys Manager“:** **Websites & Domains → deine Domain → SSH-Schlüssel → SSH-Schlüssel hinzufügen**, Inhalt von `dusk-dawn-docs.pub` einfügen. Fehlt der Eintrag, kann der Plesk-Admin die kostenlose Erweiterung unter **Erweiterungen** installieren.
-- **Ohne Erweiterung:** einmal mit Passwort per SSH als Subscription-User anmelden und den Schlüssel anhängen:
-
-  ```bash
-  mkdir -p ~/.ssh && chmod 700 ~/.ssh
-  cat >> ~/.ssh/authorized_keys      # Inhalt von dusk-dawn-docs.pub einfügen, dann Strg+D
-  chmod 600 ~/.ssh/authorized_keys
-  ```
-
-Test vom eigenen Rechner: `ssh -i dusk-dawn-docs <user>@<host> pwd`. Die Ausgabe zeigt auch, wie Pfade für diesen User aussehen (wichtig für Schritt 5).
-
-### 4. Host-Key festhalten (für die strikte Prüfung)
-
-```bash
-ssh-keyscan -t ed25519 <host> > known_hosts_docs
-ssh-keygen -lf known_hosts_docs        # Fingerabdruck anzeigen
-```
-
-Vergleiche den Fingerabdruck mit dem echten Server-Schlüssel, zum Beispiel per `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` auf dem Server oder mit dem, den dir dein Hoster nennt. Nur wenn er übereinstimmt, kommt der Inhalt von `known_hosts_docs` als Secret zu GitHub. Die Host-Key-Prüfung wird im Workflow nie abgeschaltet: stimmt der Schlüssel nicht, bricht der Deploy ab.
-
-### 5. Zielordner bestimmen
-
-Der Zielordner ist der volle Pfad `<docroot>/docs/dusk-dawn`. Bei Plesk liegt das Docroot meist unter `/var/www/vhosts/<domain>/httpdocs`, also:
-
-```text
-/var/www/vhosts/<domain>/httpdocs/docs/dusk-dawn
-```
-
-Bei einem chroot-Zugang kann der Pfad anders aussehen (zum Beispiel `/httpdocs/docs/dusk-dawn`); maßgeblich ist, was `pwd` in Schritt 3 zeigt. Der Ordner wird beim ersten Deploy angelegt.
-
-Der Workflow lehnt einen leeren Pfad, `/`, Pfade mit `..` und jeden Pfad ab, der **nicht auf `/docs/dusk-dawn` endet**. So kann `rsync --delete` nur diesen einen Ordner leeren und nie das restliche Docroot deiner Entwickler-Website.
-
-### 6. Secrets in GitHub setzen
-
-Im Repository **Settings → Secrets and variables → Actions → Secrets → New repository secret**:
-
-| Secret | Inhalt |
-| --- | --- |
-| `DOCS_DEPLOY_HOST` | Hostname des Plesk-Servers, z. B. `server.example.com` |
-| `DOCS_DEPLOY_USER` | Subscription-User aus Schritt 1 |
-| `DOCS_DEPLOY_KEY` | kompletter Inhalt der privaten Datei `dusk-dawn-docs` (inklusive `-----BEGIN …` und `-----END …`) |
-| `DOCS_DEPLOY_PATH` | Zielordner aus Schritt 5 |
-| `DOCS_DEPLOY_KNOWN_HOSTS` | Inhalt von `known_hosts_docs` aus Schritt 4 |
-
-Unter **Variables → New repository variable** optional `DOCS_URL` = `https://<deine-domain>/docs/dusk-dawn/` setzen (für Sitemap und Canonical-Links).
-
-SSH läuft über Port 22. Danach die privaten Schlüsseldateien auf deinem Rechner löschen oder sicher verwahren.
-
-### 7. Ausprobieren
-
-**Actions → Docs → Run workflow**, als Tag ein vorhandenes Release angeben, das die Doku schon enthält (also eines nach dem Merge dieses Pull Requests). Danach sollte `https://<deine-domain>/docs/dusk-dawn/` erreichbar sein.
+Es gibt keinen automatischen Deploy und keine Secrets.
