@@ -72,8 +72,10 @@ installed `dusk_dawn_core` first, then the bundled file for `platform.machine()`
 log says which engine is used, and the websocket `dusk_dawn/spots` result has
 `engine: "rust" | "python"` per spot.
 
-To rebuild them (the `bundled` job in `wheels.yml` does the same and attaches
-the files to tagged releases):
+`.github/workflows/native.yml` builds them with a pinned toolchain and checks
+that both load and render on Alpine. The release workflow runs that build for
+every release and commits exactly its output, and the release notes link the
+build run and list the SHA-256 checksums. To rebuild them by hand:
 
 ```sh
 pip install maturin ziglang

@@ -6,8 +6,9 @@ for Home Assistant OS / the HA container images (Alpine, musl libc)::
     native/x86_64/dusk_dawn_core.abi3.so    (amd64)
     native/aarch64/dusk_dawn_core.abi3.so   (arm64, e.g. Raspberry Pi 4/5)
 
-Both are abi3 builds for CPython >= 3.12, made by ``.github/workflows/wheels.yml``
-from ``core/``. Order of preference:
+Both are abi3 builds for CPython >= 3.12, made from ``core/`` by
+``.github/workflows/native.yml`` and committed by the release workflow.
+Order of preference:
 
 1. an installed ``dusk_dawn_core`` (wheel built from ``core/``),
 2. the bundled build for ``platform.machine()``, on musl systems,
