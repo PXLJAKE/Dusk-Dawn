@@ -3,6 +3,9 @@ name: Release
 # Jeder Merge, der die Integration ändert, bekommt automatisch eine neue Version und ein GitHub-Release.
 # HACS zeigt das Release als Update an und installiert es.
 #   - Gibt es für die Version in manifest.json noch kein Release (v<version>), wird genau diese veröffentlicht.
+#   - Der Rust-Klangkern wird bei jedem Release aus core/ neu gebaut (native.yml). Genau diese Dateien
+#     werden nach custom_components/dusk_dawn/native/ übernommen; die Release-Notizen nennen den
+#     Build-Lauf und die SHA-256-Prüfsummen. So lässt sich jede ausgelieferte .so auf ihren Bau zurückführen.
 #   - Sonst wird die Patch-Nummer um eins erhöht (0.3.0 -> 0.3.1), in manifest.json eingetragen und veröffentlicht.
 # Für einen größeren Sprung die Version in manifest.json im Pull Request selbst erhöhen (z. B. 0.4.0).
 
@@ -11,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "custom_components/**"
+      - "core/**"
   workflow_dispatch:
 
 permissions:
@@ -21,9 +25,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  native:
+    name: Rust-Klangkern bauen
+    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    uses: ./.github/workflows/native.yml
+
   release:
     name: Version erhöhen und Release veröffentlichen
-    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    needs: native
     runs-on: ubuntu-latest
     outputs:
       tag: v${{ steps.v.outputs.new }}
@@ -44,23 +53,45 @@ jobs:
           fi
           echo "new=$new" >> "$GITHUB_OUTPUT"
           echo "bump=$([ "$new" != "$current" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
-      - name: Version in manifest.json eintragen
-        if: steps.v.outputs.bump == 'yes'
+      - name: Gebauten Klangkern holen
+        uses: actions/download-artifact@v4
+        with:
+          name: bundled-native
+          path: ${{ runner.temp }}/native
+      - name: Version und Klangkern eintragen
         run: |
           manifest=custom_components/dusk_dawn/manifest.json
-          jq --arg v "${{ steps.v.outputs.new }}" '.version = $v' "$manifest" > /tmp/m.json
-          mv /tmp/m.json "$manifest"
+          for arch in x86_64 aarch64; do
+            cp "$RUNNER_TEMP/native/$arch/dusk_dawn_core.abi3.so" \
+              "custom_components/dusk_dawn/native/$arch/dusk_dawn_core.abi3.so"
+          done
+          if [ "${{ steps.v.outputs.bump }}" = yes ]; then
+            jq --arg v "${{ steps.v.outputs.new }}" '.version = $v' "$manifest" > /tmp/m.json
+            mv /tmp/m.json "$manifest"
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$manifest"
-          git commit -m "Version ${{ steps.v.outputs.new }} [skip release]"
-          git push origin HEAD:main
+          git add "$manifest" custom_components/dusk_dawn/native
+          if ! git diff --cached --quiet; then
+            git commit -m "Version ${{ steps.v.outputs.new }} [skip release]"
+            git push origin HEAD:main
+          fi
       - name: Release veröffentlichen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          {
+            echo "## Bundled sound core"
+            echo
+            echo "The Rust extension modules in \`custom_components/dusk_dawn/native/\` of this release were built from \`core/\` by [this workflow run]($run_url) and committed unchanged (artifact \`bundled-native\`). SHA-256:"
+            echo
+            echo '```'
+            (cd custom_components/dusk_dawn/native && sha256sum */dusk_dawn_core.abi3.so)
+            echo '```'
+          } > /tmp/native-notes.md
           gh release create "v${{ steps.v.outputs.new }}" --target "$(git rev-parse HEAD)" \
-            --title "v${{ steps.v.outputs.new }}" --generate-notes
+            --title "v${{ steps.v.outputs.new }}" --generate-notes --notes-file /tmp/native-notes.md
 
   docs:
     # Releases, die mit dem GITHUB_TOKEN erstellt werden, lösen kein `release: published` aus.

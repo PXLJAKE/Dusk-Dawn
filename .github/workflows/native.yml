@@ -1,0 +1,92 @@
+# Builds the two Rust extension modules that ship inside the integration:
+#   custom_components/dusk_dawn/native/x86_64/dusk_dawn_core.abi3.so
+#   custom_components/dusk_dawn/native/aarch64/dusk_dawn_core.abi3.so
+# from the source in core/. Home Assistant OS and the HA container images are
+# Alpine (musl), so these are musllinux_1_2 abi3 builds (CPython >= 3.12),
+# cross-compiled with zig and the small `bundle` profile.
+#
+# The release workflow calls this for every release and commits exactly the
+# files of the `bundled-native` artifact, so the binaries in a release can be
+# traced to the build run named in its release notes. The toolchain is pinned
+# to keep the output stable between runs.
+name: Native core
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUST_VERSION: "1.97.0"
+  MATURIN_VERSION: "1.16.0"
+  ZIGLANG_VERSION: "0.17.1"
+
+jobs:
+  build:
+    name: bundled .so (musl x86_64 + aarch64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal \
+            --target x86_64-unknown-linux-musl --target aarch64-unknown-linux-musl
+          rustup default "$RUST_VERSION"
+      - name: Build with maturin + zig
+        working-directory: core
+        run: |
+          python -m pip install "maturin==$MATURIN_VERSION" "ziglang==$ZIGLANG_VERSION"
+          for arch in x86_64 aarch64; do
+            maturin build --locked --profile bundle --zig --target "${arch}-unknown-linux-musl" \
+              --compatibility musllinux_1_2 --out "dist-${arch}"
+            mkdir -p "../native-out/${arch}"
+            python -m zipfile -e dist-${arch}/*.whl "unpacked-${arch}"
+            cp "unpacked-${arch}/dusk_dawn_core/dusk_dawn_core.abi3.so" "../native-out/${arch}/"
+          done
+      - name: Only libc is needed
+        run: |
+          for f in native-out/*/dusk_dawn_core.abi3.so; do
+            readelf -d "$f" | grep NEEDED
+            test "$(readelf -d "$f" | grep -c NEEDED)" = 1
+          done
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Load and render on Alpine (both CPUs)
+        run: |
+          cat > smoke.py <<'PY'
+          import platform, sys
+          from pathlib import Path
+          sys.path.insert(0, "custom_components/dusk_dawn")
+          import native  # the integration's loader, standard library only
+          arch = native.ARCH_DIRS[platform.machine().lower()]
+          core = native.load_bundled(Path("native-out") / arch / native.SO_NAME)
+          engine = core.Engine(44100, 1)
+          engine.set_master(1.0)
+          engine.set_level(engine.sounds()[0], 0.8)
+          pcm = b"".join(engine.render(4410) for _ in range(20))
+          assert len(pcm) > 0 and any(pcm), "engine rendered silence"
+          print(arch, core.__version__, len(core.SOUNDS), "sounds,", len(pcm), "bytes ok")
+          PY
+          for p in linux/amd64 linux/arm64; do
+            docker run --rm --platform "$p" -v "$PWD:/w" -w /w python:3.13-alpine python smoke.py
+          done
+      - name: Checksums
+        run: |
+          (cd native-out && sha256sum */dusk_dawn_core.abi3.so | tee SHA256SUMS)
+          {
+            echo '### Bundled sound core'
+            echo '```'
+            cat native-out/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundled-native
+          path: native-out/
+          if-no-files-found: error
